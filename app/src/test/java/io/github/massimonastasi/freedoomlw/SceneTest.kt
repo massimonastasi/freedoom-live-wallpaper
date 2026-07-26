@@ -50,7 +50,10 @@ class SceneTest {
         // A single instant is not enough: between waves there is a pause where zero demons
         // is correct. Look at the last half minute instead.
         var maxRecent = 0
-        val biggestWave = the engineData.waves.maxOf { it.size }
+        // The hardest skills stretch the queue to nine eighths and can respawn the fallen,
+        // so the ceiling is no longer the wave's own size. Doubling it still catches a
+        // runaway spawn, which is what this bound is for.
+        val biggestWave = the engineData.waves.maxOf { it.size } * 2
         for (t in 1..TICRATE * 600) {
             scene.tick(t)
             val n = scene.actors.count { it.creature != null && !it.isPlayer && !it.dead }
@@ -61,6 +64,52 @@ class SceneTest {
         assertTrue(maxRecent > 0, "no demon appeared during the last half minute")
         // Corpses, projectiles and effects must not accumulate indefinitely.
         assertTrue(scene.actors.size < 60, "too many actors on stage: ${scene.actors.size}")
+    }
+
+    /**
+     * The difficulty ladder: finishing the wave table promotes the marine one skill level,
+     * it stops at Nightmare, and dying puts him back at the bottom.
+     */
+    @Test
+    fun `the skill climbs with the table and a death resets it`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+        scene.invulnerable = true
+
+        assertEquals(0, scene.skill, "the first run must start on the lowest skill")
+
+        var t = 0
+        var reached = 0
+        // Long enough to climb several levels while nothing can kill him.
+        while (t < TICRATE * 3600) {
+            scene.tick(++t)
+            assertTrue(scene.skill in the engineData.skills.indices, "skill ${scene.skill} off the table")
+            if (scene.skill > reached) {
+                reached = scene.skill
+                assertEquals(0, scene.wave, "the promotion must land on the first wave")
+            }
+        }
+        assertTrue(reached > 0, "the skill never rose in an hour of invulnerable play")
+
+        // Now let him be killed: the ladder must collapse back to the bottom.
+        scene.invulnerable = false
+        val hardened = scene.skill
+        assertTrue(hardened > 0, "expected to be above the lowest skill before dying")
+        while (t < TICRATE * 5400 && scene.skill == hardened) scene.tick(++t)
+        assertEquals(0, scene.skill, "death must restart from the lowest skill")
+    }
+
+    @Test
+    fun `nightmare makes the FleshWorm fast and nothing else`() {
+        the engineData.clearRandom()
+        val fast = Actor(0).apply { creature = the engineData.fleshWorm; this.fast = true }
+        val normal = Actor(0).apply { creature = the engineData.fleshWorm }
+
+        // g_game.c halves the run tics, which in the engine doubles both the animation and
+        // the stepping, since movement happens inside A_Chase.
+        val walked = (1..40).count { fast.frame(it) != fast.frame(it - 1) }
+        val strolled = (1..40).count { normal.frame(it) != normal.frame(it - 1) }
+        assertEquals(strolled * 2, walked, "the fast FleshWorm must animate at twice the rate")
     }
 
     @Test

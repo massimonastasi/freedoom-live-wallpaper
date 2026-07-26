@@ -195,6 +195,9 @@ object the engineData {
      * The attack animation here is a fallback: in practice the marine uses the animation
      * of the weapon he is holding (see [weapons]).
      */
+    /** The one creature the fast skills touch: g_game.c only rewrites the SARG states. */
+    val fleshWorm get() = creatures[3]
+
     val player = Creature(
         "Player", "PLAY", speed = 8, health = 100, radius = 16, walkFrames = 4, walkTics = 4,
         attack = Anim(intArrayOf(4, 5, 4), intArrayOf(4, 6, 4)),
@@ -298,6 +301,51 @@ object the engineData {
     /** p_inter.c: armour absorbs a third of the damage when green, half when blue. */
     fun armorSaved(damage: Int, armorType: Int): Int =
         if (armorType == 1) damage / 3 else damage / 2
+
+    // ------------------------------------------------------------------ skill
+
+    /**
+     * A skill level, with the five effects the engine actually attaches to one.
+     *
+     * The wallpaper has no maps, so the one skill effect that cannot be transcribed
+     * literally is the monster count: in the engine it comes from the map itself, where
+     * every thing carries MTF_EASY/NORMAL/HARD flags and P_SpawnMapThing (p_mobj.c:743)
+     * picks the bit for the current skill — 1 for skills 0 and 1, 2 for skill 2, 4 for
+     * skills 3 and 4. Two skill levels therefore always share a monster set, which is why
+     * [countEighths] repeats in pairs below.
+     *
+     * The ratio itself is measured rather than invented: counting the flags across the
+     * THINGS lumps of Freedoom E1M1-E1M3 gives 781 easy, 887 medium and 991 hard, so
+     * roughly seven, eight and nine eighths.
+     */
+    class Skill(
+        val name: String,
+        /** Arrival-queue length as eighths of the wave's own order. */
+        val countEighths: Int,
+        /** p_inter.c:799 — the player takes half damage in trainer mode. */
+        val halfDamage: Boolean = false,
+        /** p_inter.c:95 — double ammo on the easiest and the hardest. */
+        val doubleAmmo: Boolean = false,
+        /** g_game.c:1421 — FleshWorm state tics halved, monster missiles at speed 20. */
+        val fast: Boolean = false,
+        /** p_mobj.c:456 — killed monsters come back. */
+        val respawn: Boolean = false,
+    )
+
+    /** g_game.c skill_t, and the names from the difficulty menu. */
+    val skills = listOf(
+        Skill("I'm too young to die", 7, halfDamage = true, doubleAmmo = true),
+        Skill("Hey, not too rough", 7),
+        Skill("Hurt me plenty", 8),
+        Skill("Ultra-Violence", 9),
+        Skill("Nightmare!", 9, doubleAmmo = true, fast = true, respawn = true),
+    )
+
+    /** g_game.c:1425 — every monster missile is forced to this speed when fast. */
+    const val FAST_MISSILE_SPEED = 20
+
+    /** p_mobj.c:461 — a monster comes back 12 seconds after it fell. */
+    const val RESPAWN_DELAY = TICRATE * 12
 
     // ------------------------------------------------------------------ waves
 

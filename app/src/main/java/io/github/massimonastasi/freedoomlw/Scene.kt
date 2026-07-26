@@ -68,6 +68,17 @@ class Actor(val spriteIndex: Int) {
     var reactionTime = 0
 
     /**
+     * g_game.c:1423 halves the FleshWorm's run and pain tics on the fast skills. In the
+     * engine that alone doubles its speed, because movement happens inside A_Chase and the
+     * state calls A_Chase twice as often; here the chase runs every tic, so the doubling has
+     * to be applied to the step as well as to the animation.
+     */
+    var fast = false
+
+    /** Already came back once, and so will not be queued to respawn again. */
+    var respawned = false
+
+    /**
      * Direction the sprite is drawn facing, which is not always the direction of travel.
      * It follows movement while walking, and snaps to the target when an attack starts —
      * that is what A_FaceTarget does in the engine. Without it the marine, who backs away
@@ -90,7 +101,7 @@ class Actor(val spriteIndex: Int) {
         item?.let { return if (it.frames > 1) ((tic - spawnTic) / 6) % it.frames else 0 }
         val c = creature ?: return 0
         // Walking: the engine repeats each frame twice (A,A,B,B,...), so it lasts walkTics*2.
-        val per = c.walkTics * 2
+        val per = if (fast) c.walkTics else c.walkTics * 2
         return ((tic - spawnTic) / per) % c.walkFrames
     }
 
@@ -141,6 +152,19 @@ class Scene(
     var wave = 0
         private set
 
+    /**
+     * Current skill level, an index into [the engineData.skills]. It climbs by one every time the
+     * wave table is finished, so the marine walks the whole difficulty ladder from
+     * "I'm too young to die" up to "Nightmare!" — and a death drops him back to the bottom.
+     */
+    var skill = 0
+        private set
+
+    private val rules get() = the engineData.skills[skill]
+
+    /** Waves cleared since the last death, which is what earns the promotion. */
+    private var cleared = 0
+
     /** What the corner readout shows. Zero while the marine is down. */
     val playerHealth: Int get() = player?.takeIf { !it.dead }?.health?.coerceAtLeast(0) ?: 0
     val playerArmor: Int get() = player?.takeIf { !it.dead }?.loadout?.armorPoints ?: 0
@@ -154,9 +178,16 @@ class Scene(
     private val kept = Loadout()
 
     /** Arrival queue for the current wave, and how far along it we are. */
-    private var spawned = IntArray(0)
+    private val queue = ArrayList<Int>()
     private var spawnIndex = 0
     private var nextSpawnAt = 0
+
+    /**
+     * Monsters waiting to come back, on the skills that respawn them. Each entry packs the
+     * tic it is due at together with its creature index, so this stays one flat list of ints
+     * with no allocation per corpse.
+     */
+    private val respawns = ArrayList<Int>()
 
     /**
      * 0 while the marine is alive, rising to 1 as the screen sinks into red after his
@@ -228,20 +259,22 @@ class Scene(
             return
         }
 
+        updateRespawns()
+
         // Staggered arrivals: until the whole wave is in, we do not judge it finished.
-        if (spawnIndex < spawned.size) {
+        if (spawnIndex < queue.size) {
             if (tic >= nextSpawnAt) {
                 val w = the engineData.waves[wave]
                 var n = w.burst
-                while (n-- > 0 && spawnIndex < spawned.size) {
-                    spawnDemon(the engineData.creatures[spawned[spawnIndex++]])
+                while (n-- > 0 && spawnIndex < queue.size) {
+                    spawnDemon(the engineData.creatures[queue[spawnIndex++]], respawned = false)
                 }
                 nextSpawnAt = tic + w.spawnDelay
             }
             return
         }
 
-        if (countDemons() > 0) {
+        if (countDemons() > 0 || respawns.isNotEmpty()) {
             nextWaveAt = 0
             return
         }
@@ -254,26 +287,59 @@ class Scene(
         if (tic >= nextWaveAt) {
             nextWaveAt = 0
             wave = (wave + 1) % the engineData.waves.size
+            // The whole sequence then replays one skill level harder, up to Nightmare,
+            // which is where it stays.
+            cleared++
+            if (cleared % WAVES_PER_PROMOTION == 0 && skill < the engineData.skills.size - 1) skill++
             startWave()
         }
     }
 
-    /** After death everything restarts from the first wave: dying wipes the progress. */
+    /**
+     * P_NightmareRespawn (p_mobj.c): on the skills that respawn, a monster comes back twelve
+     * seconds after it fell.
+     *
+     * ponytail: a monster only comes back once. The engine respawns forever, which there is
+     * fine because a level ends; here a wave would never clear and the marine would be stuck
+     * on the same one until he died.
+     */
+    private fun updateRespawns() {
+        var i = 0
+        while (i < respawns.size) {
+            val packed = respawns[i]
+            if (tic >= packed shr 3) {
+                spawnDemon(the engineData.creatures[packed and 7], respawned = true)
+                respawns.removeAt(i)
+            } else i++
+        }
+    }
+
+    /** After death everything restarts from the first wave, at the lowest skill. */
     private fun restart() {
         player?.loadout?.let { kept.copyFrom(it) }
         actors.clear()
+        respawns.clear()
         player = null
         deadUntil = 0
         nextWaveAt = 0
         wave = 0
+        skill = 0
+        cleared = 0
         spawnPlayer()
         startWave()
     }
 
-    /** Arms the wave: nobody enters immediately, the first arrives after spawnDelay. */
+    /**
+     * Arms the wave: nobody enters immediately, the first arrives after spawnDelay.
+     *
+     * The queue is the wave's own order stretched or trimmed to the skill's share of it,
+     * which is this scene's stand-in for the map thing flags the engine filters on.
+     */
     private fun startWave() {
         val w = the engineData.waves[wave]
-        spawned = w.order
+        val n = (w.order.size * rules.countEighths + 4) / 8
+        queue.clear()
+        for (i in 0 until n) queue.add(w.order[i % w.order.size])
         spawnIndex = 0
         nextSpawnAt = tic + w.spawnDelay
     }
@@ -336,8 +402,11 @@ class Scene(
         return a
     }
 
-    private fun spawnDemon(c: the engineData.Creature) {
+    private fun spawnDemon(c: the engineData.Creature, respawned: Boolean) {
         val a = newCreature(c)
+        a.respawned = respawned
+        // Only the FleshWorm: g_game.c touches S_SARG_RUN1..S_SARG_PAIN2 and nothing else.
+        a.fast = rules.fast && c === the engineData.fleshWorm
         // Enters from a side edge, but a whole sprite width inside it: arriving exactly on
         // the boundary left half the creature off screen, and a quick kill could then remove
         // it before it had ever been properly seen.
@@ -450,7 +519,11 @@ class Scene(
     private fun giveAmmo(kit: Loadout, type: Int, clips: Int): Boolean {
         if (type < 0) return false
         if (kit.ammo[type] >= the engineData.maxAmmo[type]) return false
-        kit.ammo[type] = minOf(the engineData.maxAmmo[type], kit.ammo[type] + clips * the engineData.clipAmmo[type])
+        // p_inter.c:95 — double ammo on the easiest skill and on Nightmare, where it is
+        // needed for the opposite reason.
+        var given = clips * the engineData.clipAmmo[type]
+        if (rules.doubleAmmo) given = given shl 1
+        kit.ammo[type] = minOf(the engineData.maxAmmo[type], kit.ammo[type] + given)
         return true
     }
 
@@ -622,7 +695,10 @@ class Scene(
         val dist = approxDistance(from, target).coerceAtLeast(1)
         // Momentum is in fixed-point: p.speed is units per tic, as in mobjinfo where the
         // missiles have speed 10*FRACUNIT (monsters instead carry a plain integer).
-        val v = (p.speed * FRACUNIT).toLong()
+        // g_game.c:1425 forces every monster missile to speed 20 on the fast skills. The
+        // marine's own shots are hitscan, so nothing of his is affected.
+        val speed = if (rules.fast && !from.isPlayer) the engineData.FAST_MISSILE_SPEED else p.speed
+        val v = (speed * FRACUNIT).toLong()
         m.momX = (v * dx / dist).toInt()
         m.momY = (v * dy / dist).toInt()
         actors.add(m)
@@ -660,7 +736,8 @@ class Scene(
 
         // p_inter.c: armour absorbs a third of the damage when green, half when blue, and
         // is consumed by the same amount. Once it runs out, the type is cleared too.
-        var amount = amount
+        // p_inter.c:799 — half damage to the player in trainer mode, before the armour.
+        var amount = if (target.isPlayer && rules.halfDamage) amount shr 1 else amount
         val kit = target.loadout
         if (kit != null && kit.armorType > 0) {
             var saved = the engineData.armorSaved(amount, kit.armorType)
@@ -679,6 +756,10 @@ class Scene(
             target.dead = true
             begin(target, Mode.DEATH, c.death)
             target.spawnTic = tic
+            if (rules.respawn && !target.isPlayer && !target.respawned) {
+                val i = the engineData.creatures.indexOf(c)
+                if (i >= 0) respawns.add(((tic + the engineData.RESPAWN_DELAY) shl 3) or i)
+            }
             return
         }
         // painchance: the odds of being interrupted by a hit.
@@ -764,7 +845,7 @@ class Scene(
     private fun move(a: Actor): Boolean {
         val d = a.moveDir
         if (d >= 8) return false
-        val speed = a.creature?.speed ?: return false
+        val speed = (a.creature?.speed ?: return false) * (if (a.fast) 2 else 1)
         val tryX = a.x + speed * xspeed[d]
         val tryY = a.y + speed * yspeed[d]
         val r = a.radius * FRACUNIT
@@ -874,6 +955,19 @@ class Scene(
     }
 
     private companion object {
+        /**
+         * Waves that must be cleared in a single life to earn the next skill level.
+         *
+         * The whole table, so the marine has to survive the full sequence to be promoted.
+         * Measured, that almost never happens: over ten minutes he clears at most ten of
+         * the sixteen waves before dying, so in practice the scene stays on the lowest
+         * skill. It is the same trade-off restarting from wave 1 already carries, and this
+         * is the one number to lower if the ladder should actually be climbed: measured at
+         * four, the same ten minutes reach "Hurt me plenty" and spend 58/39/1 percent of
+         * the time across the first three levels.
+         */
+        val WAVES_PER_PROMOTION = the engineData.waves.size
+
         /** ponytail: the engine corpses stay forever; in a wallpaper they would pile up. */
         const val CORPSE_LIFETIME = TICRATE * 12
 
