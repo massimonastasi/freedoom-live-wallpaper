@@ -1,9 +1,21 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-        AppCompat rather than a plain platform theme: PreferenceFragmentCompat requires one,
-        and DayNight means the settings follow the system instead of forcing a light screen
-        onto someone who chose dark.
+        Material 3, following the system's own palette. minSdk is 31, so dynamic colour is
+        available on every device this runs on and there is no branch to maintain: the
+        settings look like the rest of the phone instead of like a theme somebody chose.
+
+        DayNight because forcing a light screen on someone who chose dark is the one theming
+        decision users notice immediately.
+
+        NoActionBar: the bar is a MaterialToolbar inside the layout instead. The window one
+        was drawn over the list rather than above it, which put the first category header
+        underneath the title.
+
+        preferenceTheme is required: without it androidx.preference falls back to its own
+        pre-Material styling and the rows do not match anything around them.
     -->
-    <style name="AppTheme" parent="Theme.AppCompat.DayNight.DarkActionBar" />
+    <style name="AppTheme" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
+        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+    </style>
 </resources>

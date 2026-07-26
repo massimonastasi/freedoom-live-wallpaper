@@ -192,10 +192,14 @@ class SettingsActivity : AppCompatActivity() {
                     // not offered as if something could be picked.
                     choosable = false
                 } else {
+                    // Named, not described: someone who has imported more than one over a
+                    // week needs to see which file is in, and "your own WAD" answers a
+                    // question nobody asked.
+                    val label = WadStore.name(context) ?: getString(R.string.wad_unnamed)
                     setOptions(
                         arrayOf(
                             getString(R.string.sprites_bundled),
-                            getString(R.string.sprites_user, user.length() / 1024),
+                            getString(R.string.sprites_user, label, user.length() / 1024),
                         ),
                         arrayOf(Settings.SPRITES_BUNDLED, Settings.SPRITES_USER),
                     )

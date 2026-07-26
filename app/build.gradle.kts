@@ -53,6 +53,9 @@ android {
 // These serve the settings screen, which needs a preference list and a document picker.
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
+    // Material 3 for the settings screen only. minSdk 31 means dynamic colour is always
+    // available, so the screen takes the system's palette rather than carrying its own.
+    implementation("com.google.android.material:material:1.12.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation(kotlin("test"))
 }

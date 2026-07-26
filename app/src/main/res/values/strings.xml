@@ -23,7 +23,8 @@
     <string name="settings_readout">Show health and armour</string>
     <string name="settings_sprites">Sprites</string>
     <string name="sprites_bundled">Freedoom (included)</string>
-    <string name="sprites_user">Your own WAD, %d KB</string>
+    <string name="sprites_user">%1$s — %2$d KB</string>
+    <string name="wad_unnamed">Imported WAD</string>
     <string name="settings_save">Save</string>
     <string name="settings_saved">Saved.</string>
     <string name="settings_reset">Reset everything</string>

@@ -20,6 +20,7 @@ package io.github.massimonastasi.freedoomlw
 
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
 import java.io.File
 import java.nio.channels.FileChannel
@@ -41,12 +42,38 @@ object WadStore {
     private const val DIR = "wads"
     private const val TAG = "FreedoomLW"
 
+    private const val KEY_NAME = "wad_name"
+
     /** The one imported WAD, or null when the bundled assets are in use. */
     fun active(context: Context): File? =
         File(File(context.filesDir, DIR), "active.wad").takeIf { it.isFile && it.length() > 0 }
 
+    /**
+     * What the user called it, so the settings can name the file rather than describe it.
+     *
+     * The copy is always stored as active.wad, which is right for the loader and useless to
+     * read: someone who has imported two WADs over a week needs to see which one is in, and
+     * "your own WAD" answers a question nobody asked.
+     */
+    fun name(context: Context): String? =
+        Settings.of(context).getString(KEY_NAME, null)?.takeIf { active(context) != null }
+
+    /**
+     * Reads the display name the document provider offers.
+     *
+     * A content URI is not a path and its last segment is often an opaque id, so the name
+     * has to be asked for rather than parsed out.
+     */
+    private fun displayName(context: Context, uri: Uri): String? = try {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { if (it.moveToFirst()) it.getString(0) else null }
+    } catch (e: Exception) {
+        null
+    }
+
     fun clear(context: Context) {
         active(context)?.delete()
+        Settings.of(context).edit().remove(KEY_NAME).apply()
     }
 
     /**
@@ -98,6 +125,9 @@ object WadStore {
             target.delete()
             return context.getString(R.string.wad_unreadable)
         }
+        Settings.of(context).edit()
+            .putString(KEY_NAME, displayName(context, uri) ?: context.getString(R.string.wad_unnamed))
+            .apply()
         Log.i(TAG, "WAD imported: $reduced lumps, ${full / 1024} KB -> ${target.length() / 1024} KB")
         return null
     }
