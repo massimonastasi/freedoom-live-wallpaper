@@ -58,15 +58,49 @@ class FreedoomWallpaperService : WallpaperService() {
     /** Red damage flash colour, read from PLAYPAL. */
     private var damageTint = 0xFFAA1400.toInt()
 
+    /**
+     * The same flash, pulled back towards grey for use as a full-screen wash.
+     *
+     * Measured on the shipped WAD, PLAYPAL palette 8 gives 255, 25, 25: ninety percent
+     * saturation, which is right for a brief flash across a game viewport and much too loud
+     * held over a whole home screen. Desaturating towards the colour's own luminance keeps
+     * it recognisably the original red while taking the glare out, rather than inventing a
+     * different colour or simply fading it until it reads as a grey smudge.
+     */
+    private var deathTint = damageTint
+
+    /**
+     * Moves a colour towards its own luminance. 0 leaves it alone, 1 makes it grey.
+     *
+     * Its own luminance, not a fixed grey, so a WAD whose damage ramp is darker or lighter
+     * than Freedoom's is muted rather than shifted in brightness.
+     */
+    private fun desaturate(color: Int, amount: Float): Int {
+        val r = Color.red(color)
+        val g = Color.green(color)
+        val b = Color.blue(color)
+        val lum = 0.299f * r + 0.587f * g + 0.114f * b
+        fun mix(c: Int) = (c + (lum - c) * amount).toInt().coerceIn(0, 255)
+        return Color.rgb(mix(r), mix(g), mix(b))
+    }
+
     /** Floor texture per skill level, tiled behind the scene. Null entries when absent. */
     private var floorTiles: Array<Bitmap?> = arrayOfNulls(GameData.skills.size)
 
     /** Status bar numerals from the WAD. */
     private var digits: Array<Bitmap>? = null
 
-    /** Readout colours, taken from the active WAD's palette. */
-    private var healthColor = 0xFF77FF6F.toInt()
-    private var armorColor = 0xFF7373FF.toInt()
+    /**
+     * Readout colours, replaced by the active WAD's palette once it loads.
+     *
+     * Health is the blue and armour the green, matching PALETTE_HEALTH and PALETTE_ARMOR.
+     * These two defaults used to hold the opposite pair, which no drawn frame could reveal
+     * because the readout is skipped entirely when the numerals fail to load — wrong in a
+     * place that never shows is still wrong, and it would have surfaced the moment anything
+     * else started using them.
+     */
+    private var healthColor = 0xFF7373FF.toInt()
+    private var armorColor = 0xFF77FF6F.toInt()
 
     override fun onCreate() {
         super.onCreate()
@@ -81,6 +115,7 @@ class FreedoomWallpaperService : WallpaperService() {
             // Only the creatures whose sprites actually exist in this WAD: the file
             // declares itself, no per-IWAD compatibility table needed.
             damageTint = w.damageTint
+            deathTint = desaturate(damageTint, DEATH_DESATURATION)
             floorTiles = loadFloors(w)
             loadDigits(w)
             sprites = GameData.spritePrefixes.map { SpriteSet(w, it) }
@@ -414,7 +449,7 @@ class FreedoomWallpaperService : WallpaperService() {
             // DEATH_MAX_ALPHA. A wallpaper has to stay usable even at its most dramatic.
             val fade = s.deathFade
             if (fade > 0f) {
-                overlay.color = damageTint
+                overlay.color = deathTint
                 overlay.alpha = (fade * DEATH_MAX_ALPHA).toInt().coerceIn(0, 255)
                 canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
             }
@@ -587,8 +622,21 @@ class FreedoomWallpaperService : WallpaperService() {
          */
         const val SCENE_DIM = 0.62f
 
-        /** Peak opacity of the death wash. Full red was unusable as a wallpaper. */
-        const val DEATH_MAX_ALPHA = 110f
+        /**
+         * Peak opacity of the death wash. Full red was unusable as a wallpaper.
+         *
+         * Lowered together with the desaturation rather than instead of it: opacity alone
+         * would have left the same glaring hue, just thinner, and the two levers do
+         * different jobs — one decides how much of the home screen is covered, the other how
+         * loud what covers it is.
+         */
+        const val DEATH_MAX_ALPHA = 78f
+
+        /**
+         * How far the damage flash is pulled towards grey before being used as the death
+         * wash. Measured on the shipped WAD, this turns 255, 25, 25 into 174, 59, 59.
+         */
+        const val DEATH_DESATURATION = 0.5f
 
         /** Magnification of the 64x64 floor tile. */
         const val FLOOR_SCALE = 1.5f

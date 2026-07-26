@@ -261,6 +261,49 @@ class SceneTest {
         )
     }
 
+    /**
+     * Death wipes the armour and keeps the arsenal.
+     *
+     * g_game.c G_PlayerReborn memsets the whole player struct, so the original loses armour
+     * on death; keeping it made the marine come back still wearing what had just failed to
+     * save him. The weapons are the one deliberate departure, and it has a measured reason.
+     */
+    @Test
+    fun `armour does not survive death, weapons do`() {
+        GameData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        // The comparison has to be against the last state he was *actually* in, sampled every
+        // tic. An arsenal noted earlier can legitimately shrink before he dies, because a
+        // weapon that runs dry is dropped, and comparing against a stale reading fails for a
+        // reason that has nothing to do with death.
+        var current: Actor? = null
+        var lastArmour = 0
+        var lastOwned = 0
+        var checked = false
+
+        var t = 0
+        while (t < TICRATE * 2400 && !checked) {
+            scene.tick(++t)
+            val p = scene.actors.firstOrNull { it.isPlayer && !it.dead } ?: continue
+            val kit = p.loadout ?: continue
+
+            if (current != null && p !== current) {
+                // A new marine. Only a meaningful check if the old one had something to lose.
+                if (lastArmour > 0) {
+                    assertEquals(0, kit.armorPoints, "armour must not survive death")
+                    assertEquals(0, kit.armorType, "the armour type must go with the points")
+                    assertEquals(lastOwned, kit.owned, "the arsenal must survive death")
+                    checked = true
+                }
+            }
+            current = p
+            lastArmour = kit.armorPoints
+            lastOwned = kit.owned
+        }
+        assertTrue(checked, "no marine ever died while wearing armour, so nothing was proven")
+    }
+
     @Test
     fun `the arsenal keeps the best loaded weapon and falls back to the pistol`() {
         val kit = Loadout()

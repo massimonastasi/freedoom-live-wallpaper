@@ -379,7 +379,19 @@ class Scene(
 
     /** After death everything restarts from the first wave, at the lowest skill. */
     private fun restart() {
-        player?.loadout?.let { kept.copyFrom(it) }
+        player?.loadout?.let {
+            kept.copyFrom(it)
+            // g_game.c G_PlayerReborn memsets the whole player struct, so armour is wiped by
+            // death in the original and must be here too: leaving it on made the marine come
+            // back still wearing what had just failed to save him, and the shields readout
+            // never returned to zero.
+            //
+            // The arsenal is the deliberate exception, and stays. Without it he was stuck on
+            // the pistol through the early waves and half the bestiary was never reached,
+            // which was measured before it was decided.
+            kept.armorPoints = 0
+            kept.armorType = 0
+        }
         actors.clear()
         respawns.clear()
         player = null
