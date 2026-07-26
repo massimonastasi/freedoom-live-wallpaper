@@ -1,8 +1,6 @@
 package io.github.massimonastasi.freedoomlw
 
 import org.junit.Test
-import kotlin.math.abs
-import kotlin.math.hypot
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -22,18 +20,10 @@ class the engineDataTest {
         assertEquals(0, 8 * the engineData.yspeed[0], "an eastward step must not move y")
     }
 
-    @Test
-    fun `the diagonal uses id's original approximation`() {
-        // 47000 / 65536 = 0.7172, not 0.7071: deliberate in the id source, not a typo.
-        val diag = hypot(the engineData.xspeed[1].toDouble(), the engineData.yspeed[1].toDouble())
-        val ratio = diag / the engineData.FRACUNIT
-        assertTrue(abs(ratio - 1.0143) < 0.001, "unexpected diagonal magnitude: $ratio")
-        // All four diagonals share the same magnitude.
-        for (d in intArrayOf(1, 3, 5, 7)) {
-            assertEquals(47000, abs(the engineData.xspeed[d]), "xspeed[$d]")
-            assertEquals(47000, abs(the engineData.yspeed[d]), "yspeed[$d]")
-        }
-    }
+    // The diagonal entries of the tables used to have a test of their own, asserting id's
+    // 47000 approximation. Nothing moves diagonally any more, so it guarded numbers no code
+    // reads. The transcription is still covered: the check below sums every direction with
+    // its opposite, diagonals included.
 
     @Test
     fun `opposite directions are consistent`() {

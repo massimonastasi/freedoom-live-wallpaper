@@ -334,9 +334,7 @@ class Scene(
 
     private fun spawnEffect(spriteIndex: Int, anim: the engineData.Anim, x: Int, y: Int) {
         val a = Actor(spriteIndex)
-        a.mode = Mode.EFFECT
-        a.anim = anim
-        a.animTics = anim.tics[0]
+        begin(a, Mode.EFFECT, anim)
         a.x = x
         a.y = y
         a.spawnTic = tic
@@ -455,6 +453,20 @@ class Scene(
     // ---------------------------------------------------------------- animation
 
     /**
+     * Starts an animation.
+     *
+     * One place, so no caller can set three of the four fields and forget the fourth. That
+     * is not hypothetical: leaving the pain state without clearing `anim` left the index
+     * pointing past the end of a finished sequence, and crashed the renderer.
+     */
+    private fun begin(a: Actor, mode: Mode, anim: the engineData.Anim) {
+        a.mode = mode
+        a.anim = anim
+        a.animStep = 0
+        a.animTics = anim.tics[0]
+    }
+
+    /**
      * Advances the animation. false once it has finished.
      *
      * Invariant: animStep always stays a valid index, even when the sequence is exhausted.
@@ -549,11 +561,7 @@ class Scene(
         val c = a.creature ?: return
         // The marine uses the rate of fire of the weapon in hand: the chaingun is far
         // faster than the shotgun.
-        val anim = if (a.isPlayer) currentWeapon(a).attack else c.attack
-        a.mode = Mode.ATTACK
-        a.anim = anim
-        a.animStep = 0
-        a.animTics = anim.tics[0]
+        begin(a, Mode.ATTACK, if (a.isPlayer) currentWeapon(a).attack else c.attack)
     }
 
     private fun fireAttack(a: Actor) {
@@ -655,19 +663,13 @@ class Scene(
 
         if (target.health <= 0) {
             target.dead = true
-            target.mode = Mode.DEATH
-            target.anim = c.death
-            target.animStep = 0
-            target.animTics = c.death.tics[0]
+            begin(target, Mode.DEATH, c.death)
             target.spawnTic = tic
             return
         }
         // painchance: the odds of being interrupted by a hit.
         if (target.mode != Mode.ATTACK && pRandom() < c.painChance) {
-            target.mode = Mode.PAIN
-            target.anim = c.pain
-            target.animStep = 0
-            target.animTics = c.pain.tics[0]
+            begin(target, Mode.PAIN, c.pain)
         }
     }
 
