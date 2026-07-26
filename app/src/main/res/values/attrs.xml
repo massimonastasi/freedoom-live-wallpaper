@@ -5,4 +5,12 @@
         <attr name="android:entries" />
         <attr name="android:entryValues" />
     </declare-styleable>
+
+    <!--
+        Not android:summary. The framework attribute is drawn by the base class as well, so
+        the same paragraph would appear both folded and unfolded.
+    -->
+    <declare-styleable name="AccordionPreference">
+        <attr name="body" format="string" />
+    </declare-styleable>
 </resources>

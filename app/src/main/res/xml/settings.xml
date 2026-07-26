@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<!--
+    Material 3 throughout, and nothing else. Every section has the same shape: a header, the
+    controls, then one folded row carrying that section's explanation. Nothing on this screen
+    explains itself until it is asked to.
+-->
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/settings_frame_rate">
 
@@ -7,8 +14,12 @@
             android:defaultValue="20"
             android:entries="@array/fps_labels"
             android:entryValues="@array/fps_values"
-            android:key="fps"
-            android:summary="@string/settings_frame_rate_note" />
+            android:key="fps" />
+
+        <io.github.massimonastasi.freedoomlw.AccordionPreference
+            android:key="fps_note"
+            android:title="@string/settings_details"
+            app:body="@string/settings_frame_rate_note" />
 
     </PreferenceCategory>
 
@@ -32,6 +43,11 @@
             android:key="background_colour"
             android:title="@string/settings_background_colour" />
 
+        <io.github.massimonastasi.freedoomlw.AccordionPreference
+            android:key="background_note"
+            android:title="@string/settings_details"
+            app:body="@string/settings_background_note" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/settings_scene">
@@ -47,12 +63,16 @@
 
         <io.github.massimonastasi.freedoomlw.RadioListPreference
             android:defaultValue="bundled"
-            android:key="sprites"
-            android:summary="@string/settings_wad_note" />
+            android:key="sprites" />
 
         <Preference
             android:key="wad"
             android:title="@string/settings_wad" />
+
+        <io.github.massimonastasi.freedoomlw.AccordionPreference
+            android:key="wad_note"
+            android:title="@string/settings_details"
+            app:body="@string/settings_wad_note" />
 
     </PreferenceCategory>
 
@@ -68,10 +88,17 @@
 
         <Preference
             android:key="reset"
-            android:summary="@string/settings_reset_note"
             android:title="@string/settings_reset" />
 
-        <io.github.massimonastasi.freedoomlw.TextBlockPreference android:key="notices" />
+        <io.github.massimonastasi.freedoomlw.AccordionPreference
+            android:key="about_note"
+            android:title="@string/settings_details"
+            app:body="@string/settings_about_note" />
+
+        <!-- Body set in code: it is the licence files themselves, read from the assets. -->
+        <io.github.massimonastasi.freedoomlw.AccordionPreference
+            android:key="notices"
+            android:title="@string/settings_licences" />
 
     </PreferenceCategory>
 

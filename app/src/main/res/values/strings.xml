@@ -28,7 +28,6 @@
     <string name="settings_save">Save</string>
     <string name="settings_saved">Saved.</string>
     <string name="settings_reset">Reset everything</string>
-    <string name="settings_reset_note">Back to the settings this app started with, and deletes any WAD or photo you imported.</string>
     <string name="settings_reset_confirm">This puts every setting back and deletes the WAD and photo you imported. It cannot be undone.</string>
     <string name="settings_reset_done">Everything is back to how it started.</string>
     <string name="settings_unsaved_title">Unsaved changes</string>
@@ -53,8 +52,17 @@
     -->
     <string name="wad_too_few">That WAD carries only %d of the creatures this wallpaper draws. It names its creatures differently, so it cannot be used.</string>
     <string name="settings_about">About</string>
-    <string name="settings_about_note">Free, no adverts, no network access, no data collected.</string>
+    <string name="settings_about_note">Free, no adverts, no network access, no data collected. Save applies your choices; nothing on this screen takes effect before you do. Reset puts every setting back and deletes the WAD and photo you imported.</string>
     <string name="settings_licences">Licences and notices</string>
     <string name="settings_set_wallpaper">Set as wallpaper</string>
     <string name="licences_missing">%s could not be read. The licences it carries still apply; they are in the project repository.</string>
+    <!--
+        One label for every accordion header, because the header is not the content: it says
+        that there is more, and the section title above it already says what about.
+    -->
+    <string name="settings_details">Details</string>
+    <string name="accordion_expand">%s, show</string>
+    <string name="accordion_collapse">%s, hide</string>
+    <string name="settings_background_note">The dynamic background is one of the WAD\'s own floors, chosen per skill level. A photo or a flat colour replaces it entirely, and the palette offered is the active WAD\'s, not a generic one.</string>
 </resources>
+

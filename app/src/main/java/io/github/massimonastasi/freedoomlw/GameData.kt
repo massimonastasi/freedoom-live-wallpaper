@@ -536,12 +536,15 @@ object GameData {
         /**
          * How far into [waves] this skill runs, and therefore what it can ever meet.
          *
-         * The wallpaper's second lever, and the one the ladder is now spread across. The
-         * bestiary reaches a 4000-health Cyberlord, and a table ending there cannot also be
-         * something the easiest skill finishes nineteen times in twenty - that was measured,
-         * at 29%. So the easy levels stop partway down the list and the hard ones carry on:
-         * same table, different depth. Finishing this many waves in one life is what earns
-         * the promotion, so a skill's table is also its price.
+         * Twenty-six for every skill: every level meets the whole bestiary, Cyberlord
+         * included. That was chosen knowing the cost, which is measured and worth stating -
+         * the easiest skill finishes the table 29% of the time rather than 95%, and every
+         * level above it under 4%. Promotions are therefore rare, and the scene in practice
+         * stays near the bottom of the ladder.
+         *
+         * The field stays rather than being folded back into waves.size: it is the one place
+         * to change if that trade is ever revisited, and it is per-skill because that is the
+         * only lever that moves this without touching the drop rate.
          */
         val waveCount: Int,        /**
          * Odds out of 256 that an arrival is replaced by the next creature up the bestiary.
@@ -570,10 +573,10 @@ object GameData {
 
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
-        Skill("I'm too young to die", 4, 160, waveCount = 10, toughen = 0, halfDamage = true, doubleAmmo = true),
-        Skill("Hey, not too rough", 4, 92, waveCount = 14, toughen = 0),
-        Skill("Hurt me plenty", 4, 140, waveCount = 20, toughen = 105),
-        Skill("Ultra-Violence", 4, 330, waveCount = 22, toughen = 120),
+        Skill("I'm too young to die", 4, 160, waveCount = 26, toughen = 0, halfDamage = true, doubleAmmo = true),
+        Skill("Hey, not too rough", 4, 92, waveCount = 26, toughen = 0),
+        Skill("Hurt me plenty", 4, 140, waveCount = 26, toughen = 105),
+        Skill("Ultra-Violence", 4, 330, waveCount = 26, toughen = 120),
         // Lower toughen than Ultra-Violence would suggest, and still far harder: this level
         // alone brings fast FleshWorms and monsters that come back, and a wave that refills
         // is a wave the marine is very unlikely to finish. The parameter is not the

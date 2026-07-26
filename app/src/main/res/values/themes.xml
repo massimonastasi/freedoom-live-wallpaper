@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
         Material 3, following the system's own palette. minSdk is 31, so dynamic colour is
@@ -16,6 +16,34 @@
         pre-Material styling and the rows do not match anything around them.
     -->
     <style name="AppTheme" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
-        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+        <item name="preferenceTheme">@style/AppPreferenceTheme</item>
+    </style>
+
+
+    <!--
+        Section headers to the Material 3 list spec: titleSmall on colorPrimary. The library's
+        own default is a small grey label, which reads as disabled text rather than as a
+        heading. The colour is the dynamic primary, so it still follows the system palette.
+    -->
+    <style name="AppPreferenceTheme" parent="@style/PreferenceThemeOverlay">
+        <item name="preferenceCategoryTitleTextAppearance">?attr/textAppearanceTitleSmall</item>
+        <item name="preferenceCategoryTitleTextColor">?attr/colorPrimary</item>
+    </style>
+
+    <!--
+        One radio option, to the Material 3 radio-button spec: a 56dp list item, the label in
+        bodyLarge on onSurface, and a 16dp gap between the control and its label. The 20dp
+        control and its 48dp touch target come from MaterialRadioButton itself, which is the
+        reason the rows are built from that class rather than from android.widget.RadioButton.
+
+        The state list colour is not set here. Material3 already tints the control with
+        colorPrimary when selected and onSurfaceVariant when not, and restating it would be
+        the one place dynamic colour stopped following the system.
+    -->    <style name="RadioRow" parent="Widget.Material3.CompoundButton.RadioButton">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceBodyLarge</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
 </resources>

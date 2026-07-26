@@ -20,8 +20,7 @@ package io.github.massimonastasi.freedoomlw
 
 import android.content.Context
 import android.util.AttributeSet
-import android.view.ViewGroup
-import android.widget.LinearLayout
+import android.view.LayoutInflater
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import androidx.preference.Preference
@@ -83,30 +82,19 @@ class RadioListPreference @JvmOverloads constructor(
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
         super.onBindViewHolder(holder)
 
-        // A row with no title or no summary should not reserve the space for one. The base
-        // class leaves both views in place and merely empty, which on a screen made mostly of
-        // these leaves gaps that read as misalignment.
-        holder.findViewById(android.R.id.title)?.visibility =
-            if (title.isNullOrEmpty()) android.view.View.GONE else android.view.View.VISIBLE
-        holder.findViewById(android.R.id.summary)?.visibility =
-            if (summary.isNullOrEmpty()) android.view.View.GONE else android.view.View.VISIBLE
-
         val container = holder.findViewById(R.id.radio_group) as RadioGroup
         group = container
         container.setOnCheckedChangeListener(null)
         container.removeAllViews()
 
+        val inflater = LayoutInflater.from(container.context)
         entries.forEachIndexed { i, label ->
-            container.addView(RadioButton(context).apply {
-                id = i
-                text = label
-                isEnabled = choosable
-                isChecked = values.getOrNull(i)?.toString() == current
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-            })
+            val row = inflater.inflate(R.layout.radio_row, container, false) as RadioButton
+            row.id = i
+            row.text = label
+            row.isEnabled = choosable
+            row.isChecked = values.getOrNull(i)?.toString() == current
+            container.addView(row)
         }
         // Nothing matched, so show the first: a stored value can name an option that no
         // longer exists, and a group with no selection looks like a bug.

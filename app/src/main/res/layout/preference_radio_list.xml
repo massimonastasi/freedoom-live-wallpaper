@@ -1,35 +1,30 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <!--
-    The options in place rather than behind a dialog. The title and summary come from the
-    preference itself, so this only has to supply the group they sit above.
+    The options in place rather than behind a dialog.
+
+    No title and no summary any more: the section header already names the choice, and what
+    used to be the summary now lives in that section's accordion. What is left is the group
+    itself, which is what Material 3 asks a radio group to be - a list of items with nothing
+    above them competing for the same line.
+
+    The wrapper is not decoration. PreferenceViewHolder looks the id up beneath the row's
+    view, so a RadioGroup used as the layout root is not found and the bind cast crashes -
+    measured, not guessed. The group has to be a child of something.
+
+    The 16dp inset lives on the group rather than on each row, because a CompoundButton's own
+    padding moves its label away from its control instead of moving the pair inwards. No
+    vertical padding: each row is already 56dp tall, which is the spacing.
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:paddingStart="16dp"
-    android:paddingTop="12dp"
-    android:paddingEnd="16dp"
-    android:paddingBottom="4dp">
-
-    <TextView
-        android:id="@android:id/title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
-
-    <TextView
-        android:id="@android:id/summary"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingBottom="8dp"
-        android:textAppearance="?android:attr/textAppearanceSmall"
-        android:textColor="?android:attr/textColorSecondary" />
+    android:layout_height="wrap_content">
 
     <RadioGroup
         android:id="@+id/radio_group"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical" />
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp" />
 
-</LinearLayout>
+</FrameLayout>

@@ -140,7 +140,7 @@ class SettingsActivity : AppCompatActivity() {
             }
             click(Settings.KEY_RESET) { confirmReset() }
 
-            findPreference<TextBlockPreference>(Settings.KEY_NOTICES)?.body = notices()
+            findPreference<AccordionPreference>(Settings.KEY_NOTICES)?.body = notices()
             refresh()
         }
 
