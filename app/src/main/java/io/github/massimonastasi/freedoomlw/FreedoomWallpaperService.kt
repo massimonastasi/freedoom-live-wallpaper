@@ -15,6 +15,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.service.wallpaper.WallpaperService
 import android.util.Log
+import android.view.Surface
 import android.view.SurfaceHolder
 import java.nio.channels.FileChannel
 
@@ -156,6 +157,9 @@ class FreedoomWallpaperService : WallpaperService() {
         private var powerSave = false
         private var powerSaveCheckedAt = 0L
 
+        /** Frame rate last declared to the compositor, so we only declare it on change. */
+        private var declaredFps = 0f
+
         override fun onCreate(holder: SurfaceHolder) {
             super.onCreate(holder)
             // Offsets drive the background parallax. Touch events stay off until the tap
@@ -249,7 +253,35 @@ class FreedoomWallpaperService : WallpaperService() {
                 powerSave = powerManager.isPowerSaveMode
             }
             val fps = if (powerSave) DRAW_FPS / 2 else DRAW_FPS
+            declareFrameRate(fps.toFloat())
             handler.postDelayed(drawRunnable, 1000L / fps)
+        }
+
+        /**
+         * Tells the compositor how often this surface actually produces content.
+         *
+         * Measured A/B on a Pixel 6a: without it the pipeline runs at
+         * `mActiveRenderFrameRate = 60` for a wallpaper that changes 20 times a second;
+         * with it the figure drops to 20, and this process goes from 13.0% to 11.2% of one
+         * core. SurfaceFlinger itself was unchanged at ~12.1%, and the panel never moved:
+         * this device has a single fixed 60 Hz mode, so the "supported refresh rates
+         * 60/30/20" it advertises are pipeline throttling rather than panel modes. The
+         * display power saving one might hope for therefore does not appear here, though it
+         * should on hardware with genuine multi-rate panels.
+         *
+         * FIXED_SOURCE because the rate really is fixed, and the seamless strategy so the
+         * system only switches when it can do so without a visible glitch.
+         */
+        private fun declareFrameRate(fps: Float) {
+            if (fps == declaredFps) return
+            val surface = surfaceHolder.surface
+            if (!surface.isValid) return
+            surface.setFrameRate(
+                fps,
+                Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
+                Surface.CHANGE_FRAME_RATE_ONLY_IF_SEAMLESS,
+            )
+            declaredFps = fps
         }
 
         private fun draw() {
