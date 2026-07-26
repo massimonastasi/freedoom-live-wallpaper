@@ -142,14 +142,20 @@ object GameData {
     // info.c mobjinfo[]: MT_TROOPSHOT and MT_BRUISERSHOT are the monsters' fireballs,
     // MT_PLASMA and MT_ROCKET the marine's. Speeds and damage verbatim from the table.
     val projectiles = listOf(
-        Projectile("BAL1", speed = 10, damage = 3),
-        Projectile("BAL7", speed = 15, damage = 8),
-        Projectile("PLSS", speed = 25, damage = 5),
-        Projectile("MISL", speed = 20, damage = 20),
+        Projectile("BAL1", speed = 10, damage = 3),      // MT_TROOPSHOT
+        Projectile("BAL7", speed = 15, damage = 8),      // MT_BRUISERSHOT
+        Projectile("PLSS", speed = 25, damage = 5),      // MT_PLASMA
+        Projectile("MISL", speed = 20, damage = 20),     // MT_ROCKET
+        Projectile("FATB", speed = 10, damage = 10),     // MT_TRACER, without the homing
+        Projectile("MANF", speed = 20, damage = 8),      // MT_FATSHOT
+        Projectile("APLS", speed = 25, damage = 5),      // MT_ARACHPLAZ
     )
 
     const val PROJECTILE_PLASMA = 2
     const val PROJECTILE_ROCKET = 3
+    const val PROJECTILE_TRACER = 4
+    const val PROJECTILE_FATSHOT = 5
+    const val PROJECTILE_ARACHPLAZ = 6
 
     /** Blood: states S_BLOOD1..3, sprite BLUD, frames C,B,A at 8 tics each. */
     val bloodAnim = Anim(intArrayOf(2, 1, 0), intArrayOf(8, 8, 8))
@@ -160,7 +166,22 @@ object GameData {
     /** Fireball in flight: 2 frames of 4 tics looping (S_TBALL1/2, S_BRBALL1/2). */
     val ballAnim = Anim(intArrayOf(0, 1), intArrayOf(4, 4))
 
-    // The names are the Freedoom ones: safer on the trademark and consistent with the assets.
+    /**
+     * The bestiary, ordered by spawn health.
+     *
+     * Health is not lethality - that was measured, and is why the weapons rank themselves by
+     * damage per tic rather than by position. But the order still has to mean something,
+     * because toughen promotes an arrival one step along it and substitute walks it looking
+     * for a creature the WAD can draw. Health is the honest choice: it is the original's own
+     * measure of how much of a thing there is.
+     *
+     * Names are ours. Where Freedoom has one it is used; the rest are descriptive, and none
+     * are the trademarked ones. Every value beside them is from info.c with its provenance.
+     *
+     * Which of these ever appears is decided by the loaded WAD alone. Freedoom Phase 1 and a
+     * Phase 1 IWAD carry exactly the same roster - measured, not assumed - and a Phase 2 IWAD
+     * adds five more of the entries below. Nothing here records which file has what.
+     */
     val creatures = listOf(
         // mobjinfo[MT_POSSESSED]; S_POSS_RUN 4 tics, ATK 10/8/8, PAIN 3+3, DIE 5,5,5,5,-1
         Creature(
@@ -186,6 +207,24 @@ object GameData {
             death = Anim(intArrayOf(8, 9, 10, 11, 12), intArrayOf(8, 8, 6, 6, -1)),
             painChance = 200, meleeMod = 8, meleeMul = 3, projectile = 0,
         ),
+        // mobjinfo[MT_CHAINGUY]; A_CPosAttack deals ((P_Random()%5)+1)*3 per shot, in bursts.
+        // Phase 2 and later: absent from Phase 1 and from Freedoom Phase 1.
+        Creature(
+            "ChaingunZombie", "CPOS", speed = 8, health = 70, radius = 20, walkFrames = 4, walkTics = 3,
+            attack = Anim(intArrayOf(4, 5, 4), intArrayOf(10, 4, 4)),
+            pain = Anim(intArrayOf(6, 6), intArrayOf(3, 3)),
+            death = Anim(intArrayOf(7, 8, 9, 10, 11, 12, 13), intArrayOf(5, 5, 5, 5, 5, 5, -1)),
+            painChance = 170, hitscanShots = 4,
+        ),
+        // mobjinfo[MT_SKULL]; charges rather than walks, and its collision deals
+        // (P_Random()%8+1)*3. Present in every IWAD this loader accepts.
+        Creature(
+            "Charger", "SKUL", speed = 8, health = 100, radius = 16, walkFrames = 2, walkTics = 3,
+            attack = Anim(intArrayOf(2, 3, 2), intArrayOf(10, 4, 4)),
+            pain = Anim(intArrayOf(4, 4), intArrayOf(3, 3)),
+            death = Anim(intArrayOf(5, 6, 7, 8, 9, 10), intArrayOf(6, 6, 6, 6, 6, -1)),
+            painChance = 256, meleeMod = 8, meleeMul = 3,
+        ),
         // mobjinfo[MT_SERGEANT] speed 10; A_SargAttack: melee only, (P_Random()%10+1)*4
         Creature(
             "FleshWorm", "SARG", speed = 10, health = 150, radius = 30, walkFrames = 4, walkTics = 2,
@@ -194,8 +233,18 @@ object GameData {
             death = Anim(intArrayOf(8, 9, 10, 11, 12, 13), intArrayOf(8, 8, 4, 4, 4, -1)),
             painChance = 180, meleeMod = 10, meleeMul = 4,
         ),
+        // mobjinfo[MT_UNDEAD]; A_SkelFist deals ((P_Random()%10)+1)*6, A_SkelMissile fires
+        // MT_TRACER. The tracer's homing is not reproduced: it flies straight here.
+        // Phase 2 and later.
+        Creature(
+            "BoneStalker", "SKEL", speed = 10, health = 300, radius = 20, walkFrames = 6, walkTics = 2,
+            attack = Anim(intArrayOf(6, 7, 8), intArrayOf(6, 6, 6)),
+            pain = Anim(intArrayOf(10, 10), intArrayOf(5, 5)),
+            death = Anim(intArrayOf(11, 12, 13, 14, 15, 16), intArrayOf(7, 7, 7, 7, 7, -1)),
+            painChance = 100, meleeMod = 10, meleeMul = 6, projectile = PROJECTILE_TRACER,
+        ),
         // mobjinfo[MT_HEAD]; A_HeadAttack: melee (P_Random()%6+1)*10, otherwise MT_HEADSHOT.
-        // ponytail: reuses BAL1 instead of BAL2 — one fireball sprite less to handle, and
+        // ponytail: reuses BAL1 instead of BAL2 - one fireball sprite less to handle, and
         // BAL2 is not guaranteed to exist in every IWAD.
         Creature(
             "Trilobite", "HEAD", speed = 8, health = 400, radius = 31, walkFrames = 1, walkTics = 3,
@@ -203,6 +252,32 @@ object GameData {
             pain = Anim(intArrayOf(4, 4), intArrayOf(3, 3)),
             death = Anim(intArrayOf(6, 7, 8, 9, 10, 11), intArrayOf(8, 8, 8, 8, 8, -1)),
             painChance = 128, meleeMod = 6, meleeMul = 10, projectile = 0,
+        ),
+        // mobjinfo[MT_KNIGHT]; the same attack as MT_BRUISER at half the health.
+        // Phase 2 and later.
+        Creature(
+            "LesserLord", "BOS2", speed = 8, health = 500, radius = 24, walkFrames = 4, walkTics = 3,
+            attack = Anim(intArrayOf(4, 5, 6), intArrayOf(8, 8, 8)),
+            pain = Anim(intArrayOf(7, 7), intArrayOf(2, 2)),
+            death = Anim(intArrayOf(8, 9, 10, 11, 12, 13, 14), intArrayOf(8, 8, 8, 8, 8, 8, -1)),
+            painChance = 50, meleeMod = 8, meleeMul = 10, projectile = 1,
+        ),
+        // mobjinfo[MT_BABY]; A_BspiAttack fires MT_ARACHPLAZ. Phase 2 and later.
+        Creature(
+            "Spiderling", "BSPI", speed = 12, health = 500, radius = 64, walkFrames = 6, walkTics = 3,
+            attack = Anim(intArrayOf(0, 6, 7), intArrayOf(20, 4, 4)),
+            pain = Anim(intArrayOf(8, 8), intArrayOf(3, 3)),
+            death = Anim(intArrayOf(9, 10, 11, 12, 13, 14, 15), intArrayOf(20, 7, 7, 7, 7, 7, -1)),
+            painChance = 128, projectile = PROJECTILE_ARACHPLAZ,
+        ),
+        // mobjinfo[MT_FATSO]; A_FatAttack fires MT_FATSHOT in a spread, modelled as one.
+        // Phase 2 and later.
+        Creature(
+            "Bloater", "FATT", speed = 8, health = 600, radius = 48, walkFrames = 6, walkTics = 4,
+            attack = Anim(intArrayOf(6, 7, 8), intArrayOf(20, 10, 5)),
+            pain = Anim(intArrayOf(9, 9), intArrayOf(3, 3)),
+            death = Anim(intArrayOf(10, 11, 12, 13, 14, 15, 16, 17, 18), intArrayOf(6, 6, 6, 6, 6, 6, 6, 6, -1)),
+            painChance = 80, projectile = PROJECTILE_FATSHOT,
         ),
         // mobjinfo[MT_BRUISER]; A_BruisAttack: melee (P_Random()%8+1)*10, otherwise MT_BRUISERSHOT
         Creature(
@@ -212,15 +287,30 @@ object GameData {
             death = Anim(intArrayOf(8, 9, 10, 11, 12, 13, 14), intArrayOf(8, 8, 8, 8, 8, 8, -1)),
             painChance = 50, meleeMod = 8, meleeMul = 10, projectile = 1,
         ),
+        // mobjinfo[MT_SPIDER]; A_SPosAttack with A_SpidRefire, so a hitscan burst. Present
+        // in every IWAD this loader accepts. It is the largest thing drawn by a distance -
+        // 71% of the screen width against the PainLord's 23% - and is here because that was
+        // asked for after the measurement, not in spite of it.
+        Creature(
+            "Overlord", "SPID", speed = 12, health = 3000, radius = 128, walkFrames = 6, walkTics = 3,
+            attack = Anim(intArrayOf(0, 6, 7), intArrayOf(20, 4, 4)),
+            pain = Anim(intArrayOf(8, 8), intArrayOf(3, 3)),
+            death = Anim(intArrayOf(9, 10, 11, 12, 13, 14, 15, 16, 17, 18), intArrayOf(20, 10, 10, 10, 10, 10, 10, 10, 10, -1)),
+            painChance = 40, hitscanShots = 3,
+        ),
+        // mobjinfo[MT_CYBORG]; fires MT_ROCKET. Present in every IWAD this loader accepts.
+        // At 30% of the screen width it is barely larger than the PainLord already drawn
+        // at 23%.
+        Creature(
+            "Cyberlord", "CYBR", speed = 16, health = 4000, radius = 40, walkFrames = 4, walkTics = 3,
+            attack = Anim(intArrayOf(4, 5, 4), intArrayOf(6, 12, 12)),
+            pain = Anim(intArrayOf(6, 6), intArrayOf(10, 10)),
+            death = Anim(intArrayOf(7, 8, 9, 10, 11, 12, 13, 14), intArrayOf(10, 10, 10, 10, 10, 10, 10, -1)),
+            painChance = 20, projectile = PROJECTILE_ROCKET,
+        ),
     )
-
-    /**
-     * The marine. mobjinfo[MT_PLAYER] / states S_PLAY_RUN1..4 (4 tics), DIE 6x10 then -1.
-     * The attack animation here is a fallback: in practice the marine uses the animation
-     * of the weapon he is holding (see [weapons]).
-     */
     /** The one creature the fast skills touch: g_game.c only rewrites the SARG states. */
-    val fleshWorm get() = creatures[3]
+    val fleshWorm get() = creatures.first { it.lumpPrefix == "SARG" }
 
     val player = Creature(
         "Player", "PLAY", speed = 8, health = 100, radius = 16, walkFrames = 4, walkTics = 4,
@@ -468,7 +558,7 @@ object GameData {
     val skills = listOf(
         Skill("I'm too young to die", 4, 160, toughen = 0, halfDamage = true, doubleAmmo = true),
         Skill("Hey, not too rough", 4, 92, toughen = 0),
-        Skill("Hurt me plenty", 4, 165, toughen = 60),
+        Skill("Hurt me plenty", 4, 140, toughen = 60),
         Skill("Ultra-Violence", 4, 330, toughen = 120),
         // Lower toughen than Ultra-Violence would suggest, and still far harder: this level
         // alone brings fast FleshWorms and monsters that come back, and a wave that refills
@@ -535,22 +625,25 @@ object GameData {
      */
     val waves = listOf(
         //   creatures            delay                  burst  rest after
+        // Creature indices, remapped when the bestiary was reordered by health: the waves
+        // name positions, so growing the table moved every one of them. Zombie 0, Shotgun 1,
+        // Serpentipede 2, FleshWorm 5, Trilobite 7, PainLord 11.
         Wave(intArrayOf(0), /*             2.00 s */ TICRATE * 2, 1, TICRATE * 5 / 4),
         Wave(intArrayOf(0, 0), /*          1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
         Wave(intArrayOf(1), /*             1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
         Wave(intArrayOf(0, 1), /*          1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
         Wave(intArrayOf(2), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
         Wave(intArrayOf(1, 2), /*          1.50 s */ TICRATE * 3 / 2, 1, TICRATE),
-        Wave(intArrayOf(3), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(2, 3), /*          1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
-        Wave(intArrayOf(1, 2, 3), /*       1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
-        Wave(intArrayOf(4), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(3, 4), /*          1.00 s */ TICRATE, 1, TICRATE),
-        Wave(intArrayOf(2, 3, 4), /*       1.00 s */ TICRATE, 1, TICRATE),
-        Wave(intArrayOf(1, 2, 3), /*       1.00 s */ TICRATE, 2, TICRATE),
-        Wave(intArrayOf(4, 4), /*          1.00 s */ TICRATE, 1, TICRATE),
-        Wave(intArrayOf(3, 4, 2), /*       0.75 s */ TICRATE * 3 / 4, 2, TICRATE),
-        Wave(intArrayOf(5), /*             0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 3),
+        Wave(intArrayOf(5), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(2, 5), /*          1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
+        Wave(intArrayOf(1, 2, 5), /*       1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
+        Wave(intArrayOf(7), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(5, 7), /*          1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(2, 5, 7), /*       1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(1, 2, 5), /*       1.00 s */ TICRATE, 2, TICRATE),
+        Wave(intArrayOf(7, 7), /*          1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(5, 7, 2), /*       0.75 s */ TICRATE * 3 / 4, 2, TICRATE),
+        Wave(intArrayOf(11), /*            0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 3),
     )
 
     /**

@@ -106,8 +106,12 @@ tasks.register("reduceWad") {
         // Sprite prefixes, mirroring GameData: creatures, the marine, projectiles, pickups
         // and effects. Diagonal views are dropped because nothing moves diagonally.
         val spritePrefixes = listOf(
-            "POSS", "SPOS", "TROO", "SARG", "HEAD", "BOSS", "PLAY",
-            "BAL1", "BAL7", "PLSS", "MISL", "BLUD", "TFOG",
+            // Every creature the bestiary can name. Five of them exist only in a Phase 2
+            // IWAD, so they simply match nothing in the bundled source - the reducer keeps
+            // what it finds, and the same list is what filters an imported WAD at runtime.
+            "POSS", "SPOS", "TROO", "CPOS", "SKUL", "SARG", "SKEL", "HEAD",
+            "BOS2", "BSPI", "FATT", "BOSS", "SPID", "CYBR", "PLAY",
+            "BAL1", "BAL7", "PLSS", "MISL", "FATB", "MANF", "APLS", "BLUD", "TFOG",
             "STIM", "MEDI", "ARM1", "ARM2", "SHOT", "MGUN", "SGN2", "PLAS", "LAUN",
         )
         val exactNames = buildSet {

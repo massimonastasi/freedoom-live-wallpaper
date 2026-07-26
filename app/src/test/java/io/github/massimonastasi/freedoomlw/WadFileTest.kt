@@ -67,7 +67,12 @@ class WadFileTest {
         // like the bundled one carries no SGN2 and must not be required to. What has to hold
         // is that the file can drive a scene — the marine, every creature, and at least one
         // weapon past the pistol.
-        val required = GameData.creatures.map { it.lumpPrefix } + GameData.player.lumpPrefix
+        // The bestiary deliberately reaches past this file: five of its entries arrived with
+        // Phase 2 and are absent from a Phase 1 IWAD, which is what Scene.substitute exists
+        // for. So what is required is the marine plus every creature the wave table actually
+        // names - the ones the wallpaper cannot open without.
+        val required = GameData.waves.flatMap { w -> w.order.map { GameData.creatures[it].lumpPrefix } }
+            .distinct() + GameData.player.lumpPrefix
         for (prefix in required) {
             assertTrue(wad.lumpsStartingWith(prefix).isNotEmpty(), "no $prefix sprite at all")
         }
@@ -80,7 +85,10 @@ class WadFileTest {
         // Stronger than presence: every frame each creature can be drawn in must resolve at
         // each of the four angles still in use. A missing rotation would show up on screen
         // as a creature vanishing at one heading.
-        for (c in GameData.creatures + GameData.player) {
+        // Only what this WAD carries: a creature it has never heard of is substituted away
+        // at runtime, and demanding its frames here would just be asking a Phase 1 file for
+        // Phase 2 art.
+        for (c in (GameData.creatures + GameData.player).filter { wad.lumpsStartingWith(it.lumpPrefix).isNotEmpty() }) {
             val set = SpriteSet(wad, c.lumpPrefix)
             val frames = (0 until c.walkFrames).toList() +
                 c.attack.frames.toList() + c.pain.frames.toList() + c.death.frames.toList()
