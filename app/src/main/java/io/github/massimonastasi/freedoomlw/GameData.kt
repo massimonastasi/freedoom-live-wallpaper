@@ -382,15 +382,18 @@ object GameData {
         /** Arrival-queue length as eighths of the wave's own order. */
         val countEighths: Int,
         /**
-         * Interval between automatic drops, in eighths of [Scene.ITEM_INTERVAL].
+         * Tics between automatic drops.
          *
-         * This is the wallpaper's own lever, not the engine's: the engine varies difficulty
-         * by what a map contains, and this scene has no map. It carries the requirement that
-         * on the lowest skill a lucky run of drops is enough to get the marine through the
-         * opening wave with nobody touching the screen, and that the odds fall away from
-         * there.
+         * The wallpaper's own lever, not the engine's: the engine varies difficulty by what
+         * a map contains, and this scene has no map. It turned out to be the lever that
+         * matters most, because over a table lasting minutes the marine's survival is
+         * governed almost entirely by how often he can heal.
+         *
+         * In tics rather than a fraction of a shared constant, which was the earlier form:
+         * that gave five levels only three usable values between "always alive" and "never",
+         * and the ladder could not be spread across them.
          */
-        val dropEighths: Int,
+        val dropInterval: Int,
         /**
          * Odds out of 256 that an arrival is replaced by the next creature up the bestiary.
          *
@@ -432,16 +435,16 @@ object GameData {
 
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
-        Skill("I'm too young to die", 7, 6, toughen = 185, halfDamage = true, doubleAmmo = true, flat = "FLAT4"),
-        Skill("Hey, not too rough", 7, 8, toughen = 220, flat = "RROCK13"),
-        Skill("Hurt me plenty", 9, 10, toughen = 215, flat = "GRNROCK"),
-        Skill("Ultra-Violence", 13, 12, toughen = 240, flat = "BLOOD1"),
-        // Lower toughen than Ultra-Violence and still far harder: this level alone brings
-        // fast FleshWorms and monsters that come back, and a wave that refills is a wave the
-        // marine is very unlikely to finish. The parameter is not the difficulty; the
-        // measured outcome is, and that is what the test asserts.
+        Skill("I'm too young to die", 4, 52, toughen = 0, halfDamage = true, doubleAmmo = true, flat = "FLAT4"),
+        Skill("Hey, not too rough", 4, 46, toughen = 0, flat = "RROCK13"),
+        Skill("Hurt me plenty", 4, 92, toughen = 60, flat = "GRNROCK"),
+        Skill("Ultra-Violence", 4, 160, toughen = 120, flat = "BLOOD1"),
+        // Lower toughen than Ultra-Violence would suggest, and still far harder: this level
+        // alone brings fast FleshWorms and monsters that come back, and a wave that refills
+        // is a wave the marine is very unlikely to finish. The parameter is not the
+        // difficulty; the measured outcome is, and that is what the test asserts.
         Skill(
-            "Nightmare!", 13, 14, toughen = 168,
+            "Nightmare!", 5, 175, toughen = 130,
             doubleAmmo = true, fast = true, respawn = true, flat = "RROCK01",
         ),
     )
@@ -485,33 +488,38 @@ object GameData {
      * the first episode — zombies, then imps, then demons, then cacodemons, with the
      * barons as the final encounter (E1M8).
      *
-     * Tension grows along four axes: tougher creatures, a delay shrinking from three
-     * seconds to under one, paired arrivals only in the second half, and shorter pauses
-     * between waves. Early on the marine faces one enemy at a time; by the end they pour in.
+     * Tension grows along four axes: tougher creatures, a delay shrinking from two seconds
+     * to under one, paired arrivals only near the end, and shorter pauses between waves.
      *
-     * The curve is not a smooth ramp: every new creature enters in a *short* wave (the
-     * FleshWorm in 5, the Trilobite in 7) so it gets noticed instead of being lost in the
-     * crowd, and every peak is followed by breathing room. The PainLord appears alone in
-     * wave 12 as a single duel, returns escorted in 15, and closes as a pair in 16.
+     * The curve is not a smooth ramp: every new creature enters **alone**, in a wave of one,
+     * so it gets looked at instead of lost in a crowd, and is then escorted in the wave
+     * after. The PainLord closes the table by itself.
+     *
+     * The table is deliberately thin — 30 arrivals across the sixteen waves, where it used
+     * to be 61. That was measured, not felt: at 61 the table needed 123 seconds of pure
+     * waiting before any fighting, against a mean life of 64 seconds, so **no life in 400
+     * runs ever reached the last wave** and the skill ladder could not move at all. A
+     * promotion costs the whole table in one life, so the table has to be something a life
+     * can outlast.
      */
     val waves = listOf(
-        //   creatures                      delay                 burst  rest after
-        Wave(intArrayOf(0, 0), /*           3.00 s */ TICRATE * 3, 1, TICRATE * 3),
-        Wave(intArrayOf(0, 0, 1), /*        2.75 s */ TICRATE * 11 / 4, 1, TICRATE * 3),
-        Wave(intArrayOf(1, 0, 2), /*        2.50 s */ TICRATE * 5 / 2, 1, TICRATE * 5 / 2),
-        Wave(intArrayOf(2, 2, 1, 0), /*     2.25 s */ TICRATE * 9 / 4, 1, TICRATE * 5 / 2),
-        Wave(intArrayOf(3, 2, 2), /*        2.00 s */ TICRATE * 2, 1, TICRATE * 5 / 2),
-        Wave(intArrayOf(2, 3, 1, 3), /*     2.00 s */ TICRATE * 2, 1, TICRATE * 2),
-        Wave(intArrayOf(4, 2, 2), /*        1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 2),
-        Wave(intArrayOf(3, 4, 2, 3, 1), /*  1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 2),
-        Wave(intArrayOf(2, 2, 3, 3, 4), /*  1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 2),
-        Wave(intArrayOf(1, 3, 4, 3, 1, 2), /* 1.50 s */ TICRATE * 3 / 2, 2, TICRATE * 2),
-        Wave(intArrayOf(4, 4, 3, 2), /*     1.25 s */ TICRATE * 5 / 4, 2, TICRATE * 5 / 2),
-        Wave(intArrayOf(5), /*              1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 3),
-        Wave(intArrayOf(2, 3, 4, 3, 2, 1), /* 1.25 s */ TICRATE * 5 / 4, 2, TICRATE * 2),
-        Wave(intArrayOf(4, 4, 3, 3, 2, 2), /* 1.00 s */ TICRATE, 3, TICRATE * 2),
-        Wave(intArrayOf(1, 3, 4, 5), /*     1.00 s */ TICRATE, 2, TICRATE * 5 / 2),
-        Wave(intArrayOf(5, 5), /*           0.75 s */ TICRATE * 3 / 4, 2, TICRATE * 5),
+        //   creatures            delay                  burst  rest after
+        Wave(intArrayOf(0), /*             2.00 s */ TICRATE * 2, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(0, 0), /*          1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(1), /*             1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(0, 1), /*          1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(2), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(1, 2), /*          1.50 s */ TICRATE * 3 / 2, 1, TICRATE),
+        Wave(intArrayOf(3), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(2, 3), /*          1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
+        Wave(intArrayOf(1, 2, 3), /*       1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
+        Wave(intArrayOf(4), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(3, 4), /*          1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(2, 3, 4), /*       1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(1, 2, 3), /*       1.00 s */ TICRATE, 2, TICRATE),
+        Wave(intArrayOf(4, 4), /*          1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(3, 4, 2), /*       0.75 s */ TICRATE * 3 / 4, 2, TICRATE),
+        Wave(intArrayOf(5), /*             0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 3),
     )
 
     /**

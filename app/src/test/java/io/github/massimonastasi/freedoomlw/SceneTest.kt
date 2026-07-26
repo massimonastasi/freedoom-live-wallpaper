@@ -128,13 +128,18 @@ class SceneTest {
     }
 
     /**
-     * How often the marine clears the opening wave on his own, with nobody touching the
-     * screen — only the drops the scene hands him.
+     * How often one life carries the marine all the way to the last wave, unaided.
      *
-     * Runs the same opening from many points in the P_Random table, since the table is
-     * fixed and a single run would only ever measure one shuffle of the drops.
+     * The last wave rather than the first, because that is what the skill ladder is priced
+     * in: a promotion costs the whole table in a single life, so this number *is* how often
+     * the difficulty can rise. Measuring the opening wave said almost nothing about it —
+     * the opening was being cleared 95% of the time while the table was never finished once.
+     *
+     * Runs the same table from many points in the P_Random table, since that table is fixed
+     * and a single run would only ever measure one shuffle of the drops.
      */
-    private fun clearedWaveOneAlone(skill: Int, runs: Int = 400): Int {
+    private fun reachedLastWave(skill: Int, runs: Int = 400): Int {
+        val last = GameData.waves.size - 1
         var wins = 0
         for (r in 0 until runs) {
             GameData.clearRandom()
@@ -142,11 +147,11 @@ class SceneTest {
             val scene = Scene(worldWidth, worldHeight, startSkill = skill)
             var t = 0
             var died = false
-            while (t < TICRATE * 120 && scene.wave == 0 && !died) {
+            while (t < TICRATE * 600 && scene.wave < last && !died) {
                 scene.tick(++t)
                 if (scene.deathFade > 0f) died = true
             }
-            if (!died && scene.wave > 0) wins++
+            if (!died && scene.wave >= last) wins++
         }
         // Tenths of a percent: the hardest levels are aimed below one percent, which sixty
         // runs and whole percentages could not tell apart from zero.
@@ -154,15 +159,14 @@ class SceneTest {
     }
 
     @Test
-    fun `the drops carry the marine through the first wave, less and less as it hardens`() {
-        val odds = GameData.skills.indices.map { clearedWaveOneAlone(it) }
-        println("cleared wave 1 unaided: " + GameData.skills.indices.joinToString {
+    fun `one life reaches the last wave, less and less often as it hardens`() {
+        val odds = GameData.skills.indices.map { reachedLastWave(it) }
+        println("reached wave ${GameData.waves.size} unaided: " + GameData.skills.indices.joinToString {
             "${GameData.skills[it].name} ${odds[it] / 10}.${odds[it] % 10}%"
         })
 
-        // The curve that was asked for, in tenths of a percent: 95, 75, 35, 5, 0.5. Measured
-        // 94.7, 76.0, 33.7, 3.2, 1.0 over four hundred runs per level, where the standard
-        // error is one to two points — hence bands rather than exact values.
+        // The curve that was asked for, in tenths of a percent: 95, 75, 35, 5, 0.5, now
+        // priced against finishing the table rather than surviving its first wave.
         val target = intArrayOf(950, 750, 350, 50, 5)
         val tolerance = intArrayOf(60, 60, 60, 40, 20)
         for (i in odds.indices) {

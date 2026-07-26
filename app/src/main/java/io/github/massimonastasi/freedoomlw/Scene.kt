@@ -257,9 +257,13 @@ class Scene(
 
         // An item every now and then: it gives the marine a reason to cross the scene and
         // makes the fighting less predictable.
-        // Rarer the harder it gets: on the lowest skill the supply is generous enough that a
-        // lucky run of it carries the marine through the opening wave unaided.
-        if (deadUntil == 0 && tic % (ITEM_INTERVAL * rules.dropEighths / 8) == 0) spawnItem()
+        // Rarer the harder it gets. Over a table lasting minutes this is what decides
+        // whether the marine survives it, far more than what he is fighting.
+        //
+        // Only once he is on the field: at the easiest skill the drops come every fifty
+        // tics, which is sooner than he arrives, and supplies were materialising onto empty
+        // ground with nobody there to want them.
+        if (player != null && deadUntil == 0 && tic % rules.dropInterval == 0) spawnItem()
 
         var i = 0
         while (i < actors.size) {
@@ -1089,11 +1093,11 @@ class Scene(
          * How long the red screen lasts before restarting from the first wave.
          *
          * Kept short: at ten seconds the marine died often enough to leave the screen red
-         * half the time, which is unwatchable as a wallpaper. Now shorter again, at two and
-         * a quarter seconds, because the wash is the one moment the wallpaper insists on
-         * being looked at and it should not outstay that.
+         * half the time, which is unwatchable as a wallpaper. Briefly two and a quarter,
+         * then back to three: with the wash now a deep red at low opacity rather than a
+         * glaring one, it no longer needs to be hurried off the screen.
          */
-        const val DEATH_DELAY = TICRATE * 9 / 4
+        const val DEATH_DELAY = TICRATE * 3
 
         /** Below this distance the marine backs off instead of closing in. */
         const val KEEP_AWAY = 220 * FRACUNIT
@@ -1150,8 +1154,7 @@ class Scene(
         /** The only directions anything moves in: east, north, west, south. */
         val CARDINALS = intArrayOf(0, 2, 4, 6)
 
-        /** How often an item drops, and how long it stays if nobody picks it up. */
-        const val ITEM_INTERVAL = TICRATE * 12
+        /** How long an item stays if nobody picks it up. How often one drops is per skill. */
         const val ITEM_LIFETIME = TICRATE * 40
     }
 }
