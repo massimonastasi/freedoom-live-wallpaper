@@ -674,7 +674,7 @@ class FreedoomWallpaperService : WallpaperService() {
          * of the damage ramp, so the same opacity reads far calmer than it used to. This is
          * the one number to change if the wash should be fainter still.
          */
-        const val DEATH_MAX_ALPHA = 60f
+        const val DEATH_MAX_ALPHA = 130f
 
         /** Magnification of the 64x64 floor tile. */
         const val FLOOR_SCALE = 1.5f

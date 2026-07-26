@@ -435,16 +435,16 @@ object GameData {
 
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
-        Skill("I'm too young to die", 4, 100, toughen = 0, halfDamage = true, doubleAmmo = true, flat = "FLAT4"),
-        Skill("Hey, not too rough", 4, 90, toughen = 0, flat = "RROCK13"),
-        Skill("Hurt me plenty", 4, 148, toughen = 60, flat = "GRNROCK"),
-        Skill("Ultra-Violence", 4, 245, toughen = 120, flat = "BLOOD1"),
+        Skill("I'm too young to die", 4, 215, toughen = 0, halfDamage = true, doubleAmmo = true, flat = "FLAT4"),
+        Skill("Hey, not too rough", 4, 160, toughen = 0, flat = "RROCK13"),
+        Skill("Hurt me plenty", 4, 235, toughen = 60, flat = "GRNROCK"),
+        Skill("Ultra-Violence", 4, 375, toughen = 120, flat = "BLOOD1"),
         // Lower toughen than Ultra-Violence would suggest, and still far harder: this level
         // alone brings fast FleshWorms and monsters that come back, and a wave that refills
         // is a wave the marine is very unlikely to finish. The parameter is not the
         // difficulty; the measured outcome is, and that is what the test asserts.
         Skill(
-            "Nightmare!", 5, 320, toughen = 130,
+            "Nightmare!", 5, 520, toughen = 130,
             doubleAmmo = true, fast = true, respawn = true, flat = "RROCK01",
         ),
     )

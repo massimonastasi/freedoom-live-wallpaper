@@ -1162,7 +1162,7 @@ class Scene(
          * and the monsters softened to match. The marine's own 100 is untouched: it is
          * MAXHEALTH, and it is what the readout shows.
          */
-        const val MONSTER_HEALTH = 60
+        const val MONSTER_HEALTH = 40
 
         /** How long the marine stands still after materialising. */
         const val PLAYER_REACTION = TICRATE / 2
