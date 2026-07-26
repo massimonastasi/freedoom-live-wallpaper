@@ -1,3 +1,21 @@
+/*
+ * Freedoom Live Wallpaper
+ * Copyright (C) 2026 Massimo Nastasi
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details. You should have received a copy in
+ * the file LICENSE; see also NOTICE.md for the third-party notices this work depends on.
+ *
+ * It is GPL-2.0 because it reproduces gameplay constants and tables from the id Software
+ * engine source release (linuxdoom-1.10), which is GPL-2.0. Every such value carries a
+ * comment naming the file and symbol it came from; those comments are the attribution the
+ * licence requires and must not be removed.
+ */
 package io.github.massimonastasi.freedoomlw
 
 import android.graphics.Bitmap
@@ -19,7 +37,7 @@ import android.view.Surface
 import android.view.SurfaceHolder
 import java.nio.channels.FileChannel
 
-/** the engine runs at 35 tics per second. All game logic advances at that rate, always. */
+/** The original engine runs at 35 tics per second. All game logic advances at that rate, always. */
 const val TICRATE = 35
 
 /** Frames drawn per second. Independent of TICRATE: we draw less often than we simulate. */
@@ -34,7 +52,7 @@ private const val TAG = "FreedoomLW"
 
 class FreedoomWallpaperService : WallpaperService() {
 
-    /** One SpriteSet per prefix, indexed like the engineData.spritePrefixes. */
+    /** One SpriteSet per prefix, indexed like GameData.spritePrefixes. */
     private var sprites: List<SpriteSet> = emptyList()
 
     /** Red damage flash colour, read from PLAYPAL. */
@@ -65,8 +83,8 @@ class FreedoomWallpaperService : WallpaperService() {
             damageTint = w.damageTint
             floorTile = loadFloor(w)
             loadDigits(w)
-            sprites = the engineData.spritePrefixes.map { SpriteSet(w, it) }
-            val missing = the engineData.spritePrefixes.filterIndexed { i, _ -> sprites[i].frameCount == 0 }
+            sprites = GameData.spritePrefixes.map { SpriteSet(w, it) }
+            val missing = GameData.spritePrefixes.filterIndexed { i, _ -> sprites[i].frameCount == 0 }
             Log.i(TAG, "WAD loaded: ${w.lumpCount} lumps, ${sprites.size - missing.size}/${sprites.size} sprites" +
                 if (missing.isEmpty()) "" else " (missing: $missing)")
         } catch (e: Exception) {
@@ -116,8 +134,8 @@ class FreedoomWallpaperService : WallpaperService() {
         }
         val loaded = Array(10) { lump("STTNUM$it") ?: return }
         digits = loaded
-        healthColor = w.paletteColor(the engineData.PALETTE_HEALTH)
-        armorColor = w.paletteColor(the engineData.PALETTE_ARMOR)
+        healthColor = w.paletteColor(GameData.PALETTE_HEALTH)
+        armorColor = w.paletteColor(GameData.PALETTE_ARMOR)
     }
 
     override fun onCreateEngine(): Engine = FreedoomEngine()
@@ -226,8 +244,8 @@ class FreedoomWallpaperService : WallpaperService() {
         ): android.os.Bundle? {
             val s = scene
             if (s != null) {
-                val wx = (x / PX_PER_UNIT * the engineData.FRACUNIT).toInt()
-                val wy = (y / PX_PER_UNIT * the engineData.FRACUNIT).toInt()
+                val wx = (x / PX_PER_UNIT * GameData.FRACUNIT).toInt()
+                val wy = (y / PX_PER_UNIT * GameData.FRACUNIT).toInt()
                 when (action) {
                     WALLPAPER_TAP -> s.tapAt(wx, wy)
                     HOME_DROP -> s.dropAt(wx, wy)
@@ -376,8 +394,8 @@ class FreedoomWallpaperService : WallpaperService() {
 
                 // Oblique projection: x horizontal, y into the depth. The sprite anchor
                 // point (the feet) lands on the actor position.
-                val ax = (a.x.toFloat() / the engineData.FRACUNIT) * pxPerUnit
-                val ay = (a.y.toFloat() / the engineData.FRACUNIT) * pxPerUnit
+                val ax = (a.x.toFloat() / GameData.FRACUNIT) * pxPerUnit
+                val ay = (a.y.toFloat() / GameData.FRACUNIT) * pxPerUnit
 
                 matrix.setScale(if (flip) -spriteScale else spriteScale, spriteScale)
                 matrix.postTranslate(
@@ -527,7 +545,7 @@ class FreedoomWallpaperService : WallpaperService() {
 
     private companion object {
         /**
-         * Scene zoom: how many pixels one the engine map unit is worth.
+         * Scene zoom: how many pixels one map unit is worth.
          *
          * Speeds stay the original ones *in map units* — this value only decides how fast
          * they appear, i.e. how wide a slice of the world is framed.
@@ -535,7 +553,7 @@ class FreedoomWallpaperService : WallpaperService() {
         const val PX_PER_UNIT = 1.5f
 
         /**
-         * Sprite magnification. Deliberately different from PX_PER_UNIT: the engine sprites were
+         * Sprite magnification. Deliberately different from PX_PER_UNIT: the original sprites were
          * drawn for a 320x200 screen and would be unreadable at 1.5x on a modern phone.
          * The proportions between monsters stay correct relative to each other.
          */

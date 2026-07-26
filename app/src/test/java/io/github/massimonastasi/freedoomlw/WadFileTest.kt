@@ -1,3 +1,21 @@
+/*
+ * Freedoom Live Wallpaper
+ * Copyright (C) 2026 Massimo Nastasi
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details. You should have received a copy in
+ * the file LICENSE; see also NOTICE.md for the third-party notices this work depends on.
+ *
+ * It is GPL-2.0 because it reproduces gameplay constants and tables from the id Software
+ * engine source release (linuxdoom-1.10), which is GPL-2.0. Every such value carries a
+ * comment naming the file and symbol it came from; those comments are the attribution the
+ * licence requires and must not be removed.
+ */
 package io.github.massimonastasi.freedoomlw
 
 import org.junit.Assume.assumeTrue
@@ -36,14 +54,14 @@ class WadFileTest {
         assertTrue(wad.flatIndex("CEIL5_1") >= 0, "the floor flat is missing")
         for (d in 0..9) assertTrue(wad.indexOf("STTNUM$d") >= 0, "readout digit $d missing")
 
-        for (prefix in the engineData.spritePrefixes) {
+        for (prefix in GameData.spritePrefixes) {
             assertTrue(wad.lumpsStartingWith(prefix).isNotEmpty(), "no $prefix sprite at all")
         }
 
         // Stronger than presence: every frame each creature can be drawn in must resolve at
         // each of the four angles still in use. A missing rotation would show up on screen
         // as a creature vanishing at one heading.
-        for (c in the engineData.creatures + the engineData.player) {
+        for (c in GameData.creatures + GameData.player) {
             val set = SpriteSet(wad, c.lumpPrefix)
             val frames = (0 until c.walkFrames).toList() +
                 c.attack.frames.toList() + c.pain.frames.toList() + c.death.frames.toList()

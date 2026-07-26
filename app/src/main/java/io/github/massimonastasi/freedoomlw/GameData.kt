@@ -1,3 +1,21 @@
+/*
+ * Freedoom Live Wallpaper
+ * Copyright (C) 2026 Massimo Nastasi
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details. You should have received a copy in
+ * the file LICENSE; see also NOTICE.md for the third-party notices this work depends on.
+ *
+ * It is GPL-2.0 because it reproduces gameplay constants and tables from the id Software
+ * engine source release (linuxdoom-1.10), which is GPL-2.0. Every such value carries a
+ * comment naming the file and symbol it came from; those comments are the attribution the
+ * licence requires and must not be removed.
+ */
 package io.github.massimonastasi.freedoomlw
 
 /**
@@ -7,7 +25,7 @@ package io.github.massimonastasi.freedoomlw
  * from. That is also the project's legal footing — every number has a traceable, licensed
  * provenance, independent of any other implementation.
  */
-object the engineData {
+object GameData {
 
     // m_fixed.h
     const val FRACBITS = 16
@@ -35,7 +53,7 @@ object the engineData {
     const val DI_NODIR = 8
 
     /**
-     * m_random.c: rndtable[]. the engine uses no generator but a fixed 256-byte table with an
+     * m_random.c: rndtable[]. The original engine uses no generator but a fixed 256-byte table with an
      * advancing index. Deterministic, reproducible for debugging, and cheaper than
      * kotlin.random.Random.
      */
@@ -84,10 +102,10 @@ object the engineData {
     /**
      * A creature: the values come from info.c, mobjinfo[] and states[].
      *
-     * [lumpPrefix] is the sprite name, identical in every the engine-compatible IWAD because the
+     * [lumpPrefix] is the sprite name, identical in every IWAD this loader accepts because the
      * engine hardcodes it in sprnames[].
-     * [walkTics] and [walkFrames] give the walk animation: the engine repeats each frame twice
-     * (A,A,B,B,...), so every frame lasts walkTics*2.
+     * [walkTics] and [walkFrames] give the walk animation: the original engine repeats each
+     * frame twice (A,A,B,B,...), so every frame lasts walkTics*2.
      *
      * Attacks, from p_enemy.c: melee deals `(P_Random() % meleeMod + 1) * meleeMul`,
      * [hitscanShots] is the number of instant shots, [projectile] an index into [projectiles].
@@ -221,7 +239,7 @@ object the engineData {
      * Chosen by measuring PLAYPAL rather than by picking the most saturated entry, because
      * on this palette those are not the same thing. Index 200 is pure blue and the least
      * legible colour in the whole set on a dark backdrop, at a luminance of 29 against the
-     * red numerals' 76. the engine's blue ramp brightens by mixing in red and green, so 196 is
+     * red numerals' 76. the original engine's blue ramp brightens by mixing in red and green, so 196 is
      * still unmistakably the palette's blue while sitting at 131, comfortably above the red
      * we already accept as readable. The green at 112 needs no such compromise, at 198.
      */
@@ -406,7 +424,7 @@ object the engineData {
 
     /**
      * info.c: `reactiontime` is 8 for every creature we use. A monster that has just
-     * appeared stands still for that many tics before moving — the engine wiki describes it
+     * appeared stands still for that many tics before moving — the reference documentation describes it
      * as "newly spawned monsters initially stand idle". It reinforces the staggered
      * arrival: first it materialises in the fog, then it wakes up.
      */
@@ -415,7 +433,7 @@ object the engineData {
     /**
      * The waves.
      *
-     * The progression follows the order in which the engine actually introduces its monsters in
+     * The progression follows the order in which the original actually introduces its monsters in
      * the first episode — zombies, then imps, then demons, then cacodemons, with the
      * barons as the final encounter (E1M8).
      *

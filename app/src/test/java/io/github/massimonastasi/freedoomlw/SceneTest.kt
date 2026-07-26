@@ -1,3 +1,21 @@
+/*
+ * Freedoom Live Wallpaper
+ * Copyright (C) 2026 Massimo Nastasi
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details. You should have received a copy in
+ * the file LICENSE; see also NOTICE.md for the third-party notices this work depends on.
+ *
+ * It is GPL-2.0 because it reproduces gameplay constants and tables from the id Software
+ * engine source release (linuxdoom-1.10), which is GPL-2.0. Every such value carries a
+ * comment naming the file and symbol it came from; those comments are the attribution the
+ * licence requires and must not be removed.
+ */
 package io.github.massimonastasi.freedoomlw
 
 import org.junit.Test
@@ -16,7 +34,7 @@ class SceneTest {
 
     @Test
     fun `ten minutes of simulation with no inconsistent state`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
         for (t in 1..TICRATE * 600) {
@@ -34,9 +52,9 @@ class SceneTest {
                 a.frame(t)
 
                 if (a.creature != null) {
-                    val r = a.radius * the engineData.FRACUNIT
-                    assertTrue(a.x >= r - 1 && a.x <= worldWidth * the engineData.FRACUNIT - r + 1, "tic $t: x outside the world")
-                    assertTrue(a.y >= r - 1 && a.y <= worldHeight * the engineData.FRACUNIT - r + 1, "tic $t: y outside the world")
+                    val r = a.radius * GameData.FRACUNIT
+                    assertTrue(a.x >= r - 1 && a.x <= worldWidth * GameData.FRACUNIT - r + 1, "tic $t: x outside the world")
+                    assertTrue(a.y >= r - 1 && a.y <= worldHeight * GameData.FRACUNIT - r + 1, "tic $t: y outside the world")
                 }
             }
         }
@@ -44,7 +62,7 @@ class SceneTest {
 
     @Test
     fun `the scene stays populated and does not grow without bound`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
         // A single instant is not enough: between waves there is a pause where zero demons
@@ -53,7 +71,7 @@ class SceneTest {
         // The hardest skills stretch the queue to nine eighths and can respawn the fallen,
         // so the ceiling is no longer the wave's own size. Doubling it still catches a
         // runaway spawn, which is what this bound is for.
-        val biggestWave = the engineData.waves.maxOf { it.size } * 2
+        val biggestWave = GameData.waves.maxOf { it.size } * 2
         for (t in 1..TICRATE * 600) {
             scene.tick(t)
             val n = scene.actors.count { it.creature != null && !it.isPlayer && !it.dead }
@@ -72,7 +90,7 @@ class SceneTest {
      */
     @Test
     fun `the skill climbs with the table and a death resets it`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
         scene.invulnerable = true
 
@@ -83,7 +101,7 @@ class SceneTest {
         // Long enough to climb several levels while nothing can kill him.
         while (t < TICRATE * 3600) {
             scene.tick(++t)
-            assertTrue(scene.skill in the engineData.skills.indices, "skill ${scene.skill} off the table")
+            assertTrue(scene.skill in GameData.skills.indices, "skill ${scene.skill} off the table")
             if (scene.skill > reached) {
                 reached = scene.skill
                 assertEquals(0, scene.wave, "the promotion must land on the first wave")
@@ -109,8 +127,8 @@ class SceneTest {
     private fun clearedWaveOneAlone(skill: Int, runs: Int = 60): Int {
         var wins = 0
         for (r in 0 until runs) {
-            the engineData.clearRandom()
-            repeat(r * 4) { the engineData.pRandom() }
+            GameData.clearRandom()
+            repeat(r * 4) { GameData.pRandom() }
             val scene = Scene(worldWidth, worldHeight, startSkill = skill)
             var t = 0
             var died = false
@@ -125,9 +143,9 @@ class SceneTest {
 
     @Test
     fun `the drops carry the marine through the first wave, less and less as it hardens`() {
-        val odds = the engineData.skills.indices.map { clearedWaveOneAlone(it) }
-        println("cleared wave 1 unaided: " + the engineData.skills.indices.joinToString {
-            "${the engineData.skills[it].name} ${odds[it]}%"
+        val odds = GameData.skills.indices.map { clearedWaveOneAlone(it) }
+        println("cleared wave 1 unaided: " + GameData.skills.indices.joinToString {
+            "${GameData.skills[it].name} ${odds[it]}%"
         })
 
         // Measured shape: 100, 90, 85, 35, 1.
@@ -144,36 +162,36 @@ class SceneTest {
         val kit = Loadout()
         assertEquals(0, kit.owned, "the marine starts with the pistol alone, which is not owned")
 
-        kit.take(the engineData.WEAPON_SHOTGUN)
-        kit.take(the engineData.WEAPON_CHAINGUN)
-        assertTrue(kit.has(the engineData.WEAPON_SHOTGUN) && kit.has(the engineData.WEAPON_CHAINGUN), "both must be carried")
+        kit.take(GameData.WEAPON_SHOTGUN)
+        kit.take(GameData.WEAPON_CHAINGUN)
+        assertTrue(kit.has(GameData.WEAPON_SHOTGUN) && kit.has(GameData.WEAPON_CHAINGUN), "both must be carried")
 
         // Emptying the chaingun takes it away, and the shotgun is what is left loaded.
-        kit.drop(the engineData.WEAPON_CHAINGUN)
-        assertTrue(kit.has(the engineData.WEAPON_SHOTGUN), "the shotgun must survive losing the chaingun")
-        assertTrue(!kit.has(the engineData.WEAPON_CHAINGUN), "an empty weapon must be gone, not merely unused")
+        kit.drop(GameData.WEAPON_CHAINGUN)
+        assertTrue(kit.has(GameData.WEAPON_SHOTGUN), "the shotgun must survive losing the chaingun")
+        assertTrue(!kit.has(GameData.WEAPON_CHAINGUN), "an empty weapon must be gone, not merely unused")
 
-        kit.drop(the engineData.WEAPON_SHOTGUN)
+        kit.drop(GameData.WEAPON_SHOTGUN)
         assertEquals(0, kit.owned, "with nothing loaded he is back to the pistol")
     }
 
     @Test
     fun `ammunition is never dropped on its own`() {
         assertTrue(
-            the engineData.items.none { it.kind !in intArrayOf(the engineData.ITEM_HEALTH, the engineData.ITEM_ARMOR, the engineData.ITEM_WEAPON) },
+            GameData.items.none { it.kind !in intArrayOf(GameData.ITEM_HEALTH, GameData.ITEM_ARMOR, GameData.ITEM_WEAPON) },
             "the drop table must hold only health, armour and weapons",
         )
         // Healing outweighs armour, which outweighs the guns.
-        fun share(kind: Int) = the engineData.items.filter { it.kind == kind }.sumOf { it.weight }
-        assertTrue(share(the engineData.ITEM_HEALTH) > share(the engineData.ITEM_ARMOR), "health must lead")
-        assertTrue(share(the engineData.ITEM_ARMOR) > share(the engineData.ITEM_WEAPON), "armour must come before the guns")
+        fun share(kind: Int) = GameData.items.filter { it.kind == kind }.sumOf { it.weight }
+        assertTrue(share(GameData.ITEM_HEALTH) > share(GameData.ITEM_ARMOR), "health must lead")
+        assertTrue(share(GameData.ITEM_ARMOR) > share(GameData.ITEM_WEAPON), "armour must come before the guns")
     }
 
     @Test
     fun `nightmare makes the FleshWorm fast and nothing else`() {
-        the engineData.clearRandom()
-        val fast = Actor(0).apply { creature = the engineData.fleshWorm; this.fast = true }
-        val normal = Actor(0).apply { creature = the engineData.fleshWorm }
+        GameData.clearRandom()
+        val fast = Actor(0).apply { creature = GameData.fleshWorm; this.fast = true }
+        val normal = Actor(0).apply { creature = GameData.fleshWorm }
 
         // g_game.c halves the run tics, which in the engine doubles both the animation and
         // the stepping, since movement happens inside A_Chase.
@@ -184,7 +202,7 @@ class SceneTest {
 
     @Test
     fun `the marine arrives first and enemies one at a time`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
         fun demons() = scene.actors.count { it.creature != null && !it.isPlayer }
@@ -194,7 +212,7 @@ class SceneTest {
         assertEquals(0, demons(), "no enemy alongside the marine")
 
         // The first one arrives after the wave 1 delay: three seconds.
-        val firstDelay = the engineData.waves[0].spawnDelay
+        val firstDelay = GameData.waves[0].spawnDelay
         for (t in 2 until 1 + firstDelay) scene.tick(t)
         assertEquals(0, demons(), "an enemy arrived before the expected $firstDelay tics")
 
@@ -209,19 +227,19 @@ class SceneTest {
     @Test
     fun `waves get denser as they progress`() {
         // The delay must fall monotonically: that is the tension curve.
-        val delays = the engineData.waves.map { it.spawnDelay }
+        val delays = GameData.waves.map { it.spawnDelay }
         for (i in 1 until delays.size) {
             assertTrue(delays[i] <= delays[i - 1], "wave ${i + 1} is slower than the previous one")
         }
         assertTrue(delays.first() > delays.last(), "no acceleration between the first and last wave")
         // Paired arrivals only exist in the second half.
-        val firstBurst = the engineData.waves.indexOfFirst { it.burst > 1 }
-        assertTrue(firstBurst >= the engineData.waves.size / 2, "multiple arrivals too early: wave ${firstBurst + 1}")
+        val firstBurst = GameData.waves.indexOfFirst { it.burst > 1 }
+        assertTrue(firstBurst >= GameData.waves.size / 2, "multiple arrivals too early: wave ${firstBurst + 1}")
     }
 
     @Test
     fun `nobody arrives while the marine is dead`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
         fun demons() = scene.actors.count { it.creature != null && !it.isPlayer && !it.dead }
@@ -245,24 +263,24 @@ class SceneTest {
 
     @Test
     fun `creatures appear well inside the visible area`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
         val seen = HashSet<Actor>()
         // The widest sprite reaches about a hundred map units from its anchor, so anything
         // appearing closer than that to an edge starts partly off screen.
-        val margin = 80 * the engineData.FRACUNIT
+        val margin = 80 * GameData.FRACUNIT
 
         for (t in 1..TICRATE * 300) {
             scene.tick(t)
             for (a in scene.actors) {
                 if (a.creature == null || !seen.add(a)) continue
                 assertTrue(
-                    a.x >= margin && a.x <= worldWidth * the engineData.FRACUNIT - margin,
-                    "tic $t: appeared at x=${a.x / the engineData.FRACUNIT}, too close to the edge",
+                    a.x >= margin && a.x <= worldWidth * GameData.FRACUNIT - margin,
+                    "tic $t: appeared at x=${a.x / GameData.FRACUNIT}, too close to the edge",
                 )
                 assertTrue(
-                    a.y >= margin && a.y <= worldHeight * the engineData.FRACUNIT - margin,
-                    "tic $t: appeared at y=${a.y / the engineData.FRACUNIT}, too close to the edge",
+                    a.y >= margin && a.y <= worldHeight * GameData.FRACUNIT - margin,
+                    "tic $t: appeared at y=${a.y / GameData.FRACUNIT}, too close to the edge",
                 )
             }
         }
@@ -271,7 +289,7 @@ class SceneTest {
 
     @Test
     fun `the marine faces where he walks and turns only to shoot`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
         var sawWalkFacing = false
@@ -329,22 +347,22 @@ class SceneTest {
         // The diagonals follow from the four above, and the eight must map one to one.
         assertEquals(8, (0..7).map { a.facing = it; a.spriteRotation() }.toSet().size)
 
-        a.facing = the engineData.DI_NODIR
+        a.facing = GameData.DI_NODIR
         assertEquals(1, a.spriteRotation(), "a still actor faces the viewer")
     }
 
     @Test
     fun `tapping drops a pickup, dropping an icon sends demons`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
         for (t in 1..TICRATE) scene.tick(t)
 
         val itemsBefore = scene.actors.count { it.mode == Mode.ITEM }
-        scene.tapAt(300 * the engineData.FRACUNIT, 800 * the engineData.FRACUNIT)
+        scene.tapAt(300 * GameData.FRACUNIT, 800 * GameData.FRACUNIT)
         assertEquals(itemsBefore + 1, scene.actors.count { it.mode == Mode.ITEM }, "the tap dropped nothing")
 
         val demonsBefore = scene.actors.count { it.creature != null && !it.isPlayer }
-        scene.dropAt(400 * the engineData.FRACUNIT, 900 * the engineData.FRACUNIT)
+        scene.dropAt(400 * GameData.FRACUNIT, 900 * GameData.FRACUNIT)
         assertTrue(
             scene.actors.count { it.creature != null && !it.isPlayer } > demonsBefore,
             "the icon drop summoned nobody",
@@ -353,13 +371,13 @@ class SceneTest {
         // Even a tap in the corner has to land where the whole sprite is visible.
         scene.tapAt(0, 0)
         val corner = scene.actors.last { it.mode == Mode.ITEM }
-        assertTrue(corner.x >= 80 * the engineData.FRACUNIT, "item dropped too close to the edge")
-        assertTrue(corner.y >= 80 * the engineData.FRACUNIT, "item dropped too close to the edge")
+        assertTrue(corner.x >= 80 * GameData.FRACUNIT, "item dropped too close to the edge")
+        assertTrue(corner.y >= 80 * GameData.FRACUNIT, "item dropped too close to the edge")
     }
 
     @Test
     fun `interaction is ignored while the marine is dead`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
         var checked = false
@@ -370,8 +388,8 @@ class SceneTest {
             // nobody can collect, or with demons attacking a corpse.
             val items = scene.actors.count { it.mode == Mode.ITEM }
             val demons = scene.actors.count { it.creature != null && !it.isPlayer }
-            scene.tapAt(300 * the engineData.FRACUNIT, 800 * the engineData.FRACUNIT)
-            scene.dropAt(300 * the engineData.FRACUNIT, 800 * the engineData.FRACUNIT)
+            scene.tapAt(300 * GameData.FRACUNIT, 800 * GameData.FRACUNIT)
+            scene.dropAt(300 * GameData.FRACUNIT, 800 * GameData.FRACUNIT)
             assertEquals(items, scene.actors.count { it.mode == Mode.ITEM }, "tic $t: tap accepted while dead")
             assertEquals(demons, scene.actors.count { it.creature != null && !it.isPlayer }, "tic $t: drop accepted while dead")
             checked = true
@@ -381,14 +399,14 @@ class SceneTest {
 
     @Test
     fun `nothing ever moves diagonally`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
         var moves = 0
         for (t in 1..TICRATE * 600) {
             scene.tick(t)
             for (a in scene.actors) {
-                if (a.creature == null || a.moveDir == the engineData.DI_NODIR) continue
+                if (a.creature == null || a.moveDir == GameData.DI_NODIR) continue
                 moves++
                 assertTrue(
                     a.moveDir % 2 == 0,
@@ -406,7 +424,7 @@ class SceneTest {
 
     @Test
     fun `a hurt marine goes for supplies instead of shooting`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
         var hurtTics = 0
@@ -414,7 +432,7 @@ class SceneTest {
         for (t in 1..TICRATE * 600) {
             scene.tick(t)
             val p = scene.actors.firstOrNull { it.isPlayer && !it.dead } ?: continue
-            if (p.health * 2 >= the engineData.player.health) continue
+            if (p.health * 2 >= GameData.player.health) continue
             // Only counts when there is actually something to go and fetch.
             if (scene.actors.none { it.mode == Mode.ITEM }) continue
             hurtTics++
@@ -431,7 +449,7 @@ class SceneTest {
 
     @Test
     fun `the marine stands still for a moment after materialising`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
         scene.tick(1)
@@ -457,7 +475,7 @@ class SceneTest {
         // The world is derived from the surface, so it follows the display. What it must
         // also survive is a surface small enough that the spawn margin no longer fits:
         // split screen, a cover display, or the thumbnail in a wallpaper picker.
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val narrow = 180
         val short = 320
         val scene = Scene(narrow, short)
@@ -466,12 +484,12 @@ class SceneTest {
             scene.tick(t)
             for (a in scene.actors) {
                 assertTrue(
-                    a.x >= 0 && a.x <= narrow * the engineData.FRACUNIT,
-                    "tic $t: x=${a.x / the engineData.FRACUNIT} outside a $narrow unit world",
+                    a.x >= 0 && a.x <= narrow * GameData.FRACUNIT,
+                    "tic $t: x=${a.x / GameData.FRACUNIT} outside a $narrow unit world",
                 )
                 assertTrue(
-                    a.y >= 0 && a.y <= short * the engineData.FRACUNIT,
-                    "tic $t: y=${a.y / the engineData.FRACUNIT} outside a $short unit world",
+                    a.y >= 0 && a.y <= short * GameData.FRACUNIT,
+                    "tic $t: y=${a.y / GameData.FRACUNIT} outside a $short unit world",
                 )
             }
         }
@@ -479,7 +497,7 @@ class SceneTest {
 
     @Test
     fun `combat actually happens`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
         var sawBlood = false
         var sawDeath = false
@@ -488,7 +506,7 @@ class SceneTest {
         for (t in 1..TICRATE * 600) {
             scene.tick(t)
             for (a in scene.actors) {
-                if (a.spriteIndex == the engineData.bloodSpriteIndex) sawBlood = true
+                if (a.spriteIndex == GameData.bloodSpriteIndex) sawBlood = true
                 if (a.mode == Mode.PROJECTILE) sawProjectile = true
                 if (a.dead) sawDeath = true
             }

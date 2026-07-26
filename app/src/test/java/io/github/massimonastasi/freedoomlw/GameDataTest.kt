@@ -1,3 +1,21 @@
+/*
+ * Freedoom Live Wallpaper
+ * Copyright (C) 2026 Massimo Nastasi
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details. You should have received a copy in
+ * the file LICENSE; see also NOTICE.md for the third-party notices this work depends on.
+ *
+ * It is GPL-2.0 because it reproduces gameplay constants and tables from the id Software
+ * engine source release (linuxdoom-1.10), which is GPL-2.0. Every such value carries a
+ * comment naming the file and symbol it came from; those comments are the attribution the
+ * licence requires and must not be removed.
+ */
 package io.github.massimonastasi.freedoomlw
 
 import org.junit.Test
@@ -10,14 +28,14 @@ import kotlin.test.assertTrue
  * If anyone touches the fixed-point arithmetic, the direction tables or P_Random, these
  * fail: they are the safety net for fidelity to the original game.
  */
-class the engineDataTest {
+class GameDataTest {
 
     @Test
     fun `a cardinal step covers exactly speed units`() {
         // MT_TROOP has speed 8: in one tic heading east it must move exactly 8 units.
-        val step = 8 * the engineData.xspeed[0]
-        assertEquals(8 * the engineData.FRACUNIT, step, "an eastward step is not worth 8 units")
-        assertEquals(0, 8 * the engineData.yspeed[0], "an eastward step must not move y")
+        val step = 8 * GameData.xspeed[0]
+        assertEquals(8 * GameData.FRACUNIT, step, "an eastward step is not worth 8 units")
+        assertEquals(0, 8 * GameData.yspeed[0], "an eastward step must not move y")
     }
 
     // The diagonal entries of the tables used to have a test of their own, asserting id's
@@ -28,29 +46,29 @@ class the engineDataTest {
     @Test
     fun `opposite directions are consistent`() {
         for (d in 0..7) {
-            assertEquals(d, the engineData.opposite[the engineData.opposite[d]], "opposite is not involutive for $d")
+            assertEquals(d, GameData.opposite[GameData.opposite[d]], "opposite is not involutive for $d")
             // The opposite direction cancels the movement out.
-            assertEquals(0, the engineData.xspeed[d] + the engineData.xspeed[the engineData.opposite[d]])
-            assertEquals(0, the engineData.yspeed[d] + the engineData.yspeed[the engineData.opposite[d]])
+            assertEquals(0, GameData.xspeed[d] + GameData.xspeed[GameData.opposite[d]])
+            assertEquals(0, GameData.yspeed[d] + GameData.yspeed[GameData.opposite[d]])
         }
-        assertEquals(the engineData.DI_NODIR, the engineData.opposite[the engineData.DI_NODIR])
+        assertEquals(GameData.DI_NODIR, GameData.opposite[GameData.DI_NODIR])
     }
 
     @Test
     fun `P_Random reproduces the sequence from the id source`() {
-        the engineData.clearRandom()
+        GameData.clearRandom()
         // rndtable[1..5] from the original m_random.c.
         val expected = intArrayOf(8, 109, 220, 222, 241)
-        for (e in expected) assertEquals(e, the engineData.pRandom())
-        assertEquals(256, the engineData.rndtable.size)
+        for (e in expected) assertEquals(e, GameData.pRandom())
+        assertEquals(256, GameData.rndtable.size)
         // Deterministic: resetting the index replays it identically.
-        the engineData.clearRandom()
-        assertEquals(8, the engineData.pRandom())
+        GameData.clearRandom()
+        assertEquals(8, GameData.pRandom())
     }
 
     @Test
     fun `creature speeds match info_c`() {
-        fun speedOf(name: String) = the engineData.creatures.first { it.name == name }.speed
+        fun speedOf(name: String) = GameData.creatures.first { it.name == name }.speed
         assertEquals(8, speedOf("Zombie"))
         assertEquals(8, speedOf("Serpentipede"))
         // The FleshWorm (SARG) is the only faster one: speed 10.
@@ -62,27 +80,27 @@ class the engineDataTest {
     fun `every sprite has a valid index`() {
         // The indices are assigned in an init block: if anyone moves it before
         // spritePrefixes is built they all fall back to -1 and the app crashes on start.
-        val n = the engineData.spritePrefixes.size
-        assertTrue(the engineData.bloodSpriteIndex in 0 until n, "blood: ${the engineData.bloodSpriteIndex}")
-        assertTrue(the engineData.fogSpriteIndex in 0 until n, "fog: ${the engineData.fogSpriteIndex}")
-        assertTrue(the engineData.player.spriteIndex in 0 until n, "player")
-        for (c in the engineData.creatures) {
+        val n = GameData.spritePrefixes.size
+        assertTrue(GameData.bloodSpriteIndex in 0 until n, "blood: ${GameData.bloodSpriteIndex}")
+        assertTrue(GameData.fogSpriteIndex in 0 until n, "fog: ${GameData.fogSpriteIndex}")
+        assertTrue(GameData.player.spriteIndex in 0 until n, "player")
+        for (c in GameData.creatures) {
             assertTrue(c.spriteIndex in 0 until n, "${c.name}: ${c.spriteIndex}")
-            assertEquals(c.lumpPrefix, the engineData.spritePrefixes[c.spriteIndex])
+            assertEquals(c.lumpPrefix, GameData.spritePrefixes[c.spriteIndex])
         }
-        for (p in the engineData.projectiles) {
+        for (p in GameData.projectiles) {
             assertTrue(p.spriteIndex in 0 until n, "projectile ${p.lumpPrefix}")
-            assertEquals(p.lumpPrefix, the engineData.spritePrefixes[p.spriteIndex])
+            assertEquals(p.lumpPrefix, GameData.spritePrefixes[p.spriteIndex])
         }
-        for (i in the engineData.items) {
+        for (i in GameData.items) {
             assertTrue(i.spriteIndex in 0 until n, "item ${i.lumpPrefix}")
-            assertEquals(i.lumpPrefix, the engineData.spritePrefixes[i.spriteIndex])
+            assertEquals(i.lumpPrefix, GameData.spritePrefixes[i.spriteIndex])
         }
     }
 
     @Test
     fun `every creature has consistent animations`() {
-        for (c in the engineData.creatures + the engineData.player) {
+        for (c in GameData.creatures + GameData.player) {
             for (a in listOf(c.attack, c.pain, c.death)) {
                 assertEquals(a.frames.size, a.tics.size, "${c.name}: frames and tics do not match")
                 assertTrue(a.frames.isNotEmpty(), "${c.name}: empty animation")
@@ -96,7 +114,7 @@ class the engineDataTest {
     fun `a Serpentipede covers 280 units per second`() {
         // speed 8 per tic at 35 tics/s = 280 units per second. If the fixed-point maths
         // breaks, this number changes.
-        val perTic = 8 * the engineData.xspeed[0] / the engineData.FRACUNIT
+        val perTic = 8 * GameData.xspeed[0] / GameData.FRACUNIT
         assertEquals(280, perTic * TICRATE)
     }
 }

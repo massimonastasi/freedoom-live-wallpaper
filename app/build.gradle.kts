@@ -66,7 +66,7 @@ dependencies {
  * and the APK would carry both copies.
  *
  * WadFileTest asserts the shipped WAD still satisfies everything the code asks for, so a
- * drift between this list and the engineData fails the build rather than the wallpaper.
+ * drift between this list and GameData fails the build rather than the wallpaper.
  */
 tasks.register("reduceWad") {
     val source = layout.projectDirectory.file("wad/freedoom-full.wad").asFile
@@ -75,7 +75,7 @@ tasks.register("reduceWad") {
     doLast {
         require(source.exists()) { "missing ${source.name}: download Freedoom and rename the IWAD to it" }
 
-        // Sprite prefixes, mirroring the engineData: creatures, the marine, projectiles, pickups
+        // Sprite prefixes, mirroring GameData: creatures, the marine, projectiles, pickups
         // and effects. Diagonal views are dropped because nothing moves diagonally.
         val spritePrefixes = listOf(
             "POSS", "SPOS", "TROO", "SARG", "HEAD", "BOSS", "PLAY",
@@ -83,6 +83,9 @@ tasks.register("reduceWad") {
             "STIM", "MEDI", "ARM1", "ARM2", "SHOT", "MGUN",
         )
         val exactNames = buildSet {
+            // Freedoom's own identifying lump. Seven bytes, and without it the reduced
+            // asset no longer says what it is derived from.
+            add("FREEDOOM")
             add("PLAYPAL")                    // palette, and the damage flash ramp
             add("CEIL5_1")                    // the floor texture
             add("F_START"); add("F_END")      // flat markers: flatIndex searches between them

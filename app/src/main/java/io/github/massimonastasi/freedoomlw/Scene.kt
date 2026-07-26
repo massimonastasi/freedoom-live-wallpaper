@@ -1,12 +1,30 @@
+/*
+ * Freedoom Live Wallpaper
+ * Copyright (C) 2026 Massimo Nastasi
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms
+ * of the GNU General Public License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details. You should have received a copy in
+ * the file LICENSE; see also NOTICE.md for the third-party notices this work depends on.
+ *
+ * It is GPL-2.0 because it reproduces gameplay constants and tables from the id Software
+ * engine source release (linuxdoom-1.10), which is GPL-2.0. Every such value carries a
+ * comment naming the file and symbol it came from; those comments are the attribution the
+ * licence requires and must not be removed.
+ */
 package io.github.massimonastasi.freedoomlw
 
-import io.github.massimonastasi.freedoomlw.the engineData.DI_NODIR
-import io.github.massimonastasi.freedoomlw.the engineData.FRACUNIT
-import io.github.massimonastasi.freedoomlw.the engineData.MELEERANGE
-import io.github.massimonastasi.freedoomlw.the engineData.opposite
-import io.github.massimonastasi.freedoomlw.the engineData.pRandom
-import io.github.massimonastasi.freedoomlw.the engineData.xspeed
-import io.github.massimonastasi.freedoomlw.the engineData.yspeed
+import io.github.massimonastasi.freedoomlw.GameData.DI_NODIR
+import io.github.massimonastasi.freedoomlw.GameData.FRACUNIT
+import io.github.massimonastasi.freedoomlw.GameData.MELEERANGE
+import io.github.massimonastasi.freedoomlw.GameData.opposite
+import io.github.massimonastasi.freedoomlw.GameData.pRandom
+import io.github.massimonastasi.freedoomlw.GameData.xspeed
+import io.github.massimonastasi.freedoomlw.GameData.yspeed
 import kotlin.math.abs
 
 /** What an actor is doing. Mirrors the states[] groups of the engine. */
@@ -33,7 +51,7 @@ class Loadout {
      */
     var owned = 0
 
-    val ammo = IntArray(the engineData.maxAmmo.size)
+    val ammo = IntArray(GameData.maxAmmo.size)
 
     fun has(weapon: Int) = owned and (1 shl weapon) != 0
 
@@ -52,7 +70,7 @@ class Loadout {
 /**
  * An actor in the scene: creature, projectile, effect or pickup.
  *
- * Positions are in the engine map units, 16.16 fixed-point like the original: no drift, and the
+ * Positions are in map units, 16.16 fixed-point like the original: no drift, and the
  * numbers stay comparable 1:1 with the id source.
  */
 class Actor(val spriteIndex: Int) {
@@ -64,11 +82,11 @@ class Actor(val spriteIndex: Int) {
 
     var mode = Mode.WALK
     var health = 0
-    var creature: the engineData.Creature? = null
+    var creature: GameData.Creature? = null
     var isPlayer = false
 
     /** Animation in progress for every mode other than WALK. */
-    var anim: the engineData.Anim? = null
+    var anim: GameData.Anim? = null
     var animStep = 0
     var animTics = 0
 
@@ -108,7 +126,7 @@ class Actor(val spriteIndex: Int) {
     var loadout: Loadout? = null
 
     /** Pickups lying on the ground only. */
-    var item: the engineData.Item? = null
+    var item: GameData.Item? = null
 
     val radius get() = creature?.radius ?: 6
 
@@ -118,7 +136,7 @@ class Actor(val spriteIndex: Int) {
         if (a != null) return a.frames[animStep]
         item?.let { return if (it.frames > 1) ((tic - spawnTic) / 6) % it.frames else 0 }
         val c = creature ?: return 0
-        // Walking: the engine repeats each frame twice (A,A,B,B,...), so it lasts walkTics*2.
+        // Walking: the original engine repeats each frame twice (A,A,B,B,...), so it lasts walkTics*2.
         val per = if (fast) c.walkTics else c.walkTics * 2
         return ((tic - spawnTic) / per) % c.walkFrames
     }
@@ -137,7 +155,7 @@ class Actor(val spriteIndex: Int) {
      * the camera and must give 1, DI_WEST must give 3, DI_SOUTH 5 and DI_EAST 7. Those four
      * fix the mapping as a rotation by two eighths.
      *
-     * The engine formula in r_things.c looks like a reflection instead, because the engine
+     * The engine formula in r_things.c looks like a reflection instead, because the original
      * measures angles anticlockwise with +y pointing north on the map, while our screen has
      * +y pointing down. That flip of handedness reverses the direction of rotation, and
      * ignoring it produced a version with the vertical directions right and the horizontal
@@ -152,7 +170,7 @@ class Actor(val spriteIndex: Int) {
 /**
  * The scene: actors, movement, combat.
  *
- * The world is the engine's x/y plane in map units. The projection onto the screen is oblique:
+ * The world is the original engine's x/y plane in map units. The projection onto the screen is oblique:
  * x horizontal, y into the depth. There are no walls, so the P_CheckSight line-of-sight
  * test is unnecessary — here the firing line really is always clear, it is not a shortcut.
  */
@@ -173,14 +191,14 @@ class Scene(
         private set
 
     /**
-     * Current skill level, an index into [the engineData.skills]. It climbs by one every time the
+     * Current skill level, an index into [GameData.skills]. It climbs by one every time the
      * wave table is finished, so the marine walks the whole difficulty ladder from
      * "I'm too young to die" up to "Nightmare!" — and a death drops him back to the bottom.
      */
-    var skill = startSkill.coerceIn(the engineData.skills.indices)
+    var skill = startSkill.coerceIn(GameData.skills.indices)
         private set
 
-    private val rules get() = the engineData.skills[skill]
+    private val rules get() = GameData.skills[skill]
 
     /** Waves cleared since the last death, which is what earns the promotion. */
     private var cleared = 0
@@ -286,10 +304,10 @@ class Scene(
         // Staggered arrivals: until the whole wave is in, we do not judge it finished.
         if (spawnIndex < queue.size) {
             if (tic >= nextSpawnAt) {
-                val w = the engineData.waves[wave]
+                val w = GameData.waves[wave]
                 var n = w.burst
                 while (n-- > 0 && spawnIndex < queue.size) {
-                    spawnDemon(the engineData.creatures[queue[spawnIndex++]], respawned = false)
+                    spawnDemon(GameData.creatures[queue[spawnIndex++]], respawned = false)
                 }
                 nextSpawnAt = tic + w.spawnDelay
             }
@@ -303,16 +321,16 @@ class Scene(
         // Wave cleared: the pause is the one belonging to the wave just finished. Breathing
         // room between waves matters, otherwise the rhythm turns into continuous noise.
         if (nextWaveAt == 0) {
-            nextWaveAt = tic + the engineData.waves[wave].rest
+            nextWaveAt = tic + GameData.waves[wave].rest
             return
         }
         if (tic >= nextWaveAt) {
             nextWaveAt = 0
-            wave = (wave + 1) % the engineData.waves.size
+            wave = (wave + 1) % GameData.waves.size
             // The whole sequence then replays one skill level harder, up to Nightmare,
             // which is where it stays.
             cleared++
-            if (cleared % WAVES_PER_PROMOTION == 0 && skill < the engineData.skills.size - 1) skill++
+            if (cleared % WAVES_PER_PROMOTION == 0 && skill < GameData.skills.size - 1) skill++
             startWave()
         }
     }
@@ -330,7 +348,7 @@ class Scene(
         while (i < respawns.size) {
             val packed = respawns[i]
             if (tic >= packed shr 3) {
-                spawnDemon(the engineData.creatures[packed and 7], respawned = true)
+                spawnDemon(GameData.creatures[packed and 7], respawned = true)
                 respawns.removeAt(i)
             } else i++
         }
@@ -358,14 +376,14 @@ class Scene(
      * which is this scene's stand-in for the map thing flags the engine filters on.
      */
     private fun startWave() {
-        val w = the engineData.waves[wave]
+        val w = GameData.waves[wave]
         // Rounded up, so the ratio still bites on the short early waves: rounding to nearest
         // gave the opening wave two enemies at every skill, and the ladder started flat.
         val n = (w.order.size * rules.countEighths + 7) / 8
         queue.clear()
         for (i in 0 until n) {
             var c = w.order[i % w.order.size]
-            if (pRandom() < rules.toughen && c + 1 < the engineData.creatures.size) c++
+            if (pRandom() < rules.toughen && c + 1 < GameData.creatures.size) c++
             queue.add(c)
         }
         spawnIndex = 0
@@ -396,7 +414,7 @@ class Scene(
         if (max <= min) min else min + pRandom() * (max - min) / 256
 
     private fun spawnPlayer() {
-        val a = newCreature(the engineData.player)
+        val a = newCreature(GameData.player)
         a.isPlayer = true
         // The waves restart from scratch, the arsenal does not: without that continuity the
         // marine stayed on the pistol forever in the early waves and half the bestiary was
@@ -421,20 +439,20 @@ class Scene(
         newTarget(a)
     }
 
-    private fun newCreature(c: the engineData.Creature): Actor {
+    private fun newCreature(c: GameData.Creature): Actor {
         val a = Actor(c.spriteIndex)
         a.creature = c
         a.health = c.health
         a.spawnTic = tic
-        a.reactionTime = the engineData.REACTION_TIME
+        a.reactionTime = GameData.REACTION_TIME
         return a
     }
 
-    private fun spawnDemon(c: the engineData.Creature, respawned: Boolean) {
+    private fun spawnDemon(c: GameData.Creature, respawned: Boolean) {
         val a = newCreature(c)
         a.respawned = respawned
         // Only the FleshWorm: g_game.c touches S_SARG_RUN1..S_SARG_PAIN2 and nothing else.
-        a.fast = rules.fast && c === the engineData.fleshWorm
+        a.fast = rules.fast && c === GameData.fleshWorm
         // Enters from a side edge, but a whole sprite width inside it: arriving exactly on
         // the boundary left half the creature off screen, and a quick kill could then remove
         // it before it had ever been properly seen.
@@ -443,7 +461,7 @@ class Scene(
         materialise(a)
     }
 
-    private fun spawnEffect(spriteIndex: Int, anim: the engineData.Anim, x: Int, y: Int) {
+    private fun spawnEffect(spriteIndex: Int, anim: GameData.Anim, x: Int, y: Int) {
         val a = Actor(spriteIndex)
         begin(a, Mode.EFFECT, anim)
         a.x = x
@@ -452,16 +470,16 @@ class Scene(
         actors.add(a)
     }
 
-    private fun spawnFog(x: Int, y: Int) = spawnEffect(the engineData.fogSpriteIndex, the engineData.fogAnim, x, y)
+    private fun spawnFog(x: Int, y: Int) = spawnEffect(GameData.fogSpriteIndex, GameData.fogAnim, x, y)
 
-    private fun spawnBlood(x: Int, y: Int) = spawnEffect(the engineData.bloodSpriteIndex, the engineData.bloodAnim, x, y)
+    private fun spawnBlood(x: Int, y: Int) = spawnEffect(GameData.bloodSpriteIndex, GameData.bloodAnim, x, y)
 
     /** Drops a pickup somewhere on the map, or at a chosen spot. */
     private fun spawnItem(
         x: Int = randomIn(marginX, worldWidth - marginX) * FRACUNIT,
         y: Int = randomIn(marginY, worldHeight - marginY) * FRACUNIT,
     ) {
-        val it = the engineData.items[the engineData.dropTable[pRandom() % the engineData.dropTable.size]]
+        val it = GameData.items[GameData.dropTable[pRandom() % GameData.dropTable.size]]
         val a = Actor(it.spriteIndex)
         a.mode = Mode.ITEM
         a.item = it
@@ -500,7 +518,7 @@ class Scene(
         if (deadUntil > 0) return
         val count = 1 + pRandom() % 2
         repeat(count) {
-            val c = the engineData.creatures[pRandom() % 3]        // only the lighter creatures
+            val c = GameData.creatures[pRandom() % 3]        // only the lighter creatures
             val a = newCreature(c)
             a.x = clampX(x + (pRandom() - 128) * FRACUNIT / 2)
             a.y = clampY(y + (pRandom() - 128) * FRACUNIT / 2)
@@ -524,21 +542,21 @@ class Scene(
      * when the one already worn is better, and a weapon carries two clip loads.
      * Returns false when the item is not needed and should stay on the ground.
      */
-    private fun pickUp(p: Actor, it: the engineData.Item): Boolean {
+    private fun pickUp(p: Actor, it: GameData.Item): Boolean {
         val kit = p.loadout ?: return false
         return when (it.kind) {
-            the engineData.ITEM_HEALTH -> {
-                if (p.health >= the engineData.player.health) false
-                else { p.health = minOf(the engineData.player.health, p.health + it.amount); true }
+            GameData.ITEM_HEALTH -> {
+                if (p.health >= GameData.player.health) false
+                else { p.health = minOf(GameData.player.health, p.health + it.amount); true }
             }
-            the engineData.ITEM_ARMOR -> {
+            GameData.ITEM_ARMOR -> {
                 if (kit.armorPoints >= it.amount) false
                 else { kit.armorPoints = it.amount; kit.armorType = it.extra; true }
             }
             else -> {
                 // A weapon is always worth taking, even one already carried: it is the only
                 // source of ammunition left, so picking up a second shotgun is a reload.
-                giveAmmo(kit, the engineData.weapons[it.extra].ammo, it.amount)
+                giveAmmo(kit, GameData.weapons[it.extra].ammo, it.amount)
                 kit.take(it.extra)
                 true
             }
@@ -547,12 +565,12 @@ class Scene(
 
     private fun giveAmmo(kit: Loadout, type: Int, clips: Int): Boolean {
         if (type < 0) return false
-        if (kit.ammo[type] >= the engineData.maxAmmo[type]) return false
+        if (kit.ammo[type] >= GameData.maxAmmo[type]) return false
         // p_inter.c:95 — double ammo on the easiest skill and on Nightmare, where it is
         // needed for the opposite reason.
-        var given = clips * the engineData.clipAmmo[type]
+        var given = clips * GameData.clipAmmo[type]
         if (rules.doubleAmmo) given = given shl 1
-        kit.ammo[type] = minOf(the engineData.maxAmmo[type], kit.ammo[type] + given)
+        kit.ammo[type] = minOf(GameData.maxAmmo[type], kit.ammo[type] + given)
         return true
     }
 
@@ -561,16 +579,16 @@ class Scene(
      * otherwise the pistol he started with.
      */
     private fun currentWeaponIndex(p: Actor): Int {
-        val kit = p.loadout ?: return the engineData.WEAPON_PISTOL
-        for (i in the engineData.weapons.indices.reversed()) {
+        val kit = p.loadout ?: return GameData.WEAPON_PISTOL
+        for (i in GameData.weapons.indices.reversed()) {
             if (!kit.has(i)) continue
-            val w = the engineData.weapons[i]
+            val w = GameData.weapons[i]
             if (w.ammo < 0 || kit.ammo[w.ammo] > 0) return i
         }
-        return the engineData.WEAPON_PISTOL
+        return GameData.WEAPON_PISTOL
     }
 
-    private fun currentWeapon(p: Actor) = the engineData.weapons[currentWeaponIndex(p)]
+    private fun currentWeapon(p: Actor) = GameData.weapons[currentWeaponIndex(p)]
 
     // ---------------------------------------------------------------- animation
 
@@ -581,7 +599,7 @@ class Scene(
      * is not hypothetical: leaving the pain state without clearing `anim` left the index
      * pointing past the end of a finished sequence, and crashed the renderer.
      */
-    private fun begin(a: Actor, mode: Mode, anim: the engineData.Anim) {
+    private fun begin(a: Actor, mode: Mode, anim: GameData.Anim) {
         a.mode = mode
         a.anim = anim
         a.animStep = 0
@@ -692,7 +710,7 @@ class Scene(
 
         // Melee when the target is in reach: P_CheckMeleeRange uses MELEERANGE.
         if (c.meleeMod > 0 && approxDistance(a, target) < MELEERANGE + target.radius * FRACUNIT) {
-            damageActor(target, (pRandom() % c.meleeMod + 1) * c.meleeMul, a.isPlayer)
+            damageActor(target, (pRandom() % c.meleeMod + 1) * c.meleeMul)
             return
         }
         if (c.hitscanShots > 0) {
@@ -701,7 +719,7 @@ class Scene(
                 // p_pspr.c: every pellet deals 5*(P_Random()%3+1). Only the pellet count
                 // changes: one for pistol and chaingun, seven for the shotgun.
                 val i = currentWeaponIndex(a)
-                val w = the engineData.weapons[i]
+                val w = GameData.weapons[i]
                 val kit = a.loadout
                 if (w.ammo >= 0 && kit != null) {
                     // Firing the last round costs him the gun: it drops out of the arsenal
@@ -709,22 +727,22 @@ class Scene(
                     if (--kit.ammo[w.ammo] <= 0) kit.drop(i)
                 }
                 var total = 0
-                repeat(w.pellets) { total += the engineData.gunShotDamage() }
-                damageActor(target, total, true)
+                repeat(w.pellets) { total += GameData.gunShotDamage() }
+                damageActor(target, total)
             } else {
-                repeat(c.hitscanShots) { damageActor(target, the engineData.hitscanDamage(), false) }
+                repeat(c.hitscanShots) { damageActor(target, GameData.hitscanDamage()) }
             }
             return
         }
-        if (c.projectile >= 0) spawnMissile(a, target, the engineData.projectiles[c.projectile])
+        if (c.projectile >= 0) spawnMissile(a, target, GameData.projectiles[c.projectile])
     }
 
     /** P_SpawnMissile: constant speed along the direction of the target. */
-    private fun spawnMissile(from: Actor, target: Actor, p: the engineData.Projectile) {
+    private fun spawnMissile(from: Actor, target: Actor, p: GameData.Projectile) {
         val m = Actor(p.spriteIndex)
         m.mode = Mode.PROJECTILE
-        m.anim = the engineData.ballAnim
-        m.animTics = the engineData.ballAnim.tics[0]
+        m.anim = GameData.ballAnim
+        m.animTics = GameData.ballAnim.tics[0]
         m.x = from.x
         m.y = from.y
         m.spawnTic = tic
@@ -738,7 +756,7 @@ class Scene(
         // missiles have speed 10*FRACUNIT (monsters instead carry a plain integer).
         // g_game.c:1425 forces every monster missile to speed 20 on the fast skills. The
         // marine's own shots are hitscan, so nothing of his is affected.
-        val speed = if (rules.fast && !from.isPlayer) the engineData.FAST_MISSILE_SPEED else p.speed
+        val speed = if (rules.fast && !from.isPlayer) GameData.FAST_MISSILE_SPEED else p.speed
         val v = (speed * FRACUNIT).toLong()
         m.momX = (v * dx / dist).toInt()
         m.momY = (v * dy / dist).toInt()
@@ -750,7 +768,7 @@ class Scene(
         if (a.anim != null && !advanceAnim(a)) {
             // The two fireball images are a loop, not a sequence.
             a.animStep = 0
-            a.animTics = the engineData.ballAnim.tics[0]
+            a.animTics = GameData.ballAnim.tics[0]
         }
         a.x += a.momX
         a.y += a.momY
@@ -763,14 +781,14 @@ class Scene(
             if (o.creature == null || o.dead) continue
             if (o.isPlayer == a.firedByPlayer) continue          // no friendly fire
             if (approxDistance(a, o) < o.radius * FRACUNIT) {
-                damageActor(o, a.damage, a.firedByPlayer)
+                damageActor(o, a.damage)
                 return false
             }
         }
         return true
     }
 
-    private fun damageActor(target: Actor, amount: Int, byPlayer: Boolean) {
+    private fun damageActor(target: Actor, amount: Int) {
         if (target.dead) return
         if (target.isPlayer && invulnerable) return
         val c = target.creature ?: return
@@ -781,7 +799,7 @@ class Scene(
         var amount = if (target.isPlayer && rules.halfDamage) amount shr 1 else amount
         val kit = target.loadout
         if (kit != null && kit.armorType > 0) {
-            var saved = the engineData.armorSaved(amount, kit.armorType)
+            var saved = GameData.armorSaved(amount, kit.armorType)
             if (kit.armorPoints <= saved) {
                 saved = kit.armorPoints
                 kit.armorType = 0
@@ -798,8 +816,8 @@ class Scene(
             begin(target, Mode.DEATH, c.death)
             target.spawnTic = tic
             if (rules.respawn && !target.isPlayer && !target.respawned) {
-                val i = the engineData.creatures.indexOf(c)
-                if (i >= 0) respawns.add(((tic + the engineData.RESPAWN_DELAY) shl 3) or i)
+                val i = GameData.creatures.indexOf(c)
+                if (i >= 0) respawns.add(((tic + GameData.RESPAWN_DELAY) shl 3) or i)
             }
             return
         }
@@ -831,7 +849,7 @@ class Scene(
         // Below half health the marine breaks off and goes for supplies rather than trading
         // shots: staying in the fight while hurt is how he dies, and there is usually
         // something on the ground worth reaching.
-        val hurt = a.isPlayer && a.health * 2 < the engineData.player.health
+        val hurt = a.isPlayer && a.health * 2 < GameData.player.health
         val supply = if (a.isPlayer && (hurt || dist > KEEP_AWAY)) nearestItem(a) else null
         val breakingOff = hurt && supply != null
 
@@ -927,7 +945,7 @@ class Scene(
     /**
      * P_NewChaseDir (p_enemy.c), in the original order: diagonal towards the target, then
      * the dominant axis, then the previous direction, then all 8 in random order.
-     * **It never turns around** while an alternative exists: that is why the engine monsters feel
+     * **It never turns around** while an alternative exists: that is why the original monsters feel
      * alive instead of remote-controlled.
      */
     private fun newChaseDir(a: Actor) {
@@ -1007,9 +1025,9 @@ class Scene(
          * four, the same ten minutes reach "Hurt me plenty" and spend 58/39/1 percent of
          * the time across the first three levels.
          */
-        val WAVES_PER_PROMOTION = the engineData.waves.size
+        val WAVES_PER_PROMOTION = GameData.waves.size
 
-        /** ponytail: the engine corpses stay forever; in a wallpaper they would pile up. */
+        /** ponytail: corpses in the original stay forever; in a wallpaper they would pile up. */
         const val CORPSE_LIFETIME = TICRATE * 12
 
         /**
