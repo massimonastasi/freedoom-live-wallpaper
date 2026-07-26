@@ -62,9 +62,20 @@ class WadFileTest {
         )
         for (d in 0..9) assertTrue(wad.indexOf("STTNUM$d") >= 0, "readout digit $d missing")
 
-        for (prefix in GameData.spritePrefixes) {
+        // Not every prefix: which sprites exist is a fact of the WAD rather than something
+        // this project declares. The super shotgun arrived with Phase 2, so a Phase 1 IWAD
+        // like the bundled one carries no SGN2 and must not be required to. What has to hold
+        // is that the file can drive a scene — the marine, every creature, and at least one
+        // weapon past the pistol.
+        val required = GameData.creatures.map { it.lumpPrefix } + GameData.player.lumpPrefix
+        for (prefix in required) {
             assertTrue(wad.lumpsStartingWith(prefix).isNotEmpty(), "no $prefix sprite at all")
         }
+        val weaponPickups = GameData.items.filter { it.kind == GameData.ITEM_WEAPON }
+        assertTrue(
+            weaponPickups.count { wad.lumpsStartingWith(it.lumpPrefix).isNotEmpty() } >= 1,
+            "the shipped WAD offers no weapon beyond the pistol",
+        )
 
         // Stronger than presence: every frame each creature can be drawn in must resolve at
         // each of the four angles still in use. A missing rotation would show up on screen

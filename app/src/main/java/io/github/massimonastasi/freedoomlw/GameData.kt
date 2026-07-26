@@ -139,11 +139,17 @@ object GameData {
         var spriteIndex = -1
     }
 
-    // info.c mobjinfo[MT_TROOPSHOT] / mobjinfo[MT_BRUISERSHOT], states S_TBALL1 / S_BRBALL1.
+    // info.c mobjinfo[]: MT_TROOPSHOT and MT_BRUISERSHOT are the monsters' fireballs,
+    // MT_PLASMA and MT_ROCKET the marine's. Speeds and damage verbatim from the table.
     val projectiles = listOf(
         Projectile("BAL1", speed = 10, damage = 3),
         Projectile("BAL7", speed = 15, damage = 8),
+        Projectile("PLSS", speed = 25, damage = 5),
+        Projectile("MISL", speed = 20, damage = 20),
     )
+
+    const val PROJECTILE_PLASMA = 2
+    const val PROJECTILE_ROCKET = 3
 
     /** Blood: states S_BLOOD1..3, sprite BLUD, frames C,B,A at 8 tics each. */
     val bloodAnim = Anim(intArrayOf(2, 1, 0), intArrayOf(8, 8, 8))
@@ -273,34 +279,69 @@ object GameData {
     // ------------------------------------------------------------------ weapons
 
     /**
-     * The marine's weapons. All of them fire instant shots with the same per-pellet damage
-     * (p_pspr.c P_GunShot); what changes is the pellet count and the rate of fire.
+     * The marine's weapons, in order of power: the arsenal always reaches for the highest
+     * one that is loaded, so this list is the ranking.
      *
-     * ponytail: only the three hitscan weapons. The rocket launcher and plasma gun would
-     * need exploding projectiles, i.e. another mechanic: add them if they are ever needed.
+     * Hitscan weapons fire [pellets] instant shots of P_GunShot damage each (p_pspr.c).
+     * Projectile weapons fire one missile from [projectile] instead, which is the same
+     * mechanism the monsters' fireballs already use.
+     *
+     * Which of them can appear depends on the loaded WAD: the super shotgun is Phase 2 and
+     * later, so a Phase 1 IWAD simply never drops one. Nothing here lists which file has
+     * what - the sprite either resolves or it does not.
      */
     class Weapon(
         val name: String,
-        val pellets: Int,
-        val ammo: Int,          // index into AMMO_*; -1 = consumes nothing
+        val lumpPrefix: String,
+        val ammo: Int,              // index into AMMO_*; -1 = consumes nothing
         val attack: Anim,
-    )
+        val pellets: Int = 0,       // hitscan: instant shots per trigger pull
+        val projectile: Int = -1,   // otherwise: index into [projectiles]
+    ) {
+        /**
+         * Expected damage per tic, which is what "the most powerful weapon" has to mean.
+         *
+         * Computed rather than assumed from the list order, and that distinction was
+         * measured: the rocket launcher sits last in the original's slot order and deals 20
+         * on a direct hit, against roughly 200 from a super shotgun blast. Picking by
+         * position made the marine reach for the weakest thing he owned, and the odds of
+         * finishing the table fell from 95 to 76 percent the moment the arsenal grew.
+         *
+         * It is per tic rather than per shot because the chaingun's whole advantage is its
+         * rate. P_GunShot averages 10 across its three outcomes; a missile's damage is the
+         * fixed figure from mobjinfo. Splash is not modelled, so a rocket is worth exactly
+         * its direct hit here - which is why it ranks low, correctly.
+         */
+        val damagePerTic: Double by lazy {
+            val perShot = pellets * 10.0 +
+                if (projectile >= 0) projectiles[projectile].damage.toDouble() else 0.0
+            perShot / attack.tics.sum().coerceAtLeast(1)
+        }
+    }
 
     const val AMMO_BULLETS = 0
     const val AMMO_SHELLS = 1
+    const val AMMO_CELLS = 2
+    const val AMMO_ROCKETS = 3
 
-    /** p_inter.c: maxammo[] = {200, 50, ...}. */
-    val maxAmmo = intArrayOf(200, 50)
+    /** p_inter.c: maxammo[NUMAMMO] = {200, 50, 300, 50}. */
+    val maxAmmo = intArrayOf(200, 50, 300, 50)
 
-    /** p_inter.c: clipammo[] = {10, 4, ...}. A picked-up weapon carries two clip loads. */
-    val clipAmmo = intArrayOf(10, 4)
+    /** p_inter.c: clipammo[NUMAMMO] = {10, 4, 20, 1}. A weapon carries two clip loads. */
+    val clipAmmo = intArrayOf(10, 4, 20, 1)
+
+    /** p_pspr.c A_FireShotgun2: twenty pellets, each of the same P_GunShot damage. */
+    const val SUPER_SHOTGUN_PELLETS = 20
 
     val weapons = listOf(
         // The pistol consumes no ammo: in a wallpaper, being disarmed forever would be a
         // deadlock, and the marine cannot go looking for ammo the way a player would.
-        Weapon("Pistol", pellets = 1, ammo = -1, attack = Anim(intArrayOf(4, 5, 4), intArrayOf(6, 8, 6))),
-        Weapon("Shotgun", pellets = SHOTGUN_PELLETS, ammo = AMMO_SHELLS, attack = Anim(intArrayOf(4, 5, 4), intArrayOf(6, 10, 8))),
-        Weapon("Chaingun", pellets = 1, ammo = AMMO_BULLETS, attack = Anim(intArrayOf(4, 5), intArrayOf(3, 3))),
+        Weapon("Pistol", "PIST", -1, Anim(intArrayOf(4, 5, 4), intArrayOf(6, 8, 6)), pellets = 1),
+        Weapon("Shotgun", "SHOT", AMMO_SHELLS, Anim(intArrayOf(4, 5, 4), intArrayOf(6, 10, 8)), pellets = SHOTGUN_PELLETS),
+        Weapon("Chaingun", "MGUN", AMMO_BULLETS, Anim(intArrayOf(4, 5), intArrayOf(3, 3)), pellets = 1),
+        Weapon("SuperShotgun", "SGN2", AMMO_SHELLS, Anim(intArrayOf(4, 5, 4), intArrayOf(6, 12, 10)), pellets = SUPER_SHOTGUN_PELLETS),
+        Weapon("PlasmaRifle", "PLAS", AMMO_CELLS, Anim(intArrayOf(4, 5), intArrayOf(3, 3)), projectile = PROJECTILE_PLASMA),
+        Weapon("RocketLauncher", "LAUN", AMMO_ROCKETS, Anim(intArrayOf(4, 5, 4), intArrayOf(8, 12, 10)), projectile = PROJECTILE_ROCKET),
     )
 
     const val WEAPON_PISTOL = 0
@@ -342,12 +383,18 @@ object GameData {
      * then the guns, with the more powerful one of each pair rarer than the plain one.
      */
     val items = listOf(
-        Item("STIM", ITEM_HEALTH, 10, weight = 5),                       // stimpack
-        Item("MEDI", ITEM_HEALTH, 25, weight = 4),                       // medikit
-        Item("ARM1", ITEM_ARMOR, 100, extra = 1, frames = 2, weight = 4), // green armour
-        Item("ARM2", ITEM_ARMOR, 200, extra = 2, frames = 2, weight = 2), // blue armour
-        Item("SHOT", ITEM_WEAPON, 2, extra = WEAPON_SHOTGUN, weight = 3), // shotgun + 2 clips
-        Item("MGUN", ITEM_WEAPON, 2, extra = WEAPON_CHAINGUN, weight = 2), // chaingun
+        Item("STIM", ITEM_HEALTH, 10, weight = 10),                       // stimpack
+        Item("MEDI", ITEM_HEALTH, 25, weight = 8),                        // medikit
+        Item("ARM1", ITEM_ARMOR, 100, extra = 1, frames = 2, weight = 8),  // green armour
+        Item("ARM2", ITEM_ARMOR, 200, extra = 2, frames = 2, weight = 4),  // blue armour
+        // One per weapon past the pistol, each carrying two clip loads. The weights are
+        // scaled up from the old pair rather than squeezed, so healing still outweighs
+        // armour and armour still outweighs the guns with five of them in the table.
+        Item("SHOT", ITEM_WEAPON, 2, extra = 1, weight = 3),               // shotgun
+        Item("MGUN", ITEM_WEAPON, 2, extra = 2, weight = 2),               // chaingun
+        Item("SGN2", ITEM_WEAPON, 2, extra = 3, weight = 2),               // super shotgun
+        Item("PLAS", ITEM_WEAPON, 2, extra = 4, weight = 2),               // plasma rifle
+        Item("LAUN", ITEM_WEAPON, 2, extra = 5, weight = 1),               // rocket launcher
     )
 
     /**
@@ -419,16 +466,16 @@ object GameData {
 
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
-        Skill("I'm too young to die", 4, 215, toughen = 0, halfDamage = true, doubleAmmo = true),
-        Skill("Hey, not too rough", 4, 160, toughen = 0),
-        Skill("Hurt me plenty", 4, 235, toughen = 60),
-        Skill("Ultra-Violence", 4, 375, toughen = 120),
+        Skill("I'm too young to die", 4, 160, toughen = 0, halfDamage = true, doubleAmmo = true),
+        Skill("Hey, not too rough", 4, 92, toughen = 0),
+        Skill("Hurt me plenty", 4, 165, toughen = 60),
+        Skill("Ultra-Violence", 4, 330, toughen = 120),
         // Lower toughen than Ultra-Violence would suggest, and still far harder: this level
         // alone brings fast FleshWorms and monsters that come back, and a wave that refills
         // is a wave the marine is very unlikely to finish. The parameter is not the
         // difficulty; the measured outcome is, and that is what the test asserts.
         Skill(
-            "Nightmare!", 5, 520, toughen = 130,
+            "Nightmare!", 5, 780, toughen = 130,
             doubleAmmo = true, fast = true, respawn = true,
         ),
     )

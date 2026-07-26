@@ -419,7 +419,13 @@ class FreedoomWallpaperService : WallpaperService() {
                 // The picker preview is the shop window, and it is watched for seconds, not
                 // minutes: the opening wave arrives at once rather than after the usual pause.
                 instantStart = isPreview,
-            )
+            ).apply {
+                // And only the pickups it can draw: a Phase 1 IWAD has no super shotgun.
+                drawableItems = BooleanArray(GameData.items.size) { i ->
+                    val set = sprites.getOrNull(GameData.items[i].spriteIndex)
+                    set != null && set.frameCount > 0
+                }
+            }
         }
 
         override fun onSurfaceRedrawNeeded(holder: SurfaceHolder) {

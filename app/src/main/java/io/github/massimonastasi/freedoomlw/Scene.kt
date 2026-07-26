@@ -204,6 +204,15 @@ class Scene(
      */
     var drawable: BooleanArray? = drawable
 
+    /**
+     * Which pickups the active WAD can draw, by index into GameData.items.
+     *
+     * The same problem as the creatures, and the reason the arsenal can grow at all: the
+     * super shotgun arrived with Phase 2, so a Phase 1 IWAD has no SGN2 sprite and the weapon
+     * must simply never be dropped. Nothing anywhere lists which file carries what.
+     */
+    var drawableItems: BooleanArray? = null
+
     /** Current wave, zero-based. */
     var wave = 0
         private set
@@ -574,7 +583,21 @@ class Scene(
         x: Int = randomIn(marginX, worldWidth - marginX) * FRACUNIT,
         y: Int = randomIn(marginTop, worldHeight - spawnMarginBottom) * FRACUNIT,
     ) {
-        val it = GameData.items[GameData.dropTable[pRandom() % GameData.dropTable.size]]
+        // Redrawn until the weighted pick lands on something this WAD can show. Bounded by
+        // the table's own size rather than looping forever: with every weapon missing, the
+        // health and armour entries still make up most of the table, so a handful of tries
+        // always finds one.
+        var choice = GameData.dropTable[pRandom() % GameData.dropTable.size]
+        val ok = drawableItems
+        if (ok != null) {
+            var tries = 0
+            while (!ok.getOrElse(choice) { true } && tries < GameData.dropTable.size) {
+                choice = GameData.dropTable[pRandom() % GameData.dropTable.size]
+                tries++
+            }
+            if (!ok.getOrElse(choice) { true }) return
+        }
+        val it = GameData.items[choice]
         val a = Actor(it.spriteIndex)
         a.mode = Mode.ITEM
         a.item = it
@@ -681,12 +704,19 @@ class Scene(
      */
     private fun currentWeaponIndex(p: Actor): Int {
         val kit = p.loadout ?: return GameData.WEAPON_PISTOL
-        for (i in GameData.weapons.indices.reversed()) {
-            if (!kit.has(i)) continue
+        // By expected damage per tic, not by position in the list. The original's slot order
+        // puts the rocket launcher near the end and it is the weakest thing in this scene,
+        // because splash is not modelled; ranking by position had the marine reach for it
+        // over a super shotgun. See Weapon.damagePerTic.
+        var best = GameData.WEAPON_PISTOL
+        var bestRate = GameData.weapons[GameData.WEAPON_PISTOL].damagePerTic
+        for (i in GameData.weapons.indices) {
+            if (i == GameData.WEAPON_PISTOL || !kit.has(i)) continue
             val w = GameData.weapons[i]
-            if (w.ammo < 0 || kit.ammo[w.ammo] > 0) return i
+            if (w.ammo >= 0 && kit.ammo[w.ammo] <= 0) continue
+            if (w.damagePerTic > bestRate) { bestRate = w.damagePerTic; best = i }
         }
-        return GameData.WEAPON_PISTOL
+        return best
     }
 
 
@@ -813,25 +843,34 @@ class Scene(
             damageActor(target, (pRandom() % c.meleeMod + 1) * c.meleeMul)
             return
         }
-        if (c.hitscanShots > 0) {
-            // Instant shot: no projectile to simulate, damage applied directly.
-            if (a.isPlayer) {
-                // p_pspr.c: every pellet deals 5*(P_Random()%3+1). Only the pellet count
-                // changes: one for pistol and chaingun, seven for the shotgun.
-                val i = currentWeaponIndex(a)
-                val w = GameData.weapons[i]
-                val kit = a.loadout
-                if (w.ammo >= 0 && kit != null) {
-                    // Firing the last round costs him the gun: it drops out of the arsenal
-                    // and he falls back to whatever he still has that is loaded.
-                    if (--kit.ammo[w.ammo] <= 0) kit.drop(i)
-                }
+        // The marine fires whatever he is holding, which may be hitscan or a missile; a
+        // monster fires whatever its own entry says. Splitting on the actor rather than on
+        // the creature is what lets the arsenal grow without touching the bestiary.
+        if (a.isPlayer) {
+            val i = currentWeaponIndex(a)
+            val w = GameData.weapons[i]
+            val kit = a.loadout
+            if (w.ammo >= 0 && kit != null) {
+                // Firing the last round costs him the gun: it drops out of the arsenal and
+                // he falls back to whatever he still has that is loaded.
+                if (--kit.ammo[w.ammo] <= 0) kit.drop(i)
+            }
+            if (w.projectile >= 0) {
+                spawnMissile(a, target, GameData.projectiles[w.projectile])
+            } else {
+                // p_pspr.c: every pellet deals 5*(P_Random()%3+1). Only the count changes -
+                // one for the pistol and chaingun, seven for the shotgun, twenty for the
+                // super shotgun.
                 var total = 0
                 repeat(w.pellets) { total += GameData.gunShotDamage() }
                 damageActor(target, total)
-            } else {
-                repeat(c.hitscanShots) { damageActor(target, GameData.hitscanDamage()) }
             }
+            return
+        }
+
+        if (c.hitscanShots > 0) {
+            // Instant shot: no projectile to simulate, damage applied directly.
+            repeat(c.hitscanShots) { damageActor(target, GameData.hitscanDamage()) }
             return
         }
         if (c.projectile >= 0) spawnMissile(a, target, GameData.projectiles[c.projectile])

@@ -107,8 +107,8 @@ tasks.register("reduceWad") {
         // and effects. Diagonal views are dropped because nothing moves diagonally.
         val spritePrefixes = listOf(
             "POSS", "SPOS", "TROO", "SARG", "HEAD", "BOSS", "PLAY",
-            "BAL1", "BAL7", "BLUD", "TFOG",
-            "STIM", "MEDI", "ARM1", "ARM2", "SHOT", "MGUN",
+            "BAL1", "BAL7", "PLSS", "MISL", "BLUD", "TFOG",
+            "STIM", "MEDI", "ARM1", "ARM2", "SHOT", "MGUN", "SGN2", "PLAS", "LAUN",
         )
         val exactNames = buildSet {
             // Freedoom's own identifying lump. Seven bytes, and without it the reduced
