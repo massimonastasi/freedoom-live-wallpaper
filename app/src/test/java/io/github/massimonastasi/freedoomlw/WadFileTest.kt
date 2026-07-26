@@ -51,11 +51,15 @@ class WadFileTest {
         // own list of lump names. This is the check that catches the list drifting away
         // from the code: it asks for exactly what the wallpaper asks for at runtime.
         assertTrue(wad.indexOf("PLAYPAL") >= 0, "PLAYPAL missing: no palette, no colours")
-        // Every skill's own floor, asked for by name rather than one hardcoded flat, so
-        // changing the ladder in GameData cannot silently leave the reduced WAD behind.
-        for (s in GameData.skills) {
-            assertTrue(wad.flatIndex(s.flat) >= 0, "floor flat ${s.flat} for ${s.name} is missing")
-        }
+        // The floors are no longer named anywhere, so what is checked is that the shipped
+        // WAD still lets the app choose a full set. This is the seam the build script cannot
+        // share: reduceWad measures the flats itself, because GameData is not on its
+        // classpath, and this is what fails if the two measurements ever disagree.
+        assertEquals(
+            GameData.skills.size,
+            FloorPicker.choose(wad).size,
+            "the shipped WAD no longer offers one floor per skill",
+        )
         for (d in 0..9) assertTrue(wad.indexOf("STTNUM$d") >= 0, "readout digit $d missing")
 
         for (prefix in GameData.spritePrefixes) {
@@ -103,22 +107,30 @@ class WadFileTest {
         // The design claim is that the ladder climbs by hue while the contrast behind the
         // launcher icons stays put. That only holds if the five sit in one narrow brightness
         // band, so the band is what is asserted — not neutrality, which the ladder gives up
-        // on purpose once the ground turns green and then red.
-        for (s in GameData.skills) {
-            val i = wad.flatIndex(s.flat)
-            assertTrue(i >= 0, "${s.flat} missing")
-            val f = wad.decodeFlat(i)
-            assertEquals(64, f.width, "${s.flat} is not 64 wide")
-            assertEquals(64, f.height, "${s.flat} is not 64 high")
+        // on purpose once the ground takes on colour.
+        val chosen = FloorPicker.choose(wad)
+        assertEquals(GameData.skills.size, chosen.size, "not one floor per skill")
+        assertEquals(chosen.size, chosen.map { it.name }.toSet().size, "two skills share a floor")
+
+        for (flat in chosen) {
+            val f = wad.decodeFlat(flat.index)
+            assertEquals(64, f.width, "${flat.name} is not 64 wide")
+            assertEquals(64, f.height, "${flat.name} is not 64 high")
             // Flats are raw palette indices with no transparency: every pixel must be
             // opaque, otherwise the backdrop would show holes when tiled.
-            assertTrue(f.pixels.all { it ushr 24 == 0xFF }, "${s.flat} must be fully opaque")
-
-            val avg = f.pixels.map {
-                (it shr 16 and 0xFF) * 0.299 + (it shr 8 and 0xFF) * 0.587 + (it and 0xFF) * 0.114
-            }.average()
-            assertTrue(avg in 20.0..45.0, "${s.flat} at $avg is outside the 20-45 backdrop band")
+            assertTrue(f.pixels.all { it ushr 24 == 0xFF }, "${flat.name} must be fully opaque")
+            assertTrue(
+                flat.luminance in 20.0..45.0,
+                "${flat.name} at ${flat.luminance} is outside the 20-45 backdrop band",
+            )
         }
+
+        // And the ladder has to actually climb: the last floor carries more colour than the
+        // first, or the whole per-skill idea shows nothing.
+        assertTrue(
+            chosen.last().chroma > chosen.first().chroma,
+            "the ladder does not gain colour: ${chosen.map { "${it.name} ${it.chroma.toInt()}" }}",
+        )
     }
 
     @Test

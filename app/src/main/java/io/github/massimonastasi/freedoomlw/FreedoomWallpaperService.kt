@@ -189,26 +189,22 @@ class FreedoomWallpaperService : WallpaperService() {
      * all — a WAD with only one usable flat simply shows the same ground at every level.
      */
     private fun loadFloors(w: WadFile): Array<Bitmap?> {
-        // Flats already handed to an earlier level. A commercial IWAD carries none of the
-        // Freedoom-specific names, and without this every level fell down the same shared
-        // chain onto the same flat: measured on a real import, four of the five became
-        // CEIL5_1 and the ground stopped saying anything about the difficulty. A level takes
-        // a flat another has only when it has no alternative left.
-        val taken = HashSet<String>()
+        // Chosen by measuring this WAD's own flats rather than by asking for names it may
+        // not have. See FloorPicker for what is measured and why.
+        val chosen = FloorPicker.choose(w)
 
         return Array(GameData.skills.size) { skill ->
-            val wanted = listOf(GameData.skills[skill].flat) + GameData.FLOOR_FALLBACKS
-            val present = wanted.filter { w.flatIndex(it) >= 0 }
-            val name = present.firstOrNull { it !in taken } ?: present.firstOrNull()
-            if (name == null) {
+            val flat = chosen.getOrNull(skill) ?: chosen.lastOrNull()
+            if (flat == null) {
+                floorNames[skill] = "-"
                 Log.i(TAG, "no floor for ${GameData.skills[skill].name}")
                 return@Array null
             }
-            taken += name
-            floorNames[skill] = name
-            Log.i(TAG, "floor for ${GameData.skills[skill].name}: $name")
+            floorNames[skill] = flat.name
+            Log.i(TAG, "floor for ${GameData.skills[skill].name}: ${flat.name} " +
+                "(luminance ${"%.1f".format(flat.luminance)}, chroma ${"%.1f".format(flat.chroma)})")
 
-            val f = w.decodeFlat(w.flatIndex(name))
+            val f = w.decodeFlat(flat.index)
             // Dimmed once, here, instead of by a colour filter on a full-screen fill every
             // frame. The floor is dimmed harder than the sprites: see FLOOR_DIM_PERCENT.
             f.pixels.dimInPlace(FLOOR_DIM_PERCENT)

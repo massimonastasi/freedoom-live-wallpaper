@@ -115,13 +115,12 @@ tasks.register("reduceWad") {
             // asset no longer says what it is derived from.
             add("FREEDOOM")
             add("PLAYPAL")                    // palette, and the damage flash ramp
-            // One floor flat per skill level, plus the fallbacks the loader walks when a
-            // user-supplied WAD is missing one. Restated here because GameData is app code
-            // and not on the build script's classpath; WadFileTest fails if the two drift.
-            addAll(listOf("AQF069", "RROCK13", "GRNROCK", "BLOOD1", "RROCK01"))
-            addAll(listOf("RROCK03", "FLOOR1_6", "FLAT14", "FLOOR0_1"))
             add("F_START"); add("F_END")      // flat markers: flatIndex searches between them
             for (d in 0..9) add("STTNUM$d")   // readout numerals
+            // Floors are chosen further down by measuring them, not named here. The app does
+            // the same at runtime through FloorPicker; this cannot call that code, because
+            // GameData is not on the build script's classpath, so WadFileTest checks the
+            // shipped asset against the app's own choice and fails if the two disagree.
         }
         val keptRotations = charArrayOf('0', '1', '3', '5', '7')
 
@@ -140,11 +139,45 @@ tasks.register("reduceWad") {
 
         val count = int(4)
         val dir = int(8)
+        fun nameAt(i: Int) = String(bytes, dir + i * 16 + 8, 8, Charsets.US_ASCII).trimEnd('\u0000')
+
+        // The floors, measured the way FloorPicker measures them at runtime: mean luminance
+        // inside a narrow band, so the backdrop never competes with launcher icons, then
+        // spread across the colourfulness order so the ladder climbs by hue rather than
+        // brightness. Naming flats here would mean naming Freedoom's, which is exactly the
+        // dependency the app has just dropped.
+        val palAt = int(dir + (0 until count).first { nameAt(it) == "PLAYPAL" } * 16)
+        val fStart = (0 until count).first { nameAt(it) == "F_START" }
+        val fEnd = (0 until count).first { nameAt(it) == "F_END" }
+
+        val flats = (fStart + 1 until fEnd).mapNotNull { i ->
+            val e = dir + i * 16
+            if (int(e + 4) != 64 * 64) return@mapNotNull null
+            val at = int(e)
+            var r = 0L; var g = 0L; var b = 0L
+            for (q in 0 until 64 * 64) {
+                val c = palAt + (bytes[at + q].toInt() and 0xFF) * 3
+                r += bytes[c].toInt() and 0xFF
+                g += bytes[c + 1].toInt() and 0xFF
+                b += bytes[c + 2].toInt() and 0xFF
+            }
+            val n = (64 * 64).toDouble()
+            val mr = r / n; val mg = g / n; val mb = b / n
+            listOf(nameAt(i), (0.299 * mr + 0.587 * mg + 0.114 * mb).toString(), (maxOf(mr, mg, mb) - minOf(mr, mg, mb)).toString(), maxOf(mr, mg, mb).toString())
+        }
+        val wanted = 5                                            // one per skill level
+        // Peak channel as well as luminance: a saturated blue measures a low luminance, because
+        // the formula weights blue at 0.114, and is glaring on screen. See FloorPicker.
+        val ranked = flats.filter { it[1].toDouble() in 20.0..45.0 && it[3].toDouble() <= 90.0 }
+            .sortedBy { it[2].toDouble() }
+        val floors = (0 until wanted).map { ranked[it * (ranked.size - 1) / (wanted - 1)][0] }.toSet()
+        logger.lifecycle("reduceWad: floors by measurement: ${floors.joinToString()}")
+
         val kept = mutableListOf<Triple<String, Int, Int>>()      // name, offset, size
         for (i in 0 until count) {
             val e = dir + i * 16
-            val name = String(bytes, e + 8, 8, Charsets.US_ASCII).trimEnd('\u0000')
-            if (needed(name)) kept += Triple(name, int(e), int(e + 4))
+            val name = nameAt(i)
+            if (needed(name) || name in floors) kept += Triple(name, int(e), int(e + 4))
         }
 
         val out = ByteArrayOutputStream()

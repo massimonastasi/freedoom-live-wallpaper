@@ -414,46 +414,22 @@ object GameData {
         val fast: Boolean = false,
         /** p_mobj.c:456 — killed monsters come back. */
         val respawn: Boolean = false,
-        /**
-         * Floor flat for this level, so the ground itself says how bad things have got.
-         *
-         * Chosen by decoding all 240 flats in the IWAD and looking at them, because a mean
-         * colour hides the texture: FLOOR1_7 measures as an ordinary dark red and is really
-         * two glaring panels, and GATE1 is a circular emblem that tiles into a repeating
-         * logo. Both were rejected on sight, not on their numbers.
-         *
-         * The ladder climbs by **hue, not brightness**. All five sit between 28 and 38 mean
-         * luminance, so the contrast behind the launcher icons never changes while the mood
-         * does: neutral, then masonry, then a sick green, then blood, then magma.
-         *
-         * The first level was CEIL5_1, which measures *brighter* than most of the others at
-         * 38 and still read as a plain black screen, because it is uniform noise with no
-         * structure at all. FLAT4 sits at the same luminance and is a visible grid, which is
-         * the difference between a dark backdrop and no backdrop. Mean luminance alone would
-         * never have caught that; looking at it did.
-         */
-        val flat: String,
     )
 
-    /**
-     * Tried in order when a skill's own flat is absent, so a user-supplied WAD that carries
-     * only some of them still gets a floor rather than a flat colour.
-     */
-    val FLOOR_FALLBACKS = listOf("CEIL5_1", "RROCK03", "FLOOR1_6", "FLAT14", "FLOOR0_1")
 
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
-        Skill("I'm too young to die", 4, 215, toughen = 0, halfDamage = true, doubleAmmo = true, flat = "AQF069"),
-        Skill("Hey, not too rough", 4, 160, toughen = 0, flat = "RROCK13"),
-        Skill("Hurt me plenty", 4, 235, toughen = 60, flat = "GRNROCK"),
-        Skill("Ultra-Violence", 4, 375, toughen = 120, flat = "BLOOD1"),
+        Skill("I'm too young to die", 4, 215, toughen = 0, halfDamage = true, doubleAmmo = true),
+        Skill("Hey, not too rough", 4, 160, toughen = 0),
+        Skill("Hurt me plenty", 4, 235, toughen = 60),
+        Skill("Ultra-Violence", 4, 375, toughen = 120),
         // Lower toughen than Ultra-Violence would suggest, and still far harder: this level
         // alone brings fast FleshWorms and monsters that come back, and a wave that refills
         // is a wave the marine is very unlikely to finish. The parameter is not the
         // difficulty; the measured outcome is, and that is what the test asserts.
         Skill(
             "Nightmare!", 5, 520, toughen = 130,
-            doubleAmmo = true, fast = true, respawn = true, flat = "RROCK01",
+            doubleAmmo = true, fast = true, respawn = true,
         ),
     )
 

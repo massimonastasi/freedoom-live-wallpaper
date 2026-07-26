@@ -41,17 +41,22 @@ object WadReducer {
      */
     private val KEPT_ROTATIONS = charArrayOf('0', '1', '3', '5', '7')
 
-    /** Lumps wanted by exact name, as opposed to by sprite prefix. */
-    fun exactNames(): Set<String> = buildSet {
+    /**
+     * Lumps wanted by exact name, as opposed to by sprite prefix.
+     *
+     * The floors are not named here. They are whichever flats FloorPicker chooses from this
+     * particular WAD, so the reducer asks it rather than carrying a list that would be
+     * Freedoom's names applied to somebody else's file.
+     */
+    fun exactNames(source: WadFile): Set<String> = buildSet {
         add("PLAYPAL")                                  // the palette, and every colour read from it
         add("FREEDOOM")                                 // Freedoom's own marker, when present
         add("F_START"); add("F_END")                    // flat markers: flatIndex searches between them
-        addAll(GameData.skills.map { it.flat })         // one floor per skill
-        addAll(GameData.FLOOR_FALLBACKS)
+        addAll(FloorPicker.choose(source).map { it.name })
         for (d in 0..9) add("STTNUM$d")                 // readout numerals
     }
 
-    fun needed(name: String, exact: Set<String> = exactNames()): Boolean {
+    fun needed(name: String, exact: Set<String>): Boolean {
         if (name in exact) return true
         val prefix = GameData.spritePrefixes.firstOrNull { name.startsWith(it) } ?: return false
         // prefix + frame + rotation, optionally a second pair for the mirrored angle.
@@ -68,7 +73,7 @@ object WadReducer {
      * should treat as a rejection rather than write an empty file.
      */
     fun reduce(source: WadFile, target: File): Int {
-        val exact = exactNames()
+        val exact = exactNames(source)
         val kept = (0 until source.lumpCount).filter { needed(source.nameAt(it), exact) }
         if (kept.isEmpty()) return -1
 
