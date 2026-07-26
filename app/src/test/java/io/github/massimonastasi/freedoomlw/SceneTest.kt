@@ -52,9 +52,19 @@ class SceneTest {
                 a.frame(t)
 
                 if (a.creature != null) {
-                    val r = a.radius * GameData.FRACUNIT
-                    assertTrue(a.x >= r - 1 && a.x <= worldWidth * GameData.FRACUNIT - r + 1, "tic $t: x outside the world")
-                    assertTrue(a.y >= r - 1 && a.y <= worldHeight * GameData.FRACUNIT - r + 1, "tic $t: y outside the world")
+                    // Bounded by the drawing margins, not by the collision radius: the
+                    // radius says how wide a thing is for hit tests, and says nothing about
+                    // how far its sprite reaches, which is what has to stay on screen.
+                    val x = a.x / GameData.FRACUNIT
+                    val y = a.y / GameData.FRACUNIT
+                    assertTrue(
+                        x >= Scene.SPAWN_MARGIN && x <= worldWidth - Scene.SPAWN_MARGIN,
+                        "tic $t: x=$x outside the drawable band",
+                    )
+                    assertTrue(
+                        y >= Scene.TOP_MARGIN && y <= worldHeight - Scene.BOTTOM_MARGIN,
+                        "tic $t: y=$y outside the drawable band",
+                    )
                 }
             }
         }
@@ -155,6 +165,39 @@ class SceneTest {
         for (i in 1 until odds.size) {
             assertTrue(odds[i] <= odds[i - 1], "the odds must never rise with the skill: $odds")
         }
+    }
+
+    /**
+     * Nobody may stand close enough to the top edge for their sprite to leave the screen.
+     *
+     * A sprite is anchored at the feet and drawn upwards, so an actor bounded only by its
+     * collision radius can be positioned perfectly legally and still be painted entirely
+     * above the visible area. That is what happened: the marine disappeared off the top.
+     * The radius is 16 to 31 units, the tallest sprite reaches 148.
+     */
+    @Test
+    fun `no sprite is ever drawn off the top of the screen`() {
+        GameData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        var closest = Int.MAX_VALUE
+        for (t in 1..TICRATE * 600) {
+            scene.tick(t)
+            for (a in scene.actors) {
+                if (a.creature == null) continue
+                closest = minOf(closest, a.y)
+                assertTrue(
+                    a.y >= Scene.TOP_MARGIN * GameData.FRACUNIT,
+                    "tic $t: ${a.creature?.name} at y=${a.y / GameData.FRACUNIT}, " +
+                        "above the ${Scene.TOP_MARGIN} unit top margin, so its sprite is off screen",
+                )
+            }
+        }
+        // The bound must actually be exercised, or the test proves nothing.
+        assertTrue(
+            closest < (Scene.TOP_MARGIN + 80) * GameData.FRACUNIT,
+            "nobody ever went near the top edge: closest was ${closest / GameData.FRACUNIT}",
+        )
     }
 
     @Test

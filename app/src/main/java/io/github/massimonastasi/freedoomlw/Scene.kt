@@ -403,7 +403,39 @@ class Scene(
      * put them off screen within seconds.
      */
     private val marginX = minOf(SPAWN_MARGIN, worldWidth / 4)
-    private val marginY = minOf(SPAWN_MARGIN, worldHeight / 4)
+
+    /**
+     * Vertical margins, which are **not** symmetric, because a sprite is anchored at its
+     * feet and grows upwards from there.
+     *
+     * At the bottom edge the anchor can sit almost on the boundary and the whole sprite is
+     * still drawn above it. At the top the sprite reaches far past the actor's own position,
+     * so an actor standing near y=0 is drawn entirely off the screen — which is exactly what
+     * was reported: the marine vanishing off the top. Bounding movement by the actor radius
+     * alone allowed it, since the marine's radius is 16 units and his sprite reaches 108.
+     *
+     * See [TOP_MARGIN] and [BOTTOM_MARGIN] for where the numbers come from.
+     */
+    private val marginTop = minOf(TOP_MARGIN, worldHeight / 3)
+    private val marginBottom = minOf(BOTTOM_MARGIN, worldHeight / 8)
+
+    /**
+     * Where an actor may *appear*, which is not the same as where it may walk.
+     *
+     * Movement only has to keep the sprite on screen, and at the bottom that costs very
+     * little. Arriving is different: a creature that materialises right on the bottom edge
+     * is technically drawn in full but reads as appearing out of the dock, so an arrival
+     * keeps the full spawn margin there and walks out of it afterwards if it wants to.
+     */
+    private val spawnMarginBottom = minOf(SPAWN_MARGIN, worldHeight / 4)
+
+    // The single set of bounds every actor obeys, in fixed-point. Movement, spawning,
+    // wandering targets and the retreat step all used to derive these separately, in four
+    // different ways, which is how the top edge came to be wrong in only one of them.
+    private val minX = marginX * FRACUNIT
+    private val maxX = (worldWidth - marginX) * FRACUNIT
+    private val minY = marginTop * FRACUNIT
+    private val maxY = (worldHeight - marginBottom) * FRACUNIT
 
     /**
      * P_Random returns 0-255: in the original engine it serves probabilities and small
@@ -421,7 +453,7 @@ class Scene(
         // never seen.
         a.loadout = Loadout().apply { copyFrom(kept) }
         a.x = randomIn(marginX, worldWidth - marginX) * FRACUNIT
-        a.y = randomIn(marginY, worldHeight - marginY) * FRACUNIT
+        a.y = randomIn(marginTop, worldHeight - spawnMarginBottom) * FRACUNIT
         // Longer than the creatures' reactiontime of 8 tics, which at under a quarter of a
         // second reads as no pause at all. He arrives alone and the first enemy is seconds
         // away, so he can afford to stand in the fog long enough to be noticed.
@@ -457,7 +489,7 @@ class Scene(
         // the boundary left half the creature off screen, and a quick kill could then remove
         // it before it had ever been properly seen.
         a.x = (if (pRandom() and 1 == 0) marginX else worldWidth - marginX) * FRACUNIT
-        a.y = randomIn(marginY, worldHeight - marginY) * FRACUNIT
+        a.y = randomIn(marginTop, worldHeight - spawnMarginBottom) * FRACUNIT
         materialise(a)
     }
 
@@ -477,7 +509,7 @@ class Scene(
     /** Drops a pickup somewhere on the map, or at a chosen spot. */
     private fun spawnItem(
         x: Int = randomIn(marginX, worldWidth - marginX) * FRACUNIT,
-        y: Int = randomIn(marginY, worldHeight - marginY) * FRACUNIT,
+        y: Int = randomIn(marginTop, worldHeight - spawnMarginBottom) * FRACUNIT,
     ) {
         val it = GameData.items[GameData.dropTable[pRandom() % GameData.dropTable.size]]
         val a = Actor(it.spriteIndex)
@@ -489,11 +521,9 @@ class Scene(
         actors.add(a)
     }
 
-    private fun clampX(x: Int) =
-        x.coerceIn(marginX * FRACUNIT, (worldWidth - marginX) * FRACUNIT)
+    private fun clampX(x: Int) = x.coerceIn(minX, maxX)
 
-    private fun clampY(y: Int) =
-        y.coerceIn(marginY * FRACUNIT, (worldHeight - marginY) * FRACUNIT)
+    private fun clampY(y: Int) = y.coerceIn(minY, maxY)
 
     // ---------------------------------------------------------------- interaction
 
@@ -858,8 +888,8 @@ class Scene(
                 // The marine does not walk into the demons: he backs off and shoots from a
                 // distance. Charging them, he died every twenty seconds and never got past
                 // the fifth wave.
-                a.targetX = (2 * a.x - target.x).coerceIn(a.radius * FRACUNIT, (worldWidth - a.radius) * FRACUNIT)
-                a.targetY = (2 * a.y - target.y).coerceIn(a.radius * FRACUNIT, (worldHeight - a.radius) * FRACUNIT)
+                a.targetX = clampX(2 * a.x - target.x)
+                a.targetY = clampY(2 * a.y - target.y)
             } else {
                 a.targetX = target.x
                 a.targetY = target.y
@@ -896,8 +926,8 @@ class Scene(
         abs(a.targetX - a.x) < 32 * FRACUNIT && abs(a.targetY - a.y) < 32 * FRACUNIT
 
     private fun newTarget(a: Actor) {
-        a.targetX = randomIn(a.radius, worldWidth - a.radius) * FRACUNIT
-        a.targetY = randomIn(a.radius, worldHeight - a.radius) * FRACUNIT
+        a.targetX = randomIn(marginX, worldWidth - marginX) * FRACUNIT
+        a.targetY = randomIn(marginTop, worldHeight - marginBottom) * FRACUNIT
     }
 
     /** P_Move: a step in the current direction via the xspeed/yspeed tables, all integer. */
@@ -907,9 +937,8 @@ class Scene(
         val speed = (a.creature?.speed ?: return false) * (if (a.fast) 2 else 1)
         val tryX = a.x + speed * xspeed[d]
         val tryY = a.y + speed * yspeed[d]
-        val r = a.radius * FRACUNIT
-        if (tryX < r || tryX > (worldWidth * FRACUNIT) - r) return false
-        if (tryY < r || tryY > (worldHeight * FRACUNIT) - r) return false
+        if (tryX < minX || tryX > maxX) return false
+        if (tryY < minY || tryY > maxY) return false
         a.x = tryX
         a.y = tryY
         a.facing = d                 // walking: the sprite looks where it is going
@@ -1013,7 +1042,9 @@ class Scene(
         }
     }
 
-    private companion object {
+    // internal rather than private so the tests can assert against these tuning values
+    // instead of restating them, which would let the two drift apart silently.
+    internal companion object {
         /**
          * Waves that must be cleared in a single life to earn the next skill level.
          *
@@ -1049,6 +1080,33 @@ class Scene(
          * hundred map units of screen space, which is what this has to clear.
          */
         const val SPAWN_MARGIN = 100
+
+        /**
+         * How far below the top edge an actor may stand, in map units.
+         *
+         * A sprite hangs above its anchor, so this is what keeps a whole creature on screen
+         * at the top; the sideways margin above cannot serve, since the vertical reach is
+         * larger and the two edges are not symmetric.
+         *
+         * Measured on the shipped assets rather than estimated. Reading the patch headers,
+         * the tallest reach above the anchor is the PainLord at 74 pixels, against 61 for
+         * the ShotgunZombie and 54 for the marine. A sprite pixel is two map units, because
+         * the renderer draws sprites at SPRITE_SCALE and the world at PX_PER_UNIT, a ratio
+         * of 3 to 1.5 that holds at every display density. Seventy-four pixels are therefore
+         * 148 map units.
+         *
+         * If SPRITE_SCALE or PX_PER_UNIT ever change, this changes with them.
+         */
+        const val TOP_MARGIN = 148
+
+        /**
+         * How far above the bottom edge an actor may stand, in map units.
+         *
+         * Small on purpose: the sprite is drawn upwards from the anchor, so at the bottom
+         * only the few pixels that hang below the feet can be clipped. Measured the same
+         * way, the worst is the Trilobite at 8 pixels, so 16 map units.
+         */
+        const val BOTTOM_MARGIN = 16
 
         /** How long the marine stands still after materialising. */
         const val PLAYER_REACTION = TICRATE / 2
