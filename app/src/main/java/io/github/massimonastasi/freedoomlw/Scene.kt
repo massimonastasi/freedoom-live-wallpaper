@@ -179,6 +179,15 @@ class Scene(
     private val worldHeight: Int,
     /** Skill to open on. Only the first run uses it: a death always drops back to zero. */
     startSkill: Int = 0,
+    /**
+     * Skip the wait before the very first arrival.
+     *
+     * For the picker preview, where the wallpaper has a few seconds to make its case and
+     * three of them spent watching one marine stand alone is most of that budget. Only the
+     * opening wave is rushed; everything after it keeps the authored pacing, so the preview
+     * is not a different game.
+     */
+    instantStart: Boolean = false,
 ) {
 
     val actors = ArrayList<Actor>()
@@ -202,6 +211,9 @@ class Scene(
 
     /** Waves cleared since the last death, which is what earns the promotion. */
     private var cleared = 0
+
+    /** Consumed by the first wave that is armed, so only that one skips its delay. */
+    private var rushOpening = instantStart
 
     /** What the corner readout shows. Zero while the marine is down. */
     val playerHealth: Int get() = player?.takeIf { !it.dead }?.health?.coerceAtLeast(0) ?: 0
@@ -387,7 +399,8 @@ class Scene(
             queue.add(c)
         }
         spawnIndex = 0
-        nextSpawnAt = tic + w.spawnDelay
+        nextSpawnAt = tic + if (rushOpening) 0 else w.spawnDelay
+        rushOpening = false
     }
 
     // ---------------------------------------------------------------- spawning

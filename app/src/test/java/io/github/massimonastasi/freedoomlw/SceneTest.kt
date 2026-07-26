@@ -200,6 +200,35 @@ class SceneTest {
         )
     }
 
+    /**
+     * The preview opens on a fight, and only the opening wave is rushed: a preview that ran
+     * at a different pace throughout would be advertising a different wallpaper.
+     */
+    @Test
+    fun `an instant start fills the scene at once but leaves later waves alone`() {
+        fun demons(s: Scene) = s.actors.count { it.creature != null && !it.isPlayer && !it.dead }
+
+        // The first tick brings the marine in and arms the wave, returning before arrivals
+        // are considered, so the earliest anyone can enter is the tick after that.
+        GameData.clearRandom()
+        val normal = Scene(worldWidth, worldHeight)
+        normal.tick(1); normal.tick(2)
+        assertEquals(0, demons(normal), "the normal opening must leave the marine alone at first")
+
+        GameData.clearRandom()
+        val preview = Scene(worldWidth, worldHeight, instantStart = true)
+        preview.tick(1); preview.tick(2)
+        assertTrue(demons(preview) > 0, "the preview must open with an enemy already present")
+
+        // Past the first wave the two must agree: run on until a wave has been cleared.
+        var t = 2
+        while (t < TICRATE * 300 && preview.wave == 0) preview.tick(++t)
+        assertTrue(preview.wave > 0, "the preview never got past the opening wave")
+        val armed = t
+        while (t < armed + GameData.waves[preview.wave].spawnDelay - 1) preview.tick(++t)
+        assertEquals(0, demons(preview), "the second wave must keep its authored delay")
+    }
+
     @Test
     fun `the arsenal keeps the best loaded weapon and falls back to the pistol`() {
         val kit = Loadout()

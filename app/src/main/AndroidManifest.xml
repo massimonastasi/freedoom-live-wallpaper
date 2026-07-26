@@ -13,6 +13,21 @@
         android:label="@string/app_name"
         android:supportsRtl="true">
 
+        <!--
+            The launcher icon exists only to open the wallpaper picker. It is transparent and
+            finishes in onCreate, so it never draws: no edge-to-edge or predictive back
+            obligations follow from it under targetSdk 36.
+        -->
+        <activity
+            android:name=".SetupActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".FreedoomWallpaperService"
             android:exported="true"

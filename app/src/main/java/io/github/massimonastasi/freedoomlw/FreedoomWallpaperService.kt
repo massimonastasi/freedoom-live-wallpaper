@@ -300,6 +300,9 @@ class FreedoomWallpaperService : WallpaperService() {
             scene = Scene(
                 worldWidth = (width / pxPerUnit).toInt(),
                 worldHeight = (height / pxPerUnit).toInt(),
+                // The picker preview is the shop window, and it is watched for seconds, not
+                // minutes: the opening wave arrives at once rather than after the usual pause.
+                instantStart = isPreview,
             )
         }
 

@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Freedoom Live Wallpaper</string>
     <string name="wallpaper_description">An endless battle on your home screen. Freedoom sprites, original timing, minimal battery use.</string>
+    <string name="no_wallpaper_picker">This device has no live wallpaper picker. Set it from Settings, Wallpaper.</string>
 </resources>
