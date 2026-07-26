@@ -612,7 +612,7 @@ class FreedoomWallpaperService : WallpaperService() {
             if (s.skill != debugSkill || s.wave != debugWave) {
                 debugSkill = s.skill
                 debugWave = s.wave
-                debugRight = "skill ${s.skill + 1}/${GameData.skills.size}  wave ${s.wave + 1}/${GameData.waves.size}"
+                debugRight = "skill ${s.skill + 1}/${GameData.skills.size}  wave ${s.wave + 1}/${GameData.skills[s.skill].waveCount}"
             }
 
             // Clear of the status bar, which a wallpaper is drawn behind.

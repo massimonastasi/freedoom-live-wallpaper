@@ -368,11 +368,17 @@ class Scene(
         }
         if (tic >= nextWaveAt) {
             nextWaveAt = 0
-            wave = (wave + 1) % GameData.waves.size
+            wave = (wave + 1) % rules.waveCount
             // The whole sequence then replays one skill level harder, up to Nightmare,
             // which is where it stays.
             cleared++
-            if (cleared % WAVES_PER_PROMOTION == 0 && skill < GameData.skills.size - 1) skill++
+            // Reset rather than modulo: each skill runs a different number of waves, so a
+            // running total taken against a changing divisor would promote at the wrong
+            // place the moment the ladder moved.
+            if (cleared >= rules.waveCount) {
+                cleared = 0
+                if (skill < GameData.skills.size - 1) skill++
+            }
             startWave()
         }
     }
@@ -452,7 +458,7 @@ class Scene(
      * rather than a Zombie: the wave keeps roughly the weight it was written with. Only if
      * nothing below exists does it look upwards.
      */
-    private fun substitute(index: Int): Int {
+    internal fun substitute(index: Int): Int {
         val ok = drawable ?: return index
         if (ok.getOrElse(index) { true }) return index
         for (i in index - 1 downTo 0) if (ok.getOrElse(i) { false }) return i
@@ -1154,19 +1160,6 @@ class Scene(
     // internal rather than private so the tests can assert against these tuning values
     // instead of restating them, which would let the two drift apart silently.
     internal companion object {
-        /**
-         * Waves that must be cleared in a single life to earn the next skill level.
-         *
-         * The whole table, so the marine has to survive the full sequence to be promoted.
-         * Measured, that almost never happens: over ten minutes he clears at most ten of
-         * the sixteen waves before dying, so in practice the scene stays on the lowest
-         * skill. It is the same trade-off restarting from wave 1 already carries, and this
-         * is the one number to lower if the ladder should actually be climbed: measured at
-         * four, the same ten minutes reach "Hurt me plenty" and spend 58/39/1 percent of
-         * the time across the first three levels.
-         */
-        val WAVES_PER_PROMOTION = GameData.waves.size
-
         /**
          * How long a body stays before it is removed.
          *

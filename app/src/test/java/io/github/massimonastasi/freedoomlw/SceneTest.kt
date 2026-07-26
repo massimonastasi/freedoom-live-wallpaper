@@ -139,7 +139,10 @@ class SceneTest {
      * and a single run would only ever measure one shuffle of the drops.
      */
     private fun reachedLastWave(skill: Int, runs: Int = 400): Int {
-        val last = GameData.waves.size - 1
+        // Each skill runs its own prefix of the table, so "the last wave" is that skill's
+        // last, not the bestiary's. Measuring them all against wave 26 would only ever be
+        // measuring whether the Cyberlord had been reached.
+        val last = GameData.skills[skill].waveCount - 1
         var wins = 0
         for (r in 0 until runs) {
             GameData.clearRandom()
@@ -161,8 +164,8 @@ class SceneTest {
     @Test
     fun `one life reaches the last wave, less and less often as it hardens`() {
         val odds = GameData.skills.indices.map { reachedLastWave(it) }
-        println("reached wave ${GameData.waves.size} unaided: " + GameData.skills.indices.joinToString {
-            "${GameData.skills[it].name} ${odds[it] / 10}.${odds[it] % 10}%"
+        println("finished its own table unaided: " + GameData.skills.indices.joinToString {
+            "${GameData.skills[it].name} (${GameData.skills[it].waveCount}w) ${odds[it] / 10}.${odds[it] % 10}%"
         })
 
         // The curve that was asked for, in tenths of a percent: 95, 75, 35, 5, 0.5, now
@@ -458,8 +461,13 @@ class SceneTest {
         }
         assertTrue(delays.first() > delays.last(), "no acceleration between the first and last wave")
         // Paired arrivals only exist in the second half.
-        val firstBurst = GameData.waves.indexOfFirst { it.burst > 1 }
-        assertTrue(firstBurst >= GameData.waves.size / 2, "multiple arrivals too early: wave ${firstBurst + 1}")
+        // The crowd cap, which is what a phone screen actually shows: at most two arrivals
+        // queued and never more than one at a time, so nothing can pile six bodies into a
+        // single wave again. Difficulty lives in how far down the bestiary a skill runs.
+        for ((i, w) in GameData.waves.withIndex()) {
+            assertTrue(w.order.size <= 2, "wave ${i + 1} queues ${w.order.size} arrivals")
+            assertTrue(w.burst == 1, "wave ${i + 1} spawns ${w.burst} at once")
+        }
     }
 
     @Test

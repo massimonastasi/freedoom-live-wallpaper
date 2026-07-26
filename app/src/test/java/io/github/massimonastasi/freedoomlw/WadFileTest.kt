@@ -67,14 +67,22 @@ class WadFileTest {
         // like the bundled one carries no SGN2 and must not be required to. What has to hold
         // is that the file can drive a scene — the marine, every creature, and at least one
         // weapon past the pistol.
-        // The bestiary deliberately reaches past this file: five of its entries arrived with
-        // Phase 2 and are absent from a Phase 1 IWAD, which is what Scene.substitute exists
-        // for. So what is required is the marine plus every creature the wave table actually
-        // names - the ones the wallpaper cannot open without.
-        val required = GameData.waves.flatMap { w -> w.order.map { GameData.creatures[it].lumpPrefix } }
-            .distinct() + GameData.player.lumpPrefix
-        for (prefix in required) {
-            assertTrue(wad.lumpsStartingWith(prefix).isNotEmpty(), "no $prefix sprite at all")
+        // The wave table names every creature in the bestiary, five of which arrived with
+        // Phase 2 and are simply absent from a Phase 1 IWAD like this one. Presence is
+        // therefore the wrong question: what has to hold is that the marine can be drawn,
+        // and that every creature a wave names resolves - through Scene.substitute where
+        // the file has never heard of it - to something this WAD can actually show.
+        assertTrue(
+            wad.lumpsStartingWith(GameData.player.lumpPrefix).isNotEmpty(),
+            "no marine sprite at all",
+        )
+        val drawable = BooleanArray(GameData.creatures.size) {
+            wad.lumpsStartingWith(GameData.creatures[it].lumpPrefix).isNotEmpty()
+        }
+        assertTrue(drawable.any { it }, "the shipped WAD draws no creature at all")
+        val scene = Scene(1080, 2400, drawable = drawable)
+        for (w in GameData.waves) for (i in w.order) {
+            assertTrue(drawable[scene.substitute(i)], "wave creature $i resolves to nothing drawable")
         }
         val weaponPickups = GameData.items.filter { it.kind == GameData.ITEM_WEAPON }
         assertTrue(

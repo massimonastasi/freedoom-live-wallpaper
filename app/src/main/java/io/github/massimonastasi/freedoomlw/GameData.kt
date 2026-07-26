@@ -534,13 +534,27 @@ object GameData {
          */
         val dropInterval: Int,
         /**
+         * How far into [waves] this skill runs, and therefore what it can ever meet.
+         *
+         * The wallpaper's second lever, and the one the ladder is now spread across. The
+         * bestiary reaches a 4000-health Cyberlord, and a table ending there cannot also be
+         * something the easiest skill finishes nineteen times in twenty - that was measured,
+         * at 29%. So the easy levels stop partway down the list and the hard ones carry on:
+         * same table, different depth. Finishing this many waves in one life is what earns
+         * the promotion, so a skill's table is also its price.
+         */
+        val waveCount: Int,        /**
          * Odds out of 256 that an arrival is replaced by the next creature up the bestiary.
          *
          * The engine's hard skill does not merely add monsters, it admits nastier ones: the
-         * MTF_HARD things in a map include creatures the easy pass never spawns. With only
-         * sixteen authored waves there is nowhere to hide that, so it is applied per arrival
-         * instead. Counting arrivals alone was measured to make no difference at all in the
-         * opening wave — two zombies at every skill, and a marine who beats them every time.
+         * MTF_HARD things in a map include creatures the easy pass never spawns. Twenty-six
+         * authored waves are still not a map, so it is applied per arrival instead. Counting
+         * arrivals alone was measured to make no difference at all in the opening wave — two
+         * zombies at every skill, and a marine who beats them every time.
+         *
+         * It is also the lever that decides "Hurt me plenty": at that level depth barely
+         * moved the odds (20 waves 46%, 22 waves 44%) while toughen moved them straight
+         * through the target, 60 -> 105 taking 46% to 36.7%.
          */
         val toughen: Int = 0,
         /** p_inter.c:799 — the player takes half damage in trainer mode. */
@@ -556,16 +570,16 @@ object GameData {
 
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
-        Skill("I'm too young to die", 4, 160, toughen = 0, halfDamage = true, doubleAmmo = true),
-        Skill("Hey, not too rough", 4, 92, toughen = 0),
-        Skill("Hurt me plenty", 4, 140, toughen = 60),
-        Skill("Ultra-Violence", 4, 330, toughen = 120),
+        Skill("I'm too young to die", 4, 160, waveCount = 10, toughen = 0, halfDamage = true, doubleAmmo = true),
+        Skill("Hey, not too rough", 4, 92, waveCount = 14, toughen = 0),
+        Skill("Hurt me plenty", 4, 140, waveCount = 20, toughen = 105),
+        Skill("Ultra-Violence", 4, 330, waveCount = 22, toughen = 120),
         // Lower toughen than Ultra-Violence would suggest, and still far harder: this level
         // alone brings fast FleshWorms and monsters that come back, and a wave that refills
         // is a wave the marine is very unlikely to finish. The parameter is not the
         // difficulty; the measured outcome is, and that is what the test asserts.
         Skill(
-            "Nightmare!", 5, 780, toughen = 130,
+            "Nightmare!", 5, 780, waveCount = 26, toughen = 130,
             doubleAmmo = true, fast = true, respawn = true,
         ),
     )
@@ -624,29 +638,51 @@ object GameData {
      * can outlast.
      */
     val waves = listOf(
-        //   creatures            delay                  burst  rest after
-        // Creature indices, remapped when the bestiary was reordered by health: the waves
-        // name positions, so growing the table moved every one of them. Zombie 0, Shotgun 1,
-        // Serpentipede 2, FleshWorm 5, Trilobite 7, PainLord 11.
+        // The table names every creature in the bestiary, in health order, and each one
+        // enters **alone** in a wave of its own before being escorted in the wave after.
+        // Nothing in here asks whether the loaded WAD has that creature: five of them exist
+        // only in a Phase 2 IWAD, and on a Phase 1 file Scene.substitute walks down to
+        // something it can draw. One table, every IWAD.
+        //
+        // Twenty-six waves and never more than two arrivals at once, where it used to be
+        // sixteen reaching three with a burst of two - six bodies on screen against two.
+        // Crowding was the complaint, so the difficulty moved off "how many at once" and
+        // onto "how far down the list", which is [Skill.waveCount]: each skill runs a
+        // longer prefix of this table, and only Nightmare ever meets the Cyberlord.
+        //
+        // Compressing the pacing was tried and measured: shrinking the delays and rests
+        // took the mean life from 130 s to 85 s and the easiest skill from 29% to 17%. The
+        // marine needs the gaps. They stayed.
+        //   creatures                delay              burst  rest after
         Wave(intArrayOf(0), /*             2.00 s */ TICRATE * 2, 1, TICRATE * 5 / 4),
         Wave(intArrayOf(0, 0), /*          1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
         Wave(intArrayOf(1), /*             1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(0, 1), /*          1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(0, 1), /*          1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
         Wave(intArrayOf(2), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(1, 2), /*          1.50 s */ TICRATE * 3 / 2, 1, TICRATE),
+        Wave(intArrayOf(1, 2), /*          1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(3), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(2, 3), /*          1.50 s */ TICRATE * 3 / 2, 1, TICRATE),
+        Wave(intArrayOf(4), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(3, 4), /*          1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
         Wave(intArrayOf(5), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(2, 5), /*          1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
-        Wave(intArrayOf(1, 2, 5), /*       1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
+        Wave(intArrayOf(4, 5), /*          1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
+        Wave(intArrayOf(6), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(5, 6), /*          1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
         Wave(intArrayOf(7), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(5, 7), /*          1.00 s */ TICRATE, 1, TICRATE),
-        Wave(intArrayOf(2, 5, 7), /*       1.00 s */ TICRATE, 1, TICRATE),
-        Wave(intArrayOf(1, 2, 5), /*       1.00 s */ TICRATE, 2, TICRATE),
-        Wave(intArrayOf(7, 7), /*          1.00 s */ TICRATE, 1, TICRATE),
-        Wave(intArrayOf(5, 7, 2), /*       0.75 s */ TICRATE * 3 / 4, 2, TICRATE),
-        Wave(intArrayOf(11), /*            0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 3),
-    )
-
-    /**
+        Wave(intArrayOf(6, 7), /*          1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(8), /*             1.00 s */ TICRATE, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(7, 8), /*          1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(9), /*             1.00 s */ TICRATE, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(8, 9), /*          1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(10), /*            1.00 s */ TICRATE, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(9, 10), /*         0.75 s */ TICRATE * 3 / 4, 1, TICRATE),
+        Wave(intArrayOf(11), /*            0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(10, 11), /*        0.75 s */ TICRATE * 3 / 4, 1, TICRATE),
+        // The last two arrive alone and stay alone. The Overlord takes 71% of the screen
+        // width - measured, not guessed - so an escort would leave nowhere to look.
+        Wave(intArrayOf(12), /*            0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 2),
+        Wave(intArrayOf(13), /*            0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 3),
+    )    /**
      * Every sprite prefix in use, in a stable order. Each Creature/Projectile/Item stores
      * its own index here, so the draw loop needs no lookup at all.
      */
