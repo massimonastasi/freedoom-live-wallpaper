@@ -43,9 +43,12 @@ class FreedoomWallpaperService : WallpaperService() {
     /** Floor texture from the WAD, tiled behind the scene. Null when unavailable. */
     private var floorTile: Bitmap? = null
 
-    /** Status bar numerals from the WAD: ten digits plus the percent sign. */
+    /** Status bar numerals from the WAD. */
     private var digits: Array<Bitmap>? = null
-    private var percent: Bitmap? = null
+
+    /** Readout colours, taken from the active WAD's palette. */
+    private var healthColor = 0xFF77FF6F.toInt()
+    private var armorColor = 0xFF7373FF.toInt()
 
     override fun onCreate() {
         super.onCreate()
@@ -113,7 +116,8 @@ class FreedoomWallpaperService : WallpaperService() {
         }
         val loaded = Array(10) { lump("STTNUM$it") ?: return }
         digits = loaded
-        percent = lump("STTPRCNT")
+        healthColor = w.paletteColor(the engineData.PALETTE_HEALTH)
+        armorColor = w.paletteColor(the engineData.PALETTE_ARMOR)
     }
 
     override fun onCreateEngine(): Engine = FreedoomEngine()
@@ -418,14 +422,18 @@ class FreedoomWallpaperService : WallpaperService() {
             val armor = s.playerArmor
             // Digit counting rather than toString: the draw loop allocates nothing anywhere
             // else, and two throwaway strings forty times a second is not the place to start.
-            val widest = maxOf(digitCount(health), digitCount(armor)) + 1   // plus the percent sign
+            val widest = maxOf(digitCount(health), digitCount(armor))
             val blockW = widest * gw
             val blockH = gh * 2 + pad
 
             val left = if (readoutCorner and 1 == 0) pad else frame.width() - blockW - pad
             val top = if (readoutCorner and 2 == 0) pad else frame.height() - blockH - pad
 
+            // Colour is what tells the two apart, which is why the percent sign is gone: it
+            // occupied a glyph's width to say nothing.
+            hudPaint.colorFilter = healthFilter
             drawNumber(canvas, health, left, top, scale)
+            hudPaint.colorFilter = armorFilter
             drawNumber(canvas, armor, left, top + gh + pad, scale)
         }
 
@@ -447,11 +455,6 @@ class FreedoomWallpaperService : WallpaperService() {
                 canvas.drawBitmap(g, matrix, hudPaint)
                 cursor += g.width * scale
                 divisor /= 10
-            }
-            percent?.let {
-                matrix.setScale(scale, scale)
-                matrix.postTranslate(cursor, y)
-                canvas.drawBitmap(it, matrix, hudPaint)
             }
         }
 
@@ -481,6 +484,31 @@ class FreedoomWallpaperService : WallpaperService() {
          * dimming them a further 38% left them barely legible against the floor.
          */
         private val hudPaint = Paint().apply { isFilterBitmap = false }
+
+        /**
+         * Recolours the red numerals into a palette colour.
+         *
+         * The glyphs are essentially a red ramp, so moving the red channel into the target
+         * colour's proportions keeps every bit of the shading inside each digit. Flattening
+         * with a SRC_IN filter would replace it with a flat silhouette. It is set on the
+         * paint once, so recolouring costs nothing per frame.
+         */
+        // Built once, on first draw, by which time the WAD has been read and the colours
+        // are known. Rebuilding them per frame would be two allocations forty times a
+        // second for a value that never changes.
+        private val healthFilter by lazy { tint(healthColor) }
+        private val armorFilter by lazy { tint(armorColor) }
+
+        private fun tint(color: Int) = ColorMatrixColorFilter(
+            ColorMatrix(
+                floatArrayOf(
+                    Color.red(color) / 255f, 0f, 0f, 0f, 0f,
+                    Color.green(color) / 255f, 0f, 0f, 0f, 0f,
+                    Color.blue(color) / 255f, 0f, 0f, 0f, 0f,
+                    0f, 0f, 0f, 1f, 0f,
+                )
+            )
+        )
 
         /** Visible placeholder when the WAD is missing: better than a silent black screen. */
         private fun drawPlaceholder(canvas: Canvas) {

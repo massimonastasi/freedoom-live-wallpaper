@@ -111,6 +111,9 @@ class WadFile(private val buf: ByteBuffer) {
 
     val lumpCount: Int get() = lumpPos.size
 
+    /** A colour straight out of palette 0, so callers pick from the active WAD's own set. */
+    fun paletteColor(index: Int): Int = palette[index and 0xFF]
+
     fun indexOf(name: String): Int = byName[name] ?: -1
 
     fun nameAt(index: Int): String = lumpName[index]

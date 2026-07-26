@@ -26,13 +26,35 @@ class WadFileTest {
     }
 
     @Test
-    fun `reads the directory and finds the expected sprites`() {
+    fun `the shipped WAD satisfies everything the code asks for`() {
         val wad = openWad()
-        assertTrue(wad.lumpCount > 1000, "too few lumps: ${wad.lumpCount}")
-        assertTrue(wad.indexOf("PLAYPAL") >= 0, "PLAYPAL missing")
-        // Every creature in the plan must have its sprites inside freedoom1.wad.
-        for (prefix in listOf("PLAY", "POSS", "SPOS", "TROO", "SARG", "HEAD", "BOSS")) {
-            assertTrue(wad.lumpsStartingWith(prefix).isNotEmpty(), "no $prefix sprite")
+
+        // The bundled WAD is reduced at build time by the reduceWad task, which keeps its
+        // own list of lump names. This is the check that catches the list drifting away
+        // from the code: it asks for exactly what the wallpaper asks for at runtime.
+        assertTrue(wad.indexOf("PLAYPAL") >= 0, "PLAYPAL missing: no palette, no colours")
+        assertTrue(wad.flatIndex("CEIL5_1") >= 0, "the floor flat is missing")
+        for (d in 0..9) assertTrue(wad.indexOf("STTNUM$d") >= 0, "readout digit $d missing")
+
+        for (prefix in the engineData.spritePrefixes) {
+            assertTrue(wad.lumpsStartingWith(prefix).isNotEmpty(), "no $prefix sprite at all")
+        }
+
+        // Stronger than presence: every frame each creature can be drawn in must resolve at
+        // each of the four angles still in use. A missing rotation would show up on screen
+        // as a creature vanishing at one heading.
+        for (c in the engineData.creatures + the engineData.player) {
+            val set = SpriteSet(wad, c.lumpPrefix)
+            val frames = (0 until c.walkFrames).toList() +
+                c.attack.frames.toList() + c.pain.frames.toList() + c.death.frames.toList()
+            for (f in frames.distinct()) {
+                for (rot in intArrayOf(1, 3, 5, 7)) {
+                    assertTrue(
+                        set.resolve(f, rot) >= 0,
+                        "${c.name}: frame $f has no sprite at rotation $rot",
+                    )
+                }
+            }
         }
     }
 
@@ -79,13 +101,14 @@ class WadFileTest {
         val set = SpriteSet(wad, "TROO")
         assertTrue(set.frameCount >= 4, "not enough walk frames: ${set.frameCount}")
 
-        // TROOA2A8: the same lump for angles 2 and 8, the second one mirrored.
-        val a2 = set.resolve(0, 2)
-        val a8 = set.resolve(0, 8)
-        assertTrue(a2 >= 0 && a8 >= 0, "frame A rotations 2/8 missing")
-        assertEquals(a2 shr 1, a8 shr 1, "the two rotations should share the lump")
-        assertEquals(0, a2 and 1, "rotation 2 must not be mirrored")
-        assertEquals(1, a8 and 1, "rotation 8 must be mirrored")
-        assertEquals("TROOA2A8", wad.nameAt(a2 shr 1))
+        // TROOA3A7: the same lump for angles 3 and 7, the second one mirrored. The pair used
+        // to be 2 and 8, but those are diagonal views and no longer ship.
+        val a3 = set.resolve(0, 3)
+        val a7 = set.resolve(0, 7)
+        assertTrue(a3 >= 0 && a7 >= 0, "frame A rotations 3/7 missing")
+        assertEquals(a3 shr 1, a7 shr 1, "the two rotations should share the lump")
+        assertEquals(0, a3 and 1, "rotation 3 must not be mirrored")
+        assertEquals(1, a7 and 1, "rotation 7 must be mirrored")
+        assertEquals("TROOA3A7", wad.nameAt(a3 shr 1))
     }
 }

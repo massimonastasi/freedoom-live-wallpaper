@@ -212,6 +212,19 @@ object the engineData {
     /** p_pspr.c A_FireShotgun: seven pellets per shot. */
     const val SHOTGUN_PELLETS = 7
 
+    /**
+     * Palette entries used to recolour the corner readout.
+     *
+     * Chosen by measuring PLAYPAL rather than by picking the most saturated entry, because
+     * on this palette those are not the same thing. Index 200 is pure blue and the least
+     * legible colour in the whole set on a dark backdrop, at a luminance of 29 against the
+     * red numerals' 76. the engine's blue ramp brightens by mixing in red and green, so 196 is
+     * still unmistakably the palette's blue while sitting at 131, comfortably above the red
+     * we already accept as readable. The green at 112 needs no such compromise, at 198.
+     */
+    const val PALETTE_HEALTH = 196          // 115, 115, 255
+    const val PALETTE_ARMOR = 112           // 119, 255, 111
+
     // ------------------------------------------------------------------ weapons
 
     /**

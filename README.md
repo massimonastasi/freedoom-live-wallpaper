@@ -21,8 +21,14 @@ Details and next steps in [docs/STATUS.md](docs/STATUS.md).
    winget install --id Google.PlatformTools -e
    ```
 
-3. Download Freedoom from <https://freedoom.github.io> and extract `freedoom1.wad` into
-   `app/src/main/assets/`. The file is not in the repo (see `.gitignore`).
+3. Download Freedoom from <https://freedoom.github.io>, put its `freedoom1.wad` at
+   `app/wad/freedoom-full.wad`, and run:
+   ```
+   gradlew reduceWad
+   ```
+   That writes `app/src/main/assets/freedoom1.wad` containing only the lumps the wallpaper
+   reads — 293 of 3163, 549 KB instead of 27.5 MB. Neither file is in the repo (see
+   `.gitignore`), and the input stays outside `assets` so it is never packaged.
 
 4. Open the folder in Android Studio and run it on a physical phone, then go to
    *Settings → Wallpaper → Live wallpapers* and pick Freedoom Live Wallpaper.
