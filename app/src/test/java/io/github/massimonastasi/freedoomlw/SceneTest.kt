@@ -1,0 +1,147 @@
+package io.github.massimonastasi.freedoomlw
+
+import org.junit.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+/**
+ * Scene has no Android dependency, so the whole simulation runs on the JVM: ten minutes of
+ * play in a few milliseconds. This is the net that catches inconsistent-state crashes
+ * (animation indices out of sequence, actors outside the world) before the phone does.
+ */
+class SceneTest {
+
+    private val worldWidth = 720
+    private val worldHeight = 1600
+
+    @Test
+    fun `ten minutes of simulation with no inconsistent state`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        for (t in 1..TICRATE * 600) {
+            scene.tick(t)
+
+            for (a in scene.actors) {
+                val anim = a.anim
+                if (anim != null) {
+                    assertTrue(
+                        a.animStep in anim.frames.indices,
+                        "tic $t: animStep ${a.animStep} outside 0..${anim.length - 1}",
+                    )
+                }
+                // frame() is called on every draw: it must never be able to throw.
+                a.frame(t)
+
+                if (a.creature != null) {
+                    val r = a.radius * the engineData.FRACUNIT
+                    assertTrue(a.x >= r - 1 && a.x <= worldWidth * the engineData.FRACUNIT - r + 1, "tic $t: x outside the world")
+                    assertTrue(a.y >= r - 1 && a.y <= worldHeight * the engineData.FRACUNIT - r + 1, "tic $t: y outside the world")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `the scene stays populated and does not grow without bound`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        // A single instant is not enough: between waves there is a pause where zero demons
+        // is correct. Look at the last half minute instead.
+        var maxRecent = 0
+        val biggestWave = the engineData.waves.maxOf { it.size }
+        for (t in 1..TICRATE * 600) {
+            scene.tick(t)
+            val n = scene.actors.count { it.creature != null && !it.isPlayer && !it.dead }
+            if (t > TICRATE * 570) maxRecent = maxOf(maxRecent, n)
+            assertTrue(n <= biggestWave, "tic $t: $n demons, the largest wave holds $biggestWave")
+        }
+
+        assertTrue(maxRecent > 0, "no demon appeared during the last half minute")
+        // Corpses, projectiles and effects must not accumulate indefinitely.
+        assertTrue(scene.actors.size < 60, "too many actors on stage: ${scene.actors.size}")
+    }
+
+    @Test
+    fun `the marine arrives first and enemies one at a time`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        fun demons() = scene.actors.count { it.creature != null && !it.isPlayer }
+
+        scene.tick(1)
+        assertTrue(scene.actors.any { it.isPlayer }, "the marine must appear first")
+        assertEquals(0, demons(), "no enemy alongside the marine")
+
+        // The first one arrives after the wave 1 delay: three seconds.
+        val firstDelay = the engineData.waves[0].spawnDelay
+        for (t in 2 until 1 + firstDelay) scene.tick(t)
+        assertEquals(0, demons(), "an enemy arrived before the expected $firstDelay tics")
+
+        scene.tick(1 + firstDelay)
+        assertEquals(1, demons(), "exactly one must arrive after the delay")
+
+        // The second does not come with the first, but after another interval.
+        scene.tick(2 + firstDelay)
+        assertEquals(1, demons(), "two enemies together in the first wave")
+    }
+
+    @Test
+    fun `waves get denser as they progress`() {
+        // The delay must fall monotonically: that is the tension curve.
+        val delays = the engineData.waves.map { it.spawnDelay }
+        for (i in 1 until delays.size) {
+            assertTrue(delays[i] <= delays[i - 1], "wave ${i + 1} is slower than the previous one")
+        }
+        assertTrue(delays.first() > delays.last(), "no acceleration between the first and last wave")
+        // Paired arrivals only exist in the second half.
+        val firstBurst = the engineData.waves.indexOfFirst { it.burst > 1 }
+        assertTrue(firstBurst >= the engineData.waves.size / 2, "multiple arrivals too early: wave ${firstBurst + 1}")
+    }
+
+    @Test
+    fun `nobody arrives while the marine is dead`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        fun demons() = scene.actors.count { it.creature != null && !it.isPlayer && !it.dead }
+
+        var previous = 0
+        var deathTics = 0
+        for (t in 1..TICRATE * 600) {
+            scene.tick(t)
+            val now = demons()
+            if (scene.deathFade > 0f) {
+                deathTics++
+                assertTrue(
+                    now <= previous,
+                    "tic $t: ${now - previous} enemies arrived while the screen is red",
+                )
+            }
+            previous = now
+        }
+        assertTrue(deathTics > 0, "the marine never died: this test verified nothing")
+    }
+
+    @Test
+    fun `combat actually happens`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+        var sawBlood = false
+        var sawDeath = false
+        var sawProjectile = false
+
+        for (t in 1..TICRATE * 600) {
+            scene.tick(t)
+            for (a in scene.actors) {
+                if (a.spriteIndex == the engineData.bloodSpriteIndex) sawBlood = true
+                if (a.mode == Mode.PROJECTILE) sawProjectile = true
+                if (a.dead) sawDeath = true
+            }
+        }
+        assertTrue(sawBlood, "no hit landed in ten minutes")
+        assertTrue(sawProjectile, "no fireball was thrown")
+        assertTrue(sawDeath, "nobody died")
+    }
+}
