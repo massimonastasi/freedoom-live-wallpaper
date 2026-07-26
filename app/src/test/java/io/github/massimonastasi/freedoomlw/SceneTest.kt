@@ -310,6 +310,29 @@ class SceneTest {
     }
 
     @Test
+    fun `the marine stands still for a moment after materialising`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        scene.tick(1)
+        val p = scene.actors.first { it.isPlayer }
+        val x = p.x
+        val y = p.y
+
+        // Long enough to read as an arrival: the creatures' own reactiontime of 8 tics is
+        // under a quarter of a second and goes unnoticed.
+        for (t in 2..TICRATE / 3) {
+            scene.tick(t)
+            assertEquals(x, p.x, "tic $t: the marine moved before his pause was over")
+            assertEquals(y, p.y, "tic $t: the marine moved before his pause was over")
+        }
+
+        // ...and then he does get going.
+        for (t in TICRATE / 3..TICRATE * 3) scene.tick(t)
+        assertTrue(p.x != x || p.y != y, "the marine never started moving")
+    }
+
+    @Test
     fun `combat actually happens`() {
         the engineData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)

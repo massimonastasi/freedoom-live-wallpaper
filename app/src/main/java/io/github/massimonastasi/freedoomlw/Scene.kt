@@ -142,6 +142,10 @@ class Scene(
     var wave = 0
         private set
 
+    /** What the corner readout shows. Zero while the marine is down. */
+    val playerHealth: Int get() = player?.takeIf { !it.dead }?.health?.coerceAtLeast(0) ?: 0
+    val playerArmor: Int get() = player?.takeIf { !it.dead }?.loadout?.armorPoints ?: 0
+
     private var tic = 0
     private var player: Actor? = null
     private var nextWaveAt = 0
@@ -293,6 +297,10 @@ class Scene(
         a.loadout = Loadout().apply { copyFrom(kept) }
         a.x = randomIn(SPAWN_MARGIN, worldWidth - SPAWN_MARGIN) * FRACUNIT
         a.y = randomIn(SPAWN_MARGIN, worldHeight - SPAWN_MARGIN) * FRACUNIT
+        // Longer than the creatures' reactiontime of 8 tics, which at under a quarter of a
+        // second reads as no pause at all. He arrives alone and the first enemy is seconds
+        // away, so he can afford to stand in the fog long enough to be noticed.
+        a.reactionTime = PLAYER_REACTION
         spawnFog(a.x, a.y)
         actors.add(a)
         player = a
@@ -877,6 +885,9 @@ class Scene(
          * hundred map units of screen space, which is what this has to clear.
          */
         const val SPAWN_MARGIN = 100
+
+        /** How long the marine stands still after materialising. */
+        const val PLAYER_REACTION = TICRATE / 2
 
         /** Exhaustive search order when cardinal movement is preferred over diagonal. */
         val CARDINALS_FIRST = intArrayOf(0, 2, 4, 6, 1, 3, 5, 7)

@@ -43,6 +43,10 @@ class FreedoomWallpaperService : WallpaperService() {
     /** Floor texture from the WAD, tiled behind the scene. Null when unavailable. */
     private var floorTile: Bitmap? = null
 
+    /** Status bar numerals from the WAD: ten digits plus the percent sign. */
+    private var digits: Array<Bitmap>? = null
+    private var percent: Bitmap? = null
+
     override fun onCreate() {
         super.onCreate()
         try {
@@ -57,6 +61,7 @@ class FreedoomWallpaperService : WallpaperService() {
             // declares itself, no per-IWAD compatibility table needed.
             damageTint = w.damageTint
             floorTile = loadFloor(w)
+            loadDigits(w)
             sprites = the engineData.spritePrefixes.map { SpriteSet(w, it) }
             val missing = the engineData.spritePrefixes.filterIndexed { i, _ -> sprites[i].frameCount == 0 }
             Log.i(TAG, "WAD loaded: ${w.lumpCount} lumps, ${sprites.size - missing.size}/${sprites.size} sprites" +
@@ -92,6 +97,23 @@ class FreedoomWallpaperService : WallpaperService() {
         }
         Log.i(TAG, "no usable floor flat, falling back to a flat colour")
         return null
+    }
+
+    /**
+     * Loads the status bar numerals, so the corner readout is drawn with the WAD's own
+     * glyphs rather than a bundled font. They decode with the ordinary patch reader, and a
+     * user-supplied IWAD brings its own digits along with its own sprites.
+     */
+    private fun loadDigits(w: WadFile) {
+        fun lump(name: String): Bitmap? {
+            val i = w.indexOf(name)
+            if (i < 0) return null
+            val p = w.decodePatch(i)
+            return Bitmap.createBitmap(p.pixels, p.width, p.height, Bitmap.Config.ARGB_8888)
+        }
+        val loaded = Array(10) { lump("STTNUM$it") ?: return }
+        digits = loaded
+        percent = lump("STTPRCNT")
     }
 
     override fun onCreateEngine(): Engine = FreedoomEngine()
@@ -159,6 +181,10 @@ class FreedoomWallpaperService : WallpaperService() {
 
         /** Frame rate last declared to the compositor, so we only declare it on change. */
         private var declaredFps = 0f
+
+        // Both become settings in phase 9. Corner is a bit field: 1 = right, 2 = bottom.
+        private var readoutVisible = true
+        private var readoutCorner = 2                       // bottom left
 
         override fun onCreate(holder: SurfaceHolder) {
             super.onCreate(holder)
@@ -353,6 +379,8 @@ class FreedoomWallpaperService : WallpaperService() {
                 canvas.drawBitmap(sprite.bitmap, matrix, paint)
             }
 
+            drawReadout(canvas, s)
+
             // Marine death: the screen washes red. The colour is not invented, it is
             // PLAYPAL palette 8, the original game's damage flash — but at full strength it
             // was an unreadable red wall every time he died, so it only ever reaches
@@ -362,6 +390,57 @@ class FreedoomWallpaperService : WallpaperService() {
                 overlay.color = damageTint
                 overlay.alpha = (fade * DEATH_MAX_ALPHA).toInt().coerceIn(0, 255)
                 canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
+            }
+        }
+
+        /**
+         * Health above armour, in a corner, using the WAD's own status bar numerals.
+         *
+         * Deliberately not a home screen widget: a widget runs in another process, so it
+         * would need a channel out of the wallpaper and a push on every change, and an
+         * update arriving while the wallpaper is not even running would undo the whole
+         * battery premise. Drawn inside the scene it is a handful of small bitmaps on a
+         * frame we are already drawing.
+         *
+         * The corner is a field rather than a constant because settings will expose it
+         * (phase 9); the default keeps clear of the status bar and the dock.
+         */
+        private fun drawReadout(canvas: Canvas, s: Scene) {
+            if (!readoutVisible) return
+            val glyphs = digits ?: return
+
+            val scale = spriteScale * READOUT_SCALE
+            val gw = glyphs[0].width * scale
+            val gh = glyphs[0].height * scale
+            val pad = READOUT_PADDING * scale
+
+            val health = s.playerHealth.toString()
+            val armor = s.playerArmor.toString()
+            val widest = maxOf(health.length, armor.length) + 1          // plus the percent sign
+            val blockW = widest * gw
+            val blockH = gh * 2 + pad
+
+            val left = if (readoutCorner and 1 == 0) pad else frame.width() - blockW - pad
+            val top = if (readoutCorner and 2 == 0) pad else frame.height() - blockH - pad
+
+            drawNumber(canvas, health, left, top, scale)
+            drawNumber(canvas, armor, left, top + gh + pad, scale)
+        }
+
+        private fun drawNumber(canvas: Canvas, text: String, x: Float, y: Float, scale: Float) {
+            val glyphs = digits ?: return
+            var cursor = x
+            for (ch in text) {
+                val g = glyphs[ch - '0']
+                matrix.setScale(scale, scale)
+                matrix.postTranslate(cursor, y)
+                canvas.drawBitmap(g, matrix, hudPaint)
+                cursor += g.width * scale
+            }
+            percent?.let {
+                matrix.setScale(scale, scale)
+                matrix.postTranslate(cursor, y)
+                canvas.drawBitmap(it, matrix, hudPaint)
             }
         }
 
@@ -383,6 +462,14 @@ class FreedoomWallpaperService : WallpaperService() {
 
         /** Solid colour overlays: the death wash and the no-WAD placeholder. */
         private val overlay = Paint()
+
+        /**
+         * The readout is drawn without the scene dimming. That filter exists so the
+         * wallpaper does not fight the launcher icons, but these digits are information
+         * rather than decoration, and Freedoom's status bar numerals are already a dark red:
+         * dimming them a further 38% left them barely legible against the floor.
+         */
+        private val hudPaint = Paint().apply { isFilterBitmap = false }
 
         /** Visible placeholder when the WAD is missing: better than a silent black screen. */
         private fun drawPlaceholder(canvas: Canvas) {
@@ -435,6 +522,15 @@ class FreedoomWallpaperService : WallpaperService() {
 
         /** Used when the WAD has no usable flat. */
         const val BACKDROP = 0xFF201814.toInt()
+
+        /** Size of the corner readout, relative to the sprite scale. */
+        const val READOUT_SCALE = 0.7f
+
+        /**
+         * Padding around the readout, in glyph-scale units. Generous at the bottom, where
+         * the navigation bar and the dock both encroach.
+         */
+        const val READOUT_PADDING = 14f
 
         /** Commands the launcher sends to the wallpaper. */
         const val WALLPAPER_TAP = "android.wallpaper.tap"
