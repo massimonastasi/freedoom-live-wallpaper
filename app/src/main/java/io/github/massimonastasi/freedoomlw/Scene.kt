@@ -306,6 +306,13 @@ class Scene(
         newTarget(a)
     }
 
+    /** Brings an actor into the scene at its current position: fog, list, first target. */
+    private fun materialise(a: Actor) {
+        spawnFog(a.x, a.y)
+        actors.add(a)
+        newTarget(a)
+    }
+
     private fun newCreature(c: the engineData.Creature): Actor {
         val a = Actor(c.spriteIndex)
         a.creature = c
@@ -322,9 +329,7 @@ class Scene(
         // it before it had ever been properly seen.
         a.x = (if (pRandom() and 1 == 0) SPAWN_MARGIN else worldWidth - SPAWN_MARGIN) * FRACUNIT
         a.y = randomIn(SPAWN_MARGIN, worldHeight - SPAWN_MARGIN) * FRACUNIT
-        spawnFog(a.x, a.y)
-        actors.add(a)
-        newTarget(a)
+        materialise(a)
     }
 
     private fun spawnEffect(spriteIndex: Int, anim: the engineData.Anim, x: Int, y: Int) {
@@ -390,9 +395,7 @@ class Scene(
             val a = newCreature(c)
             a.x = clampX(x + (pRandom() - 128) * FRACUNIT / 2)
             a.y = clampY(y + (pRandom() - 128) * FRACUNIT / 2)
-            spawnFog(a.x, a.y)
-            actors.add(a)
-            newTarget(a)
+            materialise(a)
         }
     }
 

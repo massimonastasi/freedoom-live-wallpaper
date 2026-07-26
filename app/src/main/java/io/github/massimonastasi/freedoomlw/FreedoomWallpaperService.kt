@@ -414,9 +414,11 @@ class FreedoomWallpaperService : WallpaperService() {
             val gh = glyphs[0].height * scale
             val pad = READOUT_PADDING * scale
 
-            val health = s.playerHealth.toString()
-            val armor = s.playerArmor.toString()
-            val widest = maxOf(health.length, armor.length) + 1          // plus the percent sign
+            val health = s.playerHealth
+            val armor = s.playerArmor
+            // Digit counting rather than toString: the draw loop allocates nothing anywhere
+            // else, and two throwaway strings forty times a second is not the place to start.
+            val widest = maxOf(digitCount(health), digitCount(armor)) + 1   // plus the percent sign
             val blockW = widest * gw
             val blockH = gh * 2 + pad
 
@@ -427,15 +429,24 @@ class FreedoomWallpaperService : WallpaperService() {
             drawNumber(canvas, armor, left, top + gh + pad, scale)
         }
 
-        private fun drawNumber(canvas: Canvas, text: String, x: Float, y: Float, scale: Float) {
+        private fun digitCount(value: Int) = when {
+            value >= 100 -> 3
+            value >= 10 -> 2
+            else -> 1
+        }
+
+        private fun drawNumber(canvas: Canvas, value: Int, x: Float, y: Float, scale: Float) {
             val glyphs = digits ?: return
             var cursor = x
-            for (ch in text) {
-                val g = glyphs[ch - '0']
+            var divisor = 1
+            repeat(digitCount(value) - 1) { divisor *= 10 }
+            while (divisor > 0) {
+                val g = glyphs[(value / divisor) % 10]
                 matrix.setScale(scale, scale)
                 matrix.postTranslate(cursor, y)
                 canvas.drawBitmap(g, matrix, hudPaint)
                 cursor += g.width * scale
+                divisor /= 10
             }
             percent?.let {
                 matrix.setScale(scale, scale)
