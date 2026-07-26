@@ -125,6 +125,66 @@ class SceneTest {
     }
 
     @Test
+    fun `creatures appear well inside the visible area`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+        val seen = HashSet<Actor>()
+        // The widest sprite reaches about a hundred map units from its anchor, so anything
+        // appearing closer than that to an edge starts partly off screen.
+        val margin = 80 * the engineData.FRACUNIT
+
+        for (t in 1..TICRATE * 300) {
+            scene.tick(t)
+            for (a in scene.actors) {
+                if (a.creature == null || !seen.add(a)) continue
+                assertTrue(
+                    a.x >= margin && a.x <= worldWidth * the engineData.FRACUNIT - margin,
+                    "tic $t: appeared at x=${a.x / the engineData.FRACUNIT}, too close to the edge",
+                )
+                assertTrue(
+                    a.y >= margin && a.y <= worldHeight * the engineData.FRACUNIT - margin,
+                    "tic $t: appeared at y=${a.y / the engineData.FRACUNIT}, too close to the edge",
+                )
+            }
+        }
+        assertTrue(seen.size > 10, "too few spawns to judge: ${seen.size}")
+    }
+
+    @Test
+    fun `the marine faces where he walks and turns only to shoot`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        var sawWalkFacing = false
+        var sawAttackFacing = false
+        var previous: Actor? = null
+        var px = 0
+        var py = 0
+
+        for (t in 1..TICRATE * 300) {
+            scene.tick(t)
+            val p = scene.actors.firstOrNull { it.isPlayer && !it.dead }
+            if (p == null) { previous = null; continue }
+
+            // The invariant is about actually moving, not about being in WALK: on the tic a
+            // pain state ends the actor is back in WALK without having moved that tic.
+            if (p === previous && (p.x != px || p.y != py)) {
+                assertEquals(p.moveDir, p.facing, "tic $t: moved but facing elsewhere")
+                sawWalkFacing = true
+            }
+            // While firing he must look at the target, which is usually not where he is
+            // heading, because he backs away as he shoots.
+            if (p.mode == Mode.ATTACK && p.facing != p.moveDir) sawAttackFacing = true
+
+            previous = p
+            px = p.x
+            py = p.y
+        }
+        assertTrue(sawWalkFacing, "the marine never moved facing his direction of travel")
+        assertTrue(sawAttackFacing, "the marine never turned away from his path to shoot")
+    }
+
+    @Test
     fun `combat actually happens`() {
         the engineData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)

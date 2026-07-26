@@ -68,6 +68,14 @@ class Actor(val spriteIndex: Int) {
     /** Tics of stillness after appearing: info.c mobjinfo.reactiontime. */
     var reactionTime = 0
 
+    /**
+     * Direction the sprite is drawn facing, which is not always the direction of travel.
+     * It follows movement while walking, and snaps to the target when an attack starts —
+     * that is what A_FaceTarget does in the engine. Without it the marine, who backs away
+     * while shooting, was drawn with his back to the demon he was firing at.
+     */
+    var facing = DI_NODIR
+
     /** Marine only: everything he is carrying. Null for every other actor. */
     var loadout: Loadout? = null
 
@@ -93,8 +101,8 @@ class Actor(val spriteIndex: Int) {
      * to a rotation of the movement direction.
      */
     fun spriteRotation(): Int {
-        if (moveDir == DI_NODIR) return 1
-        return ((6 - moveDir) and 7) + 1
+        if (facing == DI_NODIR) return 1
+        return ((6 - facing) and 7) + 1
     }
 }
 
@@ -268,8 +276,8 @@ class Scene(
         // marine stayed on the pistol forever in the early waves and half the bestiary was
         // never seen.
         a.loadout = Loadout().apply { copyFrom(kept) }
-        a.x = randomIn(a.radius, worldWidth - a.radius) * FRACUNIT
-        a.y = randomIn(a.radius, worldHeight - a.radius) * FRACUNIT
+        a.x = randomIn(SPAWN_MARGIN, worldWidth - SPAWN_MARGIN) * FRACUNIT
+        a.y = randomIn(SPAWN_MARGIN, worldHeight - SPAWN_MARGIN) * FRACUNIT
         spawnFog(a.x, a.y)
         actors.add(a)
         player = a
@@ -287,9 +295,11 @@ class Scene(
 
     private fun spawnDemon(c: the engineData.Creature) {
         val a = newCreature(c)
-        // Enters from a side edge: the arrival gets noticed and the scene stays readable.
-        a.x = (if (pRandom() and 1 == 0) c.radius else worldWidth - c.radius) * FRACUNIT
-        a.y = randomIn(c.radius, worldHeight - c.radius) * FRACUNIT
+        // Enters from a side edge, but a whole sprite width inside it: arriving exactly on
+        // the boundary left half the creature off screen, and a quick kill could then remove
+        // it before it had ever been properly seen.
+        a.x = (if (pRandom() and 1 == 0) SPAWN_MARGIN else worldWidth - SPAWN_MARGIN) * FRACUNIT
+        a.y = randomIn(SPAWN_MARGIN, worldHeight - SPAWN_MARGIN) * FRACUNIT
         spawnFog(a.x, a.y)
         actors.add(a)
         newTarget(a)
@@ -625,9 +635,12 @@ class Scene(
                 a.targetY = target.y
             }
             val inMelee = dist < MELEERANGE + target.radius * FRACUNIT
-            if (c.meleeMod > 0 && inMelee) { startAttack(a); return }
-            if ((c.hitscanShots > 0 || c.projectile >= 0) && checkMissileRange(a, target)) {
-                startAttack(a); return
+            val attacks = (c.meleeMod > 0 && inMelee) ||
+                ((c.hitscanShots > 0 || c.projectile >= 0) && checkMissileRange(a, target))
+            if (attacks) {
+                a.facing = dirTo(a, target)          // A_FaceTarget: turn to shoot
+                startAttack(a)
+                return
             }
         } else if (actors.size > 0 && tic % actors.size == index && reachedTarget(a)) {
             // Work amortisation taken from P_LookForPlayers, which checks only 2 players per
@@ -666,7 +679,32 @@ class Scene(
         if (tryY < r || tryY > (worldHeight * FRACUNIT) - r) return false
         a.x = tryX
         a.y = tryY
+        a.facing = d                 // walking: the sprite looks where it is going
         return true
+    }
+
+    /**
+     * The 8-way direction from one actor to another, used as A_FaceTarget.
+     *
+     * The engine gets there via R_PointToAngle and a shift; here the octant is classified
+     * from the ratio of the deltas, which stays in integers like everything else. 5/12
+     * approximates tan(22.5 degrees), the boundary between a cardinal and a diagonal.
+     */
+    private fun dirTo(from: Actor, to: Actor): Int {
+        val dx = to.x - from.x
+        val dy = to.y - from.y
+        val ax = abs(dx)
+        val ay = abs(dy)
+        val east = dx > 0
+        val north = dy > 0
+        return when {
+            ay * 12 < ax * 5 -> if (east) 0 else 4          // DI_EAST / DI_WEST
+            ax * 12 < ay * 5 -> if (north) 2 else 6         // DI_NORTH / DI_SOUTH
+            east && north -> 1                              // DI_NORTHEAST
+            !east && north -> 3                             // DI_NORTHWEST
+            !east && !north -> 5                            // DI_SOUTHWEST
+            else -> 7                                       // DI_SOUTHEAST
+        }
     }
 
     /** P_TryWalk: when the step succeeds, rearm movecount with a random pause. */
@@ -754,6 +792,16 @@ class Scene(
 
         /** Below this distance the marine backs off instead of closing in. */
         const val KEEP_AWAY = 220 * FRACUNIT
+
+        /**
+         * How far inside the edge a creature appears, in map units.
+         *
+         * It has to come from the sprite, not the collision radius: the widest creature has
+         * a radius of 31 but an 83-pixel sprite anchored 50 pixels from its left edge, and
+         * sprites are drawn at twice the world scale. Fifty anchor pixels are therefore a
+         * hundred map units of screen space, which is what this has to clear.
+         */
+        const val SPAWN_MARGIN = 100
 
         /** How often an item drops, and how long it stays if nobody picks it up. */
         const val ITEM_INTERVAL = TICRATE * 12
