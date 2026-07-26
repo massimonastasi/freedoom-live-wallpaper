@@ -368,6 +368,36 @@ class SceneTest {
         assertEquals(GameData.maxAmmo[shells], kit.ammo[shells], "and must not change anything")
     }
 
+    /**
+     * A WAD that cannot draw a creature never spawns it.
+     *
+     * The draw loop skips a sprite it cannot resolve, so an unavailable creature used to be
+     * invisible rather than absent — still walking, still shooting, still having to be
+     * killed before the wave would clear. Nothing about that reads as a missing sprite; it
+     * reads as the wallpaper being broken.
+     */
+    @Test
+    fun `creatures the WAD cannot draw are never spawned`() {
+        // Only the two weakest exist, which is roughly what a partial IWAD leaves.
+        val available = BooleanArray(GameData.creatures.size) { it < 2 }
+
+        GameData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight, drawable = available)
+
+        var seen = 0
+        for (t in 1..TICRATE * 900) {
+            scene.tick(t)
+            for (a in scene.actors) {
+                val c = a.creature ?: continue
+                if (a.isPlayer) continue
+                val i = GameData.creatures.indexOf(c)
+                assertTrue(available[i], "tic $t: spawned ${c.name}, which this WAD cannot draw")
+                seen++
+            }
+        }
+        assertTrue(seen > 0, "no creature was spawned at all, so nothing was proven")
+    }
+
     @Test
     fun `ammunition is never dropped on its own`() {
         assertTrue(

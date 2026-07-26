@@ -182,12 +182,27 @@ class Scene(
      * is not a different game.
      */
     instantStart: Boolean = false,
+    /** Which creatures the active WAD can draw. See [drawable]. */
+    drawable: BooleanArray? = null,
 ) {
 
     val actors = ArrayList<Actor>()
 
-    /** Setting: the marine never dies (phase 9). */
+    /** Setting: the marine never dies. Used by the balance measurements. */
     var invulnerable = false
+
+    /**
+     * Which creatures the active WAD can actually draw, by index into GameData.creatures.
+     *
+     * A user's IWAD need not carry all of them: the shareware release has no Trilobite or
+     * PainLord, and a partial or unusual one may be missing more. Without this they were
+     * still spawned and still fought — the draw loop skips a sprite it cannot resolve, so
+     * they were invisible rather than absent, which is far worse than not appearing at all.
+     *
+     * Null when every creature is available, which is what keeps Scene testable with no WAD
+     * in sight.
+     */
+    var drawable: BooleanArray? = drawable
 
     /** Current wave, zero-based. */
     var wave = 0
@@ -414,12 +429,30 @@ class Scene(
             // hitscan shots cannot be dodged at all. The odds went *up* at the hard end.
             var c = w.order[i % w.order.size]
             if (pRandom() < rules.toughen && c + 1 < GameData.creatures.size) c++
-            queue.add(c)
+            queue.add(substitute(c))
         }
         spawnIndex = 0
         nextSpawnAt = tic + if (rushOpening) 0 else w.spawnDelay
         rushOpening = false
     }
+
+    /**
+     * The nearest creature the active WAD can draw.
+     *
+     * Steps down the bestiary first, so a missing PainLord becomes the next thing below it
+     * rather than a Zombie: the wave keeps roughly the weight it was written with. Only if
+     * nothing below exists does it look upwards.
+     */
+    private fun substitute(index: Int): Int {
+        val ok = drawable ?: return index
+        if (ok.getOrElse(index) { true }) return index
+        for (i in index - 1 downTo 0) if (ok.getOrElse(i) { false }) return i
+        for (i in index + 1 until GameData.creatures.size) if (ok.getOrElse(i) { false }) return i
+        return index
+    }
+
+    private fun BooleanArray.getOrElse(i: Int, fallback: () -> Boolean) =
+        if (i in indices) this[i] else fallback()
 
     // ---------------------------------------------------------------- spawning
 

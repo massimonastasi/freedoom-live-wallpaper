@@ -155,6 +155,18 @@ class FreedoomWallpaperService : WallpaperService() {
         }
     }
 
+    /**
+     * Which creatures the loaded WAD has sprites for.
+     *
+     * Driven entirely by what the file turned out to contain, which is the reason this
+     * application names no IWAD anywhere: there is no list of known files and no per-file
+     * special case, only sprite prefixes that either resolved or did not.
+     */
+    private fun drawableCreatures() = BooleanArray(GameData.creatures.size) { i ->
+        val set = sprites.getOrNull(GameData.creatures[i].spriteIndex)
+        set != null && set.frameCount > 0
+    }
+
     /** Reloads if the active WAD has changed since the sprites were built. */
     private fun reloadWadIfChanged() {
         val wanted = activeWad()?.absolutePath ?: BUNDLED
@@ -405,6 +417,9 @@ class FreedoomWallpaperService : WallpaperService() {
             scene = Scene(
                 worldWidth = (width / pxPerUnit).toInt(),
                 worldHeight = (height / pxPerUnit).toInt(),
+                // Only the creatures this WAD can draw. Spawning one it cannot would put an
+                // invisible thing in the fight.
+                drawable = drawableCreatures(),
                 // The picker preview is the shop window, and it is watched for seconds, not
                 // minutes: the opening wave arrives at once rather than after the usual pause.
                 instantStart = isPreview,

@@ -44,7 +44,13 @@
     <string name="wad_unreadable">That file could not be read.</string>
     <string name="wad_not_a_wad">Not a WAD file: %s</string>
     <string name="wad_no_sprites">That WAD has none of the sprites this wallpaper draws.</string>
-    <string name="wad_too_few">That WAD only has %d of the sprite sets this wallpaper needs. Heretic, Hexen and Strife name their creatures differently and are not supported.</string>
+    <!--
+        Names no other game. Some IWADs use an entirely different set of creature names and
+        cannot drive this wallpaper, but saying which ones would put their trademarks in the
+        APK for no benefit: the message has to help the user, and knowing that this file does
+        not carry the right creatures is the whole of the help.
+    -->
+    <string name="wad_too_few">That WAD carries only %d of the creatures this wallpaper draws. It names its creatures differently, so it cannot be used.</string>
     <string name="settings_about">About</string>
     <string name="settings_about_note">Free, no adverts, no network access, no data collected.</string>
     <string name="settings_licences">Licences and notices</string>
