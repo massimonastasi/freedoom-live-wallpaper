@@ -59,12 +59,6 @@ class Loadout {
 
     fun drop(weapon: Int) { owned = owned and (1 shl weapon).inv() }
 
-    fun copyFrom(other: Loadout) {
-        armorPoints = other.armorPoints
-        armorType = other.armorType
-        owned = other.owned
-        other.ammo.copyInto(ammo)
-    }
 }
 
 /**
@@ -232,9 +226,6 @@ class Scene(
     private var nextWaveAt = 0
     private var deadUntil = 0
 
-    /** Equipment that survives death. */
-    private val kept = Loadout()
-
     /** Arrival queue for the current wave, and how far along it we are. */
     private val queue = ArrayList<Int>()
     private var spawnIndex = 0
@@ -377,21 +368,14 @@ class Scene(
         }
     }
 
-    /** After death everything restarts from the first wave, at the lowest skill. */
+    /**
+     * After death everything restarts: first wave, lowest skill, nothing carried over.
+     *
+     * g_game.c G_PlayerReborn memsets the whole player struct and hands back the pistol, so
+     * death costs the armour and the arsenal alike. Nothing survives here either, which is
+     * why there is no state to carry: the new marine simply gets a fresh Loadout.
+     */
     private fun restart() {
-        player?.loadout?.let {
-            kept.copyFrom(it)
-            // g_game.c G_PlayerReborn memsets the whole player struct, so armour is wiped by
-            // death in the original and must be here too: leaving it on made the marine come
-            // back still wearing what had just failed to save him, and the shields readout
-            // never returned to zero.
-            //
-            // The arsenal is the deliberate exception, and stays. Without it he was stuck on
-            // the pistol through the early waves and half the bestiary was never reached,
-            // which was measured before it was decided.
-            kept.armorPoints = 0
-            kept.armorType = 0
-        }
         actors.clear()
         respawns.clear()
         player = null
@@ -486,10 +470,8 @@ class Scene(
     private fun spawnPlayer() {
         val a = newCreature(GameData.player)
         a.isPlayer = true
-        // The waves restart from scratch, the arsenal does not: without that continuity the
-        // marine stayed on the pistol forever in the early waves and half the bestiary was
-        // never seen.
-        a.loadout = Loadout().apply { copyFrom(kept) }
+        // He always starts as the original starts him: pistol, no armour, no shells.
+        a.loadout = Loadout()
         a.x = randomIn(marginX, worldWidth - marginX) * FRACUNIT
         a.y = randomIn(marginTop, worldHeight - spawnMarginBottom) * FRACUNIT
         // Longer than the creatures' reactiontime of 8 tics, which at under a quarter of a

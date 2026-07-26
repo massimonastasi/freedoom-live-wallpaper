@@ -262,24 +262,21 @@ class SceneTest {
     }
 
     /**
-     * Death wipes the armour and keeps the arsenal.
+     * Death costs everything: armour, weapons and ammunition alike.
      *
-     * g_game.c G_PlayerReborn memsets the whole player struct, so the original loses armour
-     * on death; keeping it made the marine come back still wearing what had just failed to
-     * save him. The weapons are the one deliberate departure, and it has a measured reason.
+     * g_game.c G_PlayerReborn memsets the whole player struct and hands back the pistol, so
+     * a reborn marine carries nothing at all. There is no exception now — the arsenal used
+     * to be one, and is not any more.
      */
     @Test
-    fun `armour does not survive death, weapons do`() {
+    fun `nothing survives death`() {
         GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
-        // The comparison has to be against the last state he was *actually* in, sampled every
-        // tic. An arsenal noted earlier can legitimately shrink before he dies, because a
-        // weapon that runs dry is dropped, and comparing against a stale reading fails for a
-        // reason that has nothing to do with death.
+        // Sampled every tic, so the comparison is against the state he was actually in when
+        // he died rather than some earlier reading.
         var current: Actor? = null
-        var lastArmour = 0
-        var lastOwned = 0
+        var hadSomething = false
         var checked = false
 
         var t = 0
@@ -288,20 +285,18 @@ class SceneTest {
             val p = scene.actors.firstOrNull { it.isPlayer && !it.dead } ?: continue
             val kit = p.loadout ?: continue
 
-            if (current != null && p !== current) {
-                // A new marine. Only a meaningful check if the old one had something to lose.
-                if (lastArmour > 0) {
-                    assertEquals(0, kit.armorPoints, "armour must not survive death")
-                    assertEquals(0, kit.armorType, "the armour type must go with the points")
-                    assertEquals(lastOwned, kit.owned, "the arsenal must survive death")
-                    checked = true
-                }
+            if (current != null && p !== current && hadSomething) {
+                // A new marine, and the old one had something to lose.
+                assertEquals(0, kit.armorPoints, "armour must not survive death")
+                assertEquals(0, kit.armorType, "the armour type must go with the points")
+                assertEquals(0, kit.owned, "the arsenal must not survive death")
+                assertTrue(kit.ammo.all { it == 0 }, "ammunition must not survive death")
+                checked = true
             }
             current = p
-            lastArmour = kit.armorPoints
-            lastOwned = kit.owned
+            hadSomething = kit.armorPoints > 0 || kit.owned != 0
         }
-        assertTrue(checked, "no marine ever died while wearing armour, so nothing was proven")
+        assertTrue(checked, "no marine ever died carrying anything, so nothing was proven")
     }
 
     @Test
