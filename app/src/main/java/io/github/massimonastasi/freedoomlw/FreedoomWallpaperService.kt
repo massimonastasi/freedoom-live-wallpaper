@@ -58,8 +58,8 @@ class FreedoomWallpaperService : WallpaperService() {
     /** Red damage flash colour, read from PLAYPAL. */
     private var damageTint = 0xFFAA1400.toInt()
 
-    /** Floor texture from the WAD, tiled behind the scene. Null when unavailable. */
-    private var floorTile: Bitmap? = null
+    /** Floor texture per skill level, tiled behind the scene. Null entries when absent. */
+    private var floorTiles: Array<Bitmap?> = arrayOfNulls(GameData.skills.size)
 
     /** Status bar numerals from the WAD. */
     private var digits: Array<Bitmap>? = null
@@ -81,7 +81,7 @@ class FreedoomWallpaperService : WallpaperService() {
             // Only the creatures whose sprites actually exist in this WAD: the file
             // declares itself, no per-IWAD compatibility table needed.
             damageTint = w.damageTint
-            floorTile = loadFloor(w)
+            floorTiles = loadFloors(w)
             loadDigits(w)
             sprites = GameData.spritePrefixes.map { SpriteSet(w, it) }
             val missing = GameData.spritePrefixes.filterIndexed { i, _ -> sprites[i].frameCount == 0 }
@@ -95,29 +95,29 @@ class FreedoomWallpaperService : WallpaperService() {
     }
 
     /**
-     * Picks a floor flat that works as a backdrop.
+     * One floor flat per skill level, so the ground reports the difficulty.
      *
-     * A wallpaper sits *behind* the launcher icons, so the texture has to stay quiet. The
-     * candidates were chosen by measuring every flat in the WAD on three axes: mean
-     * luminance, standard deviation, and chroma.
+     * A wallpaper sits *behind* the launcher icons, so a backdrop has to stay quiet. Every
+     * flat in the IWAD was measured on mean luminance, spread and chroma, and then the
+     * shortlist was decoded and **looked at**, which is the step that mattered: FLOOR1_7
+     * measures as an ordinary dark red and is really two glaring panels, and GATE1 is a
+     * circular emblem that tiles into a repeating logo.
      *
-     * Chroma is the one that is easy to forget. Ranking on luminance alone picked FLOOR6_1,
-     * dark at 26/255 and very uniform — and visibly a saturated red, which shouts on screen
-     * and collides with the red damage flash. CEIL5_1 is dark, uniform *and* has a chroma of
-     * exactly zero: pure greyscale, which is what a backdrop wants to be.
+     * The five chosen all sit between 28 and 38 luminance, so the ladder climbs by hue while
+     * the contrast behind the icons stays put. See GameData.Skill.flat.
      *
-     * The list is a fallback chain because a user-supplied WAD may not have all of them.
+     * Each falls back down a shared chain, because a user-supplied WAD need not carry them
+     * all — a WAD with only one usable flat simply shows the same ground at every level.
      */
-    private fun loadFloor(w: WadFile): Bitmap? {
-        for (name in listOf("CEIL5_1", "RROCK03", "FLOOR1_6", "FLAT14", "FLOOR0_1")) {
+    private fun loadFloors(w: WadFile): Array<Bitmap?> = Array(GameData.skills.size) { skill ->
+        val wanted = listOf(GameData.skills[skill].flat) + FLOOR_FALLBACKS
+        wanted.firstNotNullOfOrNull { name ->
             val i = w.flatIndex(name)
-            if (i < 0) continue
+            if (i < 0) return@firstNotNullOfOrNull null
             val f = w.decodeFlat(i)
-            Log.i(TAG, "floor texture: $name")
-            return Bitmap.createBitmap(f.pixels, f.width, f.height, Bitmap.Config.ARGB_8888)
+            Log.i(TAG, "floor for ${GameData.skills[skill].name}: $name")
+            Bitmap.createBitmap(f.pixels, f.width, f.height, Bitmap.Config.ARGB_8888)
         }
-        Log.i(TAG, "no usable floor flat, falling back to a flat colour")
-        return null
     }
 
     /**
@@ -214,9 +214,9 @@ class FreedoomWallpaperService : WallpaperService() {
         /** Frame rate last declared to the compositor, so we only declare it on change. */
         private var declaredFps = 0f
 
-        // Both become settings in phase 9. Corner is a bit field: 1 = right, 2 = bottom.
+        // Becomes a setting in phase 9. The corner is no longer a choice: the two readings
+        // take one bottom corner each, so there is nothing left to place.
         private var readoutVisible = true
-        private var readoutCorner = 2                       // bottom left
 
         override fun onCreate(holder: SurfaceHolder) {
             super.onCreate(holder)
@@ -294,9 +294,7 @@ class FreedoomWallpaperService : WallpaperService() {
             // paths, and only the live one enforces this.
             Log.i(TAG, "drawing surface: ${width}x$height")
             frame.set(0, 0, width, height)
-            floorPaint.shader = floorTile?.let {
-                BitmapShader(it, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-            }
+            shaderSkill = -1                       // force the floor shader to be rebuilt
             scene = Scene(
                 worldWidth = (width / pxPerUnit).toInt(),
                 worldHeight = (height / pxPerUnit).toInt(),
@@ -423,16 +421,19 @@ class FreedoomWallpaperService : WallpaperService() {
         }
 
         /**
-         * Health above armour, in a corner, using the WAD's own status bar numerals.
+         * The two readings, split across the bottom corners: armour on the left, health on
+         * the right, drawn with the WAD's own status bar numerals.
+         *
+         * Splitting them beats stacking them. Stacked, the two numbers sat one above the
+         * other in a single corner and could be read as one figure; apart, there is nothing
+         * to confuse and each has the whole width of its own corner. Both stay along the
+         * bottom, clear of the status bar and of the top row of icons.
          *
          * Deliberately not a home screen widget: a widget runs in another process, so it
          * would need a channel out of the wallpaper and a push on every change, and an
          * update arriving while the wallpaper is not even running would undo the whole
          * battery premise. Drawn inside the scene it is a handful of small bitmaps on a
          * frame we are already drawing.
-         *
-         * The corner is a field rather than a constant because settings will expose it
-         * (phase 9); the default keeps clear of the status bar and the dock.
          */
         private fun drawReadout(canvas: Canvas, s: Scene) {
             if (!readoutVisible) return
@@ -442,24 +443,21 @@ class FreedoomWallpaperService : WallpaperService() {
             val gw = glyphs[0].width * scale
             val gh = glyphs[0].height * scale
             val pad = READOUT_PADDING * scale
+            val baseline = frame.height() - gh - pad
 
             val health = s.playerHealth
             val armor = s.playerArmor
-            // Digit counting rather than toString: the draw loop allocates nothing anywhere
-            // else, and two throwaway strings forty times a second is not the place to start.
-            val widest = maxOf(digitCount(health), digitCount(armor))
-            val blockW = widest * gw
-            val blockH = gh * 2 + pad
-
-            val left = if (readoutCorner and 1 == 0) pad else frame.width() - blockW - pad
-            val top = if (readoutCorner and 2 == 0) pad else frame.height() - blockH - pad
 
             // Colour is what tells the two apart, which is why the percent sign is gone: it
-            // occupied a glyph's width to say nothing.
-            hudPaint.colorFilter = healthFilter
-            drawNumber(canvas, health, left, top, scale)
+            // occupied a glyph's width to say nothing. Position now says it too.
             hudPaint.colorFilter = armorFilter
-            drawNumber(canvas, armor, left, top + gh + pad, scale)
+            drawNumber(canvas, armor, pad, baseline, scale)
+
+            // Digit counting rather than toString: the draw loop allocates nothing anywhere
+            // else, and a throwaway string forty times a second is not the place to start.
+            // The right-hand block is measured so it ends at the margin however wide it is.
+            hudPaint.colorFilter = healthFilter
+            drawNumber(canvas, health, frame.width() - digitCount(health) * gw - pad, baseline, scale)
         }
 
         private fun digitCount(value: Int) = when {
@@ -487,7 +485,21 @@ class FreedoomWallpaperService : WallpaperService() {
          * Tiled floor texture, shifted by the home screen paging. The shader repeats the
          * 64x64 flat, so the whole background is one draw call whatever the screen size.
          */
+        /** Which skill's tile the shader currently holds, so it is rebuilt only on change. */
+        private var shaderSkill = -1
+
         private fun drawFloor(canvas: Canvas) {
+            // The ground changes with the difficulty. Rebuilding a BitmapShader is cheap but
+            // not free, and the skill changes a handful of times an hour, so it is keyed on
+            // the value rather than done per frame.
+            val skill = scene?.skill ?: 0
+            if (skill != shaderSkill) {
+                shaderSkill = skill
+                floorPaint.shader = floorTiles.getOrNull(skill)?.let {
+                    BitmapShader(it, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                }
+            }
+
             val shader = floorPaint.shader
             if (shader == null) {
                 canvas.drawColor(BACKDROP)
@@ -553,6 +565,12 @@ class FreedoomWallpaperService : WallpaperService() {
          * Speeds stay the original ones *in map units* — this value only decides how fast
          * they appear, i.e. how wide a slice of the world is framed.
          */
+        /**
+         * Tried in order when a skill's own flat is absent, so a user-supplied WAD that
+         * carries only some of them still gets a floor rather than a flat colour.
+         */
+        val FLOOR_FALLBACKS = listOf("CEIL5_1", "RROCK03", "FLOOR1_6", "FLAT14", "FLOOR0_1")
+
         const val PX_PER_UNIT = 1.5f
 
         /**

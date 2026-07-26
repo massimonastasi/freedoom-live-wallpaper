@@ -387,15 +387,31 @@ object GameData {
         val fast: Boolean = false,
         /** p_mobj.c:456 — killed monsters come back. */
         val respawn: Boolean = false,
+        /**
+         * Floor flat for this level, so the ground itself says how bad things have got.
+         *
+         * Chosen by decoding all 240 flats in the IWAD and looking at them, because a mean
+         * colour hides the texture: FLOOR1_7 measures as an ordinary dark red and is really
+         * two glaring panels, and GATE1 is a circular emblem that tiles into a repeating
+         * logo. Both were rejected on sight, not on their numbers.
+         *
+         * The ladder climbs by **hue, not brightness**. All five sit between 28 and 38 mean
+         * luminance, so the contrast behind the launcher icons never changes while the mood
+         * does: neutral, then masonry, then a sick green, then blood, then magma.
+         */
+        val flat: String,
     )
 
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
-        Skill("I'm too young to die", 7, 6, halfDamage = true, doubleAmmo = true),
-        Skill("Hey, not too rough", 7, 7, toughen = 120),
-        Skill("Hurt me plenty", 8, 8, toughen = 168),
-        Skill("Ultra-Violence", 9, 10, toughen = 208),
-        Skill("Nightmare!", 9, 12, toughen = 216, doubleAmmo = true, fast = true, respawn = true),
+        Skill("I'm too young to die", 7, 6, halfDamage = true, doubleAmmo = true, flat = "CEIL5_1"),
+        Skill("Hey, not too rough", 7, 7, toughen = 120, flat = "RROCK13"),
+        Skill("Hurt me plenty", 8, 8, toughen = 168, flat = "GRNROCK"),
+        Skill("Ultra-Violence", 9, 10, toughen = 208, flat = "BLOOD1"),
+        Skill(
+            "Nightmare!", 9, 12, toughen = 216,
+            doubleAmmo = true, fast = true, respawn = true, flat = "RROCK01",
+        ),
     )
 
     /** g_game.c:1425 — every monster missile is forced to this speed when fast. */

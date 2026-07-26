@@ -229,6 +229,38 @@ class SceneTest {
         assertEquals(0, demons(preview), "the second wave must keep its authored delay")
     }
 
+    /**
+     * The scene opens on empty ground, and the first enemy is still a full wave delay behind
+     * the marine rather than arriving on his heels.
+     */
+    @Test
+    fun `the marine arrives after a pause and the wave shifts with him`() {
+        GameData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        for (t in 1 until Scene.ARRIVAL_DELAY) {
+            scene.tick(t)
+            assertTrue(scene.actors.isEmpty(), "tic $t: something was on stage before the marine")
+        }
+
+        scene.tick(Scene.ARRIVAL_DELAY)
+        assertTrue(scene.actors.any { it.isPlayer }, "the marine must arrive on the delay")
+
+        // Still nobody else a tic before his full spawn delay has run.
+        val firstEnemy = Scene.ARRIVAL_DELAY + GameData.waves[0].spawnDelay
+        for (t in Scene.ARRIVAL_DELAY + 1 until firstEnemy) scene.tick(t)
+        assertEquals(
+            0, scene.actors.count { it.creature != null && !it.isPlayer },
+            "an enemy arrived before the wave delay had run from the marine's own arrival",
+        )
+
+        scene.tick(firstEnemy)
+        assertEquals(
+            1, scene.actors.count { it.creature != null && !it.isPlayer },
+            "exactly one must arrive once the delay has run",
+        )
+    }
+
     @Test
     fun `the arsenal keeps the best loaded weapon and falls back to the pistol`() {
         val kit = Loadout()
@@ -279,20 +311,22 @@ class SceneTest {
 
         fun demons() = scene.actors.count { it.creature != null && !it.isPlayer }
 
-        scene.tick(1)
+        // He is not there from the first frame: the ground is empty for ARRIVAL_DELAY.
+        val arrives = Scene.ARRIVAL_DELAY
+        for (t in 1..arrives) scene.tick(t)
         assertTrue(scene.actors.any { it.isPlayer }, "the marine must appear first")
         assertEquals(0, demons(), "no enemy alongside the marine")
 
-        // The first one arrives after the wave 1 delay: three seconds.
+        // The first one arrives a full wave delay after him, not after the scene opened.
         val firstDelay = GameData.waves[0].spawnDelay
-        for (t in 2 until 1 + firstDelay) scene.tick(t)
+        for (t in arrives + 1 until arrives + firstDelay) scene.tick(t)
         assertEquals(0, demons(), "an enemy arrived before the expected $firstDelay tics")
 
-        scene.tick(1 + firstDelay)
+        scene.tick(arrives + firstDelay)
         assertEquals(1, demons(), "exactly one must arrive after the delay")
 
         // The second does not come with the first, but after another interval.
-        scene.tick(2 + firstDelay)
+        scene.tick(arrives + firstDelay + 1)
         assertEquals(1, demons(), "two enemies together in the first wave")
     }
 
@@ -524,21 +558,22 @@ class SceneTest {
         GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
-        scene.tick(1)
+        val arrives = Scene.ARRIVAL_DELAY
+        for (t in 1..arrives) scene.tick(t)
         val p = scene.actors.first { it.isPlayer }
         val x = p.x
         val y = p.y
 
         // Long enough to read as an arrival: the creatures' own reactiontime of 8 tics is
         // under a quarter of a second and goes unnoticed.
-        for (t in 2..TICRATE / 3) {
+        for (t in arrives + 1..arrives + TICRATE / 3) {
             scene.tick(t)
             assertEquals(x, p.x, "tic $t: the marine moved before his pause was over")
             assertEquals(y, p.y, "tic $t: the marine moved before his pause was over")
         }
 
         // ...and then he does get going.
-        for (t in TICRATE / 3..TICRATE * 3) scene.tick(t)
+        for (t in arrives + TICRATE / 3..arrives + TICRATE * 3) scene.tick(t)
         assertTrue(p.x != x || p.y != y, "the marine never started moving")
     }
 

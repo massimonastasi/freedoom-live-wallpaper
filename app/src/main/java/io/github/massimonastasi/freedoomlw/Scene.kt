@@ -215,6 +215,14 @@ class Scene(
     /** Consumed by the first wave that is armed, so only that one skips its delay. */
     private var rushOpening = instantStart
 
+    /**
+     * The tic the marine is due to arrive on, held empty until then.
+     *
+     * The preview has no time to spend on an empty floor, so it skips the wait entirely —
+     * the same reasoning as [rushOpening], and the same exception.
+     */
+    private var playerDueAt = if (instantStart) 0 else ARRIVAL_DELAY
+
     /** What the corner readout shows. Zero while the marine is down. */
     val playerHealth: Int get() = player?.takeIf { !it.dead }?.health?.coerceAtLeast(0) ?: 0
     val playerArmor: Int get() = player?.takeIf { !it.dead }?.loadout?.armorPoints ?: 0
@@ -300,8 +308,11 @@ class Scene(
 
         val p = player
         if (p == null) {
-            // The marine appears first, on his own: the first enemy arrives after the
-            // wave delay, not alongside him.
+            // The scene opens on empty ground for a moment before he arrives, so his
+            // teleport fog is something that happens rather than something already there
+            // when you looked. The wave is only armed once he is in, so the first enemy is
+            // still a full spawnDelay behind him and the whole opening simply shifts.
+            if (tic < playerDueAt) return
             spawnPlayer()
             startWave()
             return
@@ -377,8 +388,10 @@ class Scene(
         wave = 0
         skill = 0
         cleared = 0
-        spawnPlayer()
-        startWave()
+        // He takes the same moment to arrive after dying as he did at the start. The red
+        // wash has already faded by now, so this is a beat of quiet ground, not a second
+        // pause stacked on the first.
+        playerDueAt = tic + ARRIVAL_DELAY
     }
 
     /**
@@ -1123,6 +1136,15 @@ class Scene(
 
         /** How long the marine stands still after materialising. */
         const val PLAYER_REACTION = TICRATE / 2
+
+        /**
+         * Empty ground before the marine arrives, at the start and after every death.
+         *
+         * Two seconds. Everything downstream shifts with it rather than being squeezed: the
+         * wave is armed when he lands, so the first enemy is still a full spawnDelay behind
+         * him and the opening keeps its shape.
+         */
+        const val ARRIVAL_DELAY = TICRATE * 2
 
         /** The only directions anything moves in: east, north, west, south. */
         val CARDINALS = intArrayOf(0, 2, 4, 6)
