@@ -261,6 +261,55 @@ class SceneTest {
     }
 
     @Test
+    fun `the marine moves mostly along the axes`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        var cardinal = 0
+        var diagonal = 0
+        for (t in 1..TICRATE * 600) {
+            scene.tick(t)
+            val p = scene.actors.firstOrNull { it.isPlayer && !it.dead } ?: continue
+            when (p.moveDir) {
+                0, 2, 4, 6 -> cardinal++
+                1, 3, 5, 7 -> diagonal++
+            }
+        }
+        assertTrue(cardinal + diagonal > 1000, "not enough movement sampled")
+        // Diagonals stay available as a fallback when a cardinal step is blocked, so this
+        // is about preference rather than exclusion.
+        assertTrue(
+            cardinal > diagonal * 3,
+            "expected mostly axial movement, got $cardinal cardinal against $diagonal diagonal",
+        )
+    }
+
+    @Test
+    fun `a hurt marine goes for supplies instead of shooting`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        var hurtTics = 0
+        var attackingWhileHurt = 0
+        for (t in 1..TICRATE * 600) {
+            scene.tick(t)
+            val p = scene.actors.firstOrNull { it.isPlayer && !it.dead } ?: continue
+            if (p.health * 2 >= the engineData.player.health) continue
+            // Only counts when there is actually something to go and fetch.
+            if (scene.actors.none { it.mode == Mode.ITEM }) continue
+            hurtTics++
+            if (p.mode == Mode.ATTACK) attackingWhileHurt++
+        }
+        assertTrue(hurtTics > 100, "the marine was never hurt with an item available")
+        // He may still be finishing an attack begun before dropping below half health, so
+        // this is about not starting new ones rather than never being in the state.
+        assertTrue(
+            attackingWhileHurt * 4 < hurtTics,
+            "hurt with supplies around but still shooting for $attackingWhileHurt of $hurtTics tics",
+        )
+    }
+
+    @Test
     fun `combat actually happens`() {
         the engineData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)

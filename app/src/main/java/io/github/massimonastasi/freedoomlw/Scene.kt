@@ -680,6 +680,13 @@ class Scene(
         val target = enemyOf(a)
         val dist = if (target != null) approxDistance(a, target) else Int.MAX_VALUE
 
+        // Below half health the marine breaks off and goes for supplies rather than trading
+        // shots: staying in the fight while hurt is how he dies, and there is usually
+        // something on the ground worth reaching.
+        val hurt = a.isPlayer && a.health * 2 < the engineData.player.health
+        val supply = if (a.isPlayer && (hurt || dist > KEEP_AWAY)) nearestItem(a) else null
+        val breakingOff = hurt && supply != null
+
         if (target != null) {
             if (a.isPlayer && dist < KEEP_AWAY) {
                 // The marine does not walk into the demons: he backs off and shoots from a
@@ -692,8 +699,10 @@ class Scene(
                 a.targetY = target.y
             }
             val inMelee = dist < MELEERANGE + target.radius * FRACUNIT
-            val attacks = (c.meleeMod > 0 && inMelee) ||
-                ((c.hitscanShots > 0 || c.projectile >= 0) && checkMissileRange(a, target))
+            val attacks = !breakingOff && (
+                (c.meleeMod > 0 && inMelee) ||
+                    ((c.hitscanShots > 0 || c.projectile >= 0) && checkMissileRange(a, target))
+                )
             if (attacks) {
                 a.facing = dirTo(a, target)          // A_FaceTarget: turn to shoot
                 startAttack(a)
@@ -705,9 +714,10 @@ class Scene(
             newTarget(a)
         }
 
-        // With no enemy on top of him, the marine goes and collects whatever is lying around.
-        if (a.isPlayer && dist > KEEP_AWAY) {
-            nearestItem(a)?.let { a.targetX = it.x; a.targetY = it.y }
+        // Heading for a pickup overrides whatever movement target was chosen above.
+        if (supply != null) {
+            a.targetX = supply.x
+            a.targetY = supply.y
         }
 
         // P_TryWalk rearms movecount with P_Random()&15, so the pathfinding runs on average
@@ -795,7 +805,13 @@ class Scene(
             else -> DI_NODIR
         }
 
-        if (d1 != DI_NODIR && d2 != DI_NODIR) {
+        // The engine reaches for the diagonal first, which suits a monster closing in from
+        // anywhere. The marine skips it: with diagonals preferred his path across the screen
+        // reads as a drift, while along the axes it reads as deliberate movement, and the
+        // sprite spends more time in the profile and front views that show him best.
+        val cardinalFirst = a.isPlayer
+
+        if (!cardinalFirst && d1 != DI_NODIR && d2 != DI_NODIR) {
             a.moveDir = diags[(if (deltaY < 0) 2 else 0) + (if (deltaX > 0) 1 else 0)]
             if (a.moveDir != turnAround && tryWalk(a)) return
         }
@@ -810,7 +826,9 @@ class Scene(
         if (d2 != DI_NODIR) { a.moveDir = d2; if (tryWalk(a)) return }
         if (oldDir != DI_NODIR) { a.moveDir = oldDir; if (tryWalk(a)) return }
 
-        if (pRandom() and 1 != 0) {
+        if (cardinalFirst) {
+            for (d in CARDINALS_FIRST) { if (d == turnAround) continue; a.moveDir = d; if (tryWalk(a)) return }
+        } else if (pRandom() and 1 != 0) {
             for (d in 0..7) { if (d == turnAround) continue; a.moveDir = d; if (tryWalk(a)) return }
         } else {
             for (d in 7 downTo 0) { if (d == turnAround) continue; a.moveDir = d; if (tryWalk(a)) return }
@@ -859,6 +877,9 @@ class Scene(
          * hundred map units of screen space, which is what this has to clear.
          */
         const val SPAWN_MARGIN = 100
+
+        /** Exhaustive search order when cardinal movement is preferred over diagonal. */
+        val CARDINALS_FIRST = intArrayOf(0, 2, 4, 6, 1, 3, 5, 7)
 
         /** How often an item drops, and how long it stays if nobody picks it up. */
         const val ITEM_INTERVAL = TICRATE * 12

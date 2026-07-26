@@ -22,9 +22,11 @@ class SceneBalanceTest {
         val aliveSamples = ArrayList<Int>()
         var lastPlayer: Actor? = null
 
+        var highestWave = 0
         val totalTics = TICRATE * 600
         for (t in 1..totalTics) {
             scene.tick(t)
+            if (scene.wave > highestWave) highestWave = scene.wave
 
             for (a in scene.actors) {
                 val c = a.creature ?: continue
@@ -45,7 +47,7 @@ class SceneBalanceTest {
         println("marine deaths: $playerDeaths")
         println("marine alive: ${playerAlive * 100 / totalTics}% of the time")
         println("average demons alive: ${aliveSamples.average().let { "%.1f".format(it) }}")
-        println("highest wave reached: ${scene.wave + 1}")
+        println("highest wave reached: ${highestWave + 1}")
         println()
         println("%-16s %8s %8s %10s".format("creature", "spawned", "killed", "% killed"))
         for (c in the engineData.creatures) {
