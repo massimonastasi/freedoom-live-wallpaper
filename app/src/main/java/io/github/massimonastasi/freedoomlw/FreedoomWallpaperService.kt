@@ -94,11 +94,10 @@ class FreedoomWallpaperService : WallpaperService() {
             val w = WadFile(buf)
             // Only the creatures whose sprites actually exist in this WAD: the file
             // declares itself, no per-IWAD compatibility table needed.
-            damageTint = w.damageTint
             deathTint = w.paletteColor(GameData.PALETTE_DEATH)
             floorTiles = loadFloors(w)
             loadDigits(w)
-            sprites = GameData.spritePrefixes.map { SpriteSet(w, it) }
+            sprites = GameData.spritePrefixes.map { SpriteSet(w, it, SCENE_DIM_PERCENT) }
             val missing = GameData.spritePrefixes.filterIndexed { i, _ -> sprites[i].frameCount == 0 }
             Log.i(TAG, "WAD loaded: ${w.lumpCount} lumps, ${sprites.size - missing.size}/${sprites.size} sprites" +
                 if (missing.isEmpty()) "" else " (missing: $missing)")
@@ -132,6 +131,9 @@ class FreedoomWallpaperService : WallpaperService() {
             val f = w.decodeFlat(i)
             Log.i(TAG, "floor for ${GameData.skills[skill].name}: $name")
             floorNames[skill] = name
+            // Dimmed once, here, instead of by a colour filter on a full-screen fill every
+            // frame. The floor is dimmed harder than the sprites: see FLOOR_DIM_PERCENT.
+            f.pixels.dimInPlace(FLOOR_DIM_PERCENT)
             Bitmap.createBitmap(f.pixels, f.width, f.height, Bitmap.Config.ARGB_8888)
         }
     }
@@ -164,45 +166,13 @@ class FreedoomWallpaperService : WallpaperService() {
         private val handler = Handler(Looper.getMainLooper())
 
         /**
-         * Everything is drawn dimmed. A wallpaper competing with the launcher icons is a
-         * bad wallpaper: sprites and floor texture together were bright enough to make
-         * icons hard to read, so the whole scene is scaled down in brightness. Applied as
-         * a colour filter rather than a translucent overlay, so it costs nothing per frame.
+         * No colour filter on either paint: the dimming is baked into the decoded pixels
+         * when a lump is loaded, so these stay on the cheapest draw path there is.
          */
-        private fun dimBy(amount: Float) = ColorMatrixColorFilter(
-            ColorMatrix(
-                floatArrayOf(
-                    amount, 0f, 0f, 0f, 0f,
-                    0f, amount, 0f, 0f, 0f,
-                    0f, 0f, amount, 0f, 0f,
-                    0f, 0f, 0f, 1f, 0f,
-                )
-            )
-        )
-
-        private val dim = dimBy(SCENE_DIM)
-
-        /**
-         * The floor is dimmed harder than the sprites.
-         *
-         * One shared value could not serve both. The backdrop covers the whole screen and
-         * only has to hint that there is ground; the sprites are the thing being watched and
-         * have to stay legible. Tuned to the same brightness the previous, textureless
-         * backdrop happened to land on, so the ground reads as barely there while keeping
-         * the structure that stops it looking like a black screen.
-         */
-        private val floorDim = dimBy(FLOOR_DIM)
-
-        private val paint = Paint().apply {
-            isFilterBitmap = false
-            colorFilter = dim
-        }
+        private val paint = Paint().apply { isFilterBitmap = false }
 
         /** Tiled floor. Its shader matrix carries the home screen parallax. */
-        private val floorPaint = Paint().apply {
-            isFilterBitmap = false
-            colorFilter = floorDim
-        }
+        private val floorPaint = Paint().apply { isFilterBitmap = false }
         private val floorMatrix = Matrix()
         private var offset = 0.5f
 
@@ -554,30 +524,12 @@ class FreedoomWallpaperService : WallpaperService() {
         /** Which skill's tile the shader currently holds, so it is rebuilt only on change. */
         private var shaderSkill = -1
 
-        /**
-         * The ground the scene is leaving, kept alive for the length of the crossfade.
-         *
-         * Swapping the tile outright made the whole screen change texture between one frame
-         * and the next, which is the most abrupt thing a wallpaper can do and reads as a
-         * glitch rather than as progress. The old ground is held underneath and the new one
-         * brought up over it.
-         */
-        private val fadePaint = Paint().apply {
-            isFilterBitmap = false
-            colorFilter = floorDim
-        }
-        private var fadeUntil = 0
-
         private fun drawFloor(canvas: Canvas) {
             // The ground changes with the difficulty. Rebuilding a BitmapShader is cheap but
             // not free, and the skill changes a handful of times an hour, so it is keyed on
             // the value rather than done per frame.
             val skill = scene?.skill ?: 0
             if (skill != shaderSkill) {
-                // Only fade between two real grounds. The first tile of all appears with the
-                // scene itself, and fading that one in would just be a slow start.
-                fadePaint.shader = if (shaderSkill >= 0) floorPaint.shader else null
-                fadeUntil = if (fadePaint.shader != null) tic + FLOOR_FADE_TICS else 0
                 shaderSkill = skill
                 floorPaint.shader = floorTiles.getOrNull(skill)?.let {
                     BitmapShader(it, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
@@ -585,32 +537,14 @@ class FreedoomWallpaperService : WallpaperService() {
             }
 
             val shader = floorPaint.shader
-            if (shader == null && fadePaint.shader == null) {
+            if (shader == null) {
                 canvas.drawColor(BACKDROP)
                 return
             }
-
             floorMatrix.setScale(FLOOR_SCALE, FLOOR_SCALE)
             floorMatrix.postTranslate((0.5f - offset) * PARALLAX_PX, 0f)
-            val w = frame.width().toFloat()
-            val h = frame.height().toFloat()
-
-            val left = fadeUntil - tic
-            if (left > 0) {
-                fadePaint.shader?.let {
-                    it.setLocalMatrix(floorMatrix)
-                    canvas.drawRect(0f, 0f, w, h, fadePaint)
-                }
-            } else if (fadePaint.shader != null) {
-                fadePaint.shader = null            // released once it has finished showing
-            }
-
-            shader ?: return
             shader.setLocalMatrix(floorMatrix)
-            // Opaque unless a fade is running, in which case it rises over the old ground.
-            floorPaint.alpha =
-                if (left > 0) (255 - left * 255 / FLOOR_FADE_TICS).coerceIn(0, 255) else 255
-            canvas.drawRect(0f, 0f, w, h, floorPaint)
+            canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), floorPaint)
         }
 
         /** Solid colour overlays: the death wash and the no-WAD placeholder. */
@@ -687,26 +621,21 @@ class FreedoomWallpaperService : WallpaperService() {
          * launcher icons, and floor texture plus lit sprites together were bright enough to
          * fight them for attention.
          */
-        const val SCENE_DIM = 0.62f
+        const val SCENE_DIM_PERCENT = 62
 
         /**
-         * Brightness multiplier for the floor alone, well below SCENE_DIM.
+         * Brightness for the floor alone, well below the sprites'.
          *
-         * FLAT4 measures 37.7 mean luminance; at 0.35 it lands near 13, against the 23 the
-         * old textureless CEIL5_1 reached at the shared value. That older backdrop was
-         * reported as the better one to sit behind icons, and this is what matches it — with
-         * a visible grid rather than featureless noise, which is why it can afford to be
-         * darker still and remain a backdrop rather than a black screen.
-         */
-        const val FLOOR_DIM = 0.35f
-
-        /**
-         * How long the ground takes to change, in tics.
+         * One shared value could not serve both. The backdrop covers the whole screen and
+         * only has to hint that there is ground; the sprites are the thing being watched and
+         * have to stay legible. The chosen flats measure around 30 to 38 mean luminance, so
+         * at 35 percent the ground lands near 12 — barely there, but with a structure that
+         * keeps it from reading as a black screen.
          *
-         * Quick on purpose: this is scenery, not an event. Long enough that the eye reads a
-         * dissolve rather than a cut, short enough that nobody watches it happen.
+         * Both are percentages rather than multipliers because they are now applied to
+         * integer pixel channels at load, not to a float colour matrix per frame.
          */
-        const val FLOOR_FADE_TICS = TICRATE / 2
+        const val FLOOR_DIM_PERCENT = 35
 
         /** Room left above the debug overlay for the status bar, in dp. */
         const val STATUS_BAR_CLEARANCE = 34f

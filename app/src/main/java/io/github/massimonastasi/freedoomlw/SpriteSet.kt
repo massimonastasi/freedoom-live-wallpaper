@@ -32,7 +32,7 @@ import android.util.LruCache
  * Mirroring does not create a second Bitmap: the sprite is drawn with a negative X scale,
  * which the hardware Canvas does for free. That halves sprite memory.
  */
-class SpriteSet(private val wad: WadFile, prefix: String) {
+class SpriteSet(private val wad: WadFile, prefix: String, private val dim: Int = 100) {
 
     // slot[frame][rot]: (lump index shl 1) or flip, -1 when absent. rot 0 = all directions.
     private val slot = Array(26) { IntArray(9) { -1 } }
@@ -89,6 +89,9 @@ class SpriteSet(private val wad: WadFile, prefix: String) {
      * draw loop allocates nothing.
      */
     fun sprite(lump: Int): Sprite = cache.get(lump) ?: wad.decodePatch(lump).let {
+        // Dimmed here, once per lump, rather than by a colour filter on every frame. The
+        // array is freshly decoded, so this costs no allocation. See dimInPlace.
+        it.pixels.dimInPlace(dim)
         Sprite(
             Bitmap.createBitmap(it.pixels, it.width, it.height, Bitmap.Config.ARGB_8888),
             it.xOffset,

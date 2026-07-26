@@ -37,6 +37,29 @@ class Patch(
 )
 
 /**
+ * Scales RGB in place by [percent], leaving alpha untouched.
+ *
+ * The scene is drawn dimmed so it does not fight the launcher icons, and that used to be a
+ * ColorMatrixColorFilter on the paints. A colour filter is a per-pixel cost paid on every
+ * frame forever: it puts a colour-matrix fragment shader in front of every sprite and in
+ * front of a full-screen fill, which at 1080x2400 and twenty frames a second is fifty
+ * million matrix multiplies per second to apply a constant.
+ *
+ * Baking it into the decoded pixels pays it once, per lump, at load. Alpha is left alone so
+ * the patch format's transparency survives.
+ */
+internal fun IntArray.dimInPlace(percent: Int) {
+    if (percent >= 100) return
+    for (i in indices) {
+        val c = this[i]
+        this[i] = (c and 0xFF000000.toInt()) or
+            ((((c shr 16) and 0xFF) * percent / 100) shl 16) or
+            ((((c shr 8) and 0xFF) * percent / 100) shl 8) or
+            (((c and 0xFF) * percent / 100))
+    }
+}
+
+/**
  * Reader for WAD files in the classic IWAD format.
  *
  * A single load path serves both the bundled assets and a user-supplied IWAD: lump names
@@ -57,9 +80,6 @@ class WadFile(private val buf: ByteBuffer) {
 
     /** PLAYPAL palette 0, already converted to ARGB. */
     private val palette = IntArray(256)
-
-    /** Colour of the red damage flash, taken from PLAYPAL palette 8. */
-    val damageTint: Int
 
     init {
         buf.order(ByteOrder.LITTLE_ENDIAN)
@@ -104,27 +124,10 @@ class WadFile(private val buf: ByteBuffer) {
             val b = buf.get(p + i * 3 + 2).toInt() and 0xFF
             palette[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
         }
-
-        // PLAYPAL holds 14 palettes of 768 bytes: 0 is the normal one, 1-8 the red damage
-        // ramp, 9-12 the yellow item flash, 13 the green radiation suit. The damage colour
-        // is read from the WAD rather than invented: take the brightest index and see what
-        // palette 8, the most intense one, turns it into.
-        damageTint = if (lumpSize[pal] >= 9 * 768) {
-            var whitest = 0
-            var best = -1
-            for (i in 0 until 256) {
-                val c = palette[i]
-                val sum = ((c shr 16) and 0xFF) + ((c shr 8) and 0xFF) + (c and 0xFF)
-                if (sum > best) { best = sum; whitest = i }
-            }
-            val q = p + 8 * 768 + whitest * 3
-            (0xFF shl 24) or
-                ((buf.get(q).toInt() and 0xFF) shl 16) or
-                ((buf.get(q + 1).toInt() and 0xFF) shl 8) or
-                (buf.get(q + 2).toInt() and 0xFF)
-        } else {
-            0xFFAA1400.toInt()
-        }
+        // PLAYPAL's other thirteen palettes are the damage, item and radiation-suit ramps.
+        // Only palette 0 is read: the death wash used to be derived from the damage ramp and
+        // is now a palette entry chosen directly, which left that derivation — a scan of all
+        // 256 colours at load — computing a value nothing read.
     }
 
     val lumpCount: Int get() = lumpPos.size
