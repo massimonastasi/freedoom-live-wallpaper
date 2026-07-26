@@ -56,6 +56,23 @@ dependencies {
 }
 
 /**
+ * Copies the licence texts into assets so the application can show them.
+ *
+ * The BSD notice covering the bundled Freedoom assets has to be reproduced "in the
+ * documentation and/or other materials provided with the distribution", and an APK ships
+ * with no documentation: the licences screen is that material, and it is a redistribution
+ * requirement rather than a nicety. The GPL text goes with it for the same reason.
+ *
+ * Copied rather than duplicated so the repository files stay the single source of truth.
+ */
+val copyLicences by tasks.registering(Copy::class) {
+    from(rootProject.file("LICENSE"), rootProject.file("NOTICE.md"))
+    into(layout.projectDirectory.dir("src/main/assets"))
+}
+
+tasks.named("preBuild") { dependsOn(copyLicences) }
+
+/**
  * Writes the bundled asset WAD, keeping only the lumps this wallpaper reads.
  *
  * The full Freedoom IWAD is 27.5 MB and we use 3.2% of it: the rest is maps, wall textures,

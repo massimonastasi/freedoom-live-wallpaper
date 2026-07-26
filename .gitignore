@@ -13,3 +13,8 @@ build/
 # WAD files stay out of the repo: freedoom1.wad is downloaded during setup (see README),
 # and a user's own WADs must never end up under version control.
 *.wad
+
+# Licence texts are copied into assets at build time by the copyLicences task.
+# The repository copies at the root are the source of truth.
+/app/src/main/assets/LICENSE
+/app/src/main/assets/NOTICE.md

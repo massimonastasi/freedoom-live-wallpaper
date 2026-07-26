@@ -2,4 +2,16 @@
     <string name="app_name">Freedoom Live Wallpaper</string>
     <string name="wallpaper_description">An endless battle on your home screen. Freedoom sprites, original timing, minimal battery use.</string>
     <string name="no_wallpaper_picker">This device has no live wallpaper picker. Set it from Settings, Wallpaper.</string>
+
+    <string name="settings_frame_rate">Frame rate</string>
+    <string name="settings_frame_rate_note">The scene always thinks at the original 35 steps a second. This is only how often it is drawn, and it is the one setting that changes battery use.</string>
+    <string name="settings_fps">%d fps</string>
+    <string name="settings_scene">Scene</string>
+    <string name="settings_readout">Show health and armour</string>
+    <string name="settings_god">The marine cannot die</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_note">Free, no adverts, no network access, no data collected.</string>
+    <string name="settings_licences">Licences and notices</string>
+    <string name="settings_set_wallpaper">Set as wallpaper</string>
+    <string name="licences_missing">%s could not be read. The licences it carries still apply; they are in the project repository.</string>
 </resources>

@@ -213,8 +213,16 @@ class FreedoomWallpaperService : WallpaperService() {
         /** Frame rate last declared to the compositor, so we only declare it on change. */
         private var declaredFps = 0f
 
-        // Becomes a setting in phase 9. The corner is no longer a choice: the two readings
-        // take one bottom corner each, so there is nothing left to place.
+        /**
+         * The user's choices, re-read whenever the wallpaper becomes visible.
+         *
+         * Not a listener: leaving the settings screen makes the wallpaper visible again, so
+         * that moment already is the notification, and it costs one preferences read at a
+         * point where the engine is waking up anyway. A change made while the wallpaper is
+         * hidden lands the instant it is seen, which is the only time it could matter.
+         */
+        private val prefs = Settings.of(this@FreedoomWallpaperService)
+        private var chosenFps = Settings.DEFAULT_FPS
         private var readoutVisible = true
 
         override fun onCreate(holder: SurfaceHolder) {
@@ -267,6 +275,7 @@ class FreedoomWallpaperService : WallpaperService() {
         override fun onVisibilityChanged(visible: Boolean) {
             this.visible = visible
             if (visible) {
+                applySettings()
                 // Cheap wake-up: resume from the frozen state, rebuild nothing. This
                 // matters on the lock screen, where it fires on every notification.
                 lastNanos = System.nanoTime()
@@ -274,6 +283,12 @@ class FreedoomWallpaperService : WallpaperService() {
             } else {
                 handler.removeCallbacks(drawRunnable)
             }
+        }
+
+        private fun applySettings() {
+            chosenFps = Settings.fps(prefs)
+            readoutVisible = Settings.readout(prefs)
+            scene?.invulnerable = Settings.godMode(prefs)
         }
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
@@ -331,7 +346,7 @@ class FreedoomWallpaperService : WallpaperService() {
                 powerSaveCheckedAt = now
                 powerSave = powerManager.isPowerSaveMode
             }
-            val fps = if (powerSave) DRAW_FPS / 2 else DRAW_FPS
+            val fps = if (powerSave) chosenFps / 2 else chosenFps
             declareFrameRate(fps.toFloat())
             handler.postDelayed(drawRunnable, 1000L / fps)
         }
