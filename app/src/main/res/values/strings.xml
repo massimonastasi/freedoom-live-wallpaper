@@ -5,11 +5,13 @@
 
     <string name="settings_frame_rate">Frame rate</string>
     <!--
-        The %s is replaced by the chosen entry: a ListPreference substitutes it into the
-        summary. Without it the row explained the setting and never said which value was in
-        force, which is the one thing the row has to show.
+        No %s here. It was added when this was a ListPreference, which substitutes the chosen
+        entry into its summary because the row is all the user can see. The radios show the
+        selection themselves now, so the summary went back to explaining the setting - and
+        the placeholder was being printed literally, since a plain Preference does not
+        substitute anything.
     -->
-    <string name="settings_frame_rate_note">%s. The scene always thinks at the original 35 steps a second; this is only how often it is drawn, and it is the one setting that changes battery use.</string>
+    <string name="settings_frame_rate_note">The scene always thinks at the original 35 steps a second. This is only how often it is drawn, and it is the one setting that changes battery use.</string>
     <string name="settings_background">Background</string>
     <string name="settings_background_photo">Choose the photo</string>
     <string name="settings_background_colour">Flat colour</string>

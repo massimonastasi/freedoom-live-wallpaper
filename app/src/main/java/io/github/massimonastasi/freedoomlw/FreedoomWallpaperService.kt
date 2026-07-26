@@ -176,14 +176,27 @@ class FreedoomWallpaperService : WallpaperService() {
      * Each falls back down a shared chain, because a user-supplied WAD need not carry them
      * all — a WAD with only one usable flat simply shows the same ground at every level.
      */
-    private fun loadFloors(w: WadFile): Array<Bitmap?> = Array(GameData.skills.size) { skill ->
-        val wanted = listOf(GameData.skills[skill].flat) + GameData.FLOOR_FALLBACKS
-        wanted.firstNotNullOfOrNull { name ->
-            val i = w.flatIndex(name)
-            if (i < 0) return@firstNotNullOfOrNull null
-            val f = w.decodeFlat(i)
-            Log.i(TAG, "floor for ${GameData.skills[skill].name}: $name")
+    private fun loadFloors(w: WadFile): Array<Bitmap?> {
+        // Flats already handed to an earlier level. A commercial IWAD carries none of the
+        // Freedoom-specific names, and without this every level fell down the same shared
+        // chain onto the same flat: measured on a real import, four of the five became
+        // CEIL5_1 and the ground stopped saying anything about the difficulty. A level takes
+        // a flat another has only when it has no alternative left.
+        val taken = HashSet<String>()
+
+        return Array(GameData.skills.size) { skill ->
+            val wanted = listOf(GameData.skills[skill].flat) + GameData.FLOOR_FALLBACKS
+            val present = wanted.filter { w.flatIndex(it) >= 0 }
+            val name = present.firstOrNull { it !in taken } ?: present.firstOrNull()
+            if (name == null) {
+                Log.i(TAG, "no floor for ${GameData.skills[skill].name}")
+                return@Array null
+            }
+            taken += name
             floorNames[skill] = name
+            Log.i(TAG, "floor for ${GameData.skills[skill].name}: $name")
+
+            val f = w.decodeFlat(w.flatIndex(name))
             // Dimmed once, here, instead of by a colour filter on a full-screen fill every
             // frame. The floor is dimmed harder than the sprites: see FLOOR_DIM_PERCENT.
             f.pixels.dimInPlace(FLOOR_DIM_PERCENT)

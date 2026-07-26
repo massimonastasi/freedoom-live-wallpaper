@@ -82,6 +82,15 @@ class RadioListPreference @JvmOverloads constructor(
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
         super.onBindViewHolder(holder)
+
+        // A row with no title or no summary should not reserve the space for one. The base
+        // class leaves both views in place and merely empty, which on a screen made mostly of
+        // these leaves gaps that read as misalignment.
+        holder.findViewById(android.R.id.title)?.visibility =
+            if (title.isNullOrEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+        holder.findViewById(android.R.id.summary)?.visibility =
+            if (summary.isNullOrEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+
         val container = holder.findViewById(R.id.radio_group) as RadioGroup
         group = container
         container.setOnCheckedChangeListener(null)
