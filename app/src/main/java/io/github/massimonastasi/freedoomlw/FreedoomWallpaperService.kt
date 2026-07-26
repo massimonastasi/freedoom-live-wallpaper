@@ -770,13 +770,17 @@ class FreedoomWallpaperService : WallpaperService() {
         const val STATUS_BAR_CLEARANCE = 34f
 
         /**
-         * Peak opacity of the death wash, reached at the end of the fade.
+         * Peak opacity of the death wash, reached at the very end of the fade.
          *
-         * The colour it washes with is now a deep 179,0,0 rather than the glaring 255,25,25
-         * of the damage ramp, so the same opacity reads far calmer than it used to. This is
-         * the one number to change if the wash should be fainter still.
+         * Fully opaque: the ramp now ends on a solid screen rather than a translucent one.
+         * That is only bearable because the colour underneath is a dark 115,0,0 from the low
+         * half of the palette's red ramp — at the glaring 255,25,25 this started from, a
+         * full-opacity wash would have been a wall.
+         *
+         * It is momentary. The peak lands on the last frame of the fade, and the scene
+         * restarts immediately after, so nothing sits at full red.
          */
-        const val DEATH_MAX_ALPHA = 130f
+        const val DEATH_MAX_ALPHA = 255f
 
         /** Magnification of the 64x64 floor tile. */
         const val FLOOR_SCALE = 1.5f

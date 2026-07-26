@@ -264,9 +264,11 @@ object GameData {
      * palette entry directly makes the colour a fact of the active WAD, like the two readout
      * colours, instead of an arithmetic adjustment layered on one.
      *
-     * 182 is the nearest entry to the intended 174,0,0, five units away in RGB.
+     * The ramp runs from 203,0,0 at index 180 down to 67,0,0 at 191, all pure red with no
+     * green or blue at all. 187 sits in the lower half at luminance 34 — dark enough that
+     * reaching full opacity leaves a deep blood red rather than a bright one.
      */
-    const val PALETTE_DEATH = 182           // 179, 0, 0
+    const val PALETTE_DEATH = 187           // 115, 0, 0
 
     // ------------------------------------------------------------------ weapons
 

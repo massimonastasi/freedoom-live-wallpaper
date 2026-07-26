@@ -1108,12 +1108,15 @@ class Scene(
         /**
          * How long the red screen lasts before restarting from the first wave.
          *
-         * Kept short: at ten seconds the marine died often enough to leave the screen red
-         * half the time, which is unwatchable as a wallpaper. Briefly two and a quarter,
-         * then back to three: with the wash now a deep red at low opacity rather than a
-         * glaring one, it no longer needs to be hurried off the screen.
+         * This is also the length of the fade, which now runs all the way to opaque, so it
+         * is the whole of the descent rather than a pause with a tint over it.
+         *
+         * Four and a half seconds. Ten was tried early on and was unwatchable, but that was
+         * a bright red at constant strength; a slow ramp into a dark one is a different
+         * thing to sit through. With ARRIVAL_DELAY after it, six and a half seconds pass
+         * between the marine falling and the next one landing.
          */
-        const val DEATH_DELAY = TICRATE * 3
+        const val DEATH_DELAY = TICRATE * 9 / 2
 
         /** Below this distance the marine backs off instead of closing in. */
         const val KEEP_AWAY = 220 * FRACUNIT
