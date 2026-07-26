@@ -130,7 +130,6 @@ class FreedoomWallpaperService : WallpaperService() {
             colorFilter = dim
         }
         private val floorMatrix = Matrix()
-        private var floorShader: BitmapShader? = null
         private var offset = 0.5f
 
         private val matrix = Matrix()
@@ -212,9 +211,8 @@ class FreedoomWallpaperService : WallpaperService() {
 
             Log.i(TAG, "drawing surface: ${width}x$height")
             frame.set(0, 0, width, height)
-            floorShader = floorTile?.let {
+            floorPaint.shader = floorTile?.let {
                 BitmapShader(it, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-                    .also { s -> floorPaint.shader = s }
             }
             scene = Scene(
                 worldWidth = (width / pxPerUnit).toInt(),
@@ -313,7 +311,7 @@ class FreedoomWallpaperService : WallpaperService() {
          * 64x64 flat, so the whole background is one draw call whatever the screen size.
          */
         private fun drawFloor(canvas: Canvas) {
-            val shader = floorShader
+            val shader = floorPaint.shader
             if (shader == null) {
                 canvas.drawColor(BACKDROP)
                 return
@@ -329,12 +327,12 @@ class FreedoomWallpaperService : WallpaperService() {
 
         /** Visible placeholder when the WAD is missing: better than a silent black screen. */
         private fun drawPlaceholder(canvas: Canvas) {
-            val paint = overlay
-            paint.color = Color.rgb(220, 60, 30)
+            overlay.color = Color.rgb(220, 60, 30)
+            overlay.alpha = 255
             val w = frame.width() * 0.2f
             val progress = (tic % (TICRATE * 4)).toFloat() / (TICRATE * 4)
             val x = progress * (frame.width() + w) - w
-            canvas.drawRect(x, 0f, x + w, frame.height().toFloat(), paint)
+            canvas.drawRect(x, 0f, x + w, frame.height().toFloat(), overlay)
         }
     }
 

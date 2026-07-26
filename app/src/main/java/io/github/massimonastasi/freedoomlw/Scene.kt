@@ -14,6 +14,25 @@ import kotlin.math.abs
 enum class Mode { WALK, ATTACK, PAIN, DEATH, PROJECTILE, EFFECT, ITEM }
 
 /**
+ * What the marine is carrying. Kept apart from [Actor] because only one actor in the scene
+ * ever has it: every blood splat, fog puff and fireball is an actor too, and giving them
+ * all an ammo array was an allocation per spawn for state they can never use.
+ */
+class Loadout {
+    var armorPoints = 0
+    var armorType = 0
+    var weapon = the engineData.WEAPON_PISTOL
+    val ammo = IntArray(the engineData.maxAmmo.size)
+
+    fun copyFrom(other: Loadout) {
+        armorPoints = other.armorPoints
+        armorType = other.armorType
+        weapon = other.weapon
+        other.ammo.copyInto(ammo)
+    }
+}
+
+/**
  * An actor in the scene: creature, projectile, effect or pickup.
  *
  * Positions are in the engine map units, 16.16 fixed-point like the original: no drift, and the
@@ -49,11 +68,8 @@ class Actor(val spriteIndex: Int) {
     /** Tics of stillness after appearing: info.c mobjinfo.reactiontime. */
     var reactionTime = 0
 
-    /** Marine only: equipment. */
-    var armorPoints = 0
-    var armorType = 0
-    var weapon = the engineData.WEAPON_PISTOL
-    val ammo = IntArray(the engineData.maxAmmo.size)
+    /** Marine only: everything he is carrying. Null for every other actor. */
+    var loadout: Loadout? = null
 
     /** Pickups lying on the ground only. */
     var item: the engineData.Item? = null
@@ -109,10 +125,7 @@ class Scene(
     private var deadUntil = 0
 
     /** Equipment that survives death. */
-    private var keptWeapon = the engineData.WEAPON_PISTOL
-    private val keptAmmo = IntArray(the engineData.maxAmmo.size)
-    private var keptArmor = 0
-    private var keptArmorType = 0
+    private val kept = Loadout()
 
     /** Arrival queue for the current wave, and how far along it we are. */
     private var spawned = IntArray(0)
@@ -221,12 +234,7 @@ class Scene(
 
     /** After death everything restarts from the first wave: dying wipes the progress. */
     private fun restart() {
-        player?.let {
-            keptWeapon = it.weapon
-            it.ammo.copyInto(keptAmmo)
-            keptArmor = it.armorPoints
-            keptArmorType = it.armorType
-        }
+        player?.loadout?.let { kept.copyFrom(it) }
         actors.clear()
         player = null
         deadUntil = 0
@@ -259,10 +267,7 @@ class Scene(
         // The waves restart from scratch, the arsenal does not: without that continuity the
         // marine stayed on the pistol forever in the early waves and half the bestiary was
         // never seen.
-        a.weapon = keptWeapon
-        keptAmmo.copyInto(a.ammo)
-        a.armorPoints = keptArmor
-        a.armorType = keptArmorType
+        a.loadout = Loadout().apply { copyFrom(kept) }
         a.x = randomIn(a.radius, worldWidth - a.radius) * FRACUNIT
         a.y = randomIn(a.radius, worldHeight - a.radius) * FRACUNIT
         spawnFog(a.x, a.y)
@@ -326,41 +331,46 @@ class Scene(
         return tic - a.spawnTic < ITEM_LIFETIME
     }
 
+    /** Everything below only ever runs for the marine, the one actor with a loadout. */
+
     /**
      * Pickup, following the p_inter.c rules: health never exceeds 100, armour is refused
      * when the one already worn is better, and a weapon carries two clip loads.
      * Returns false when the item is not needed and should stay on the ground.
      */
-    private fun pickUp(p: Actor, it: the engineData.Item): Boolean = when (it.kind) {
-        the engineData.ITEM_HEALTH -> {
-            if (p.health >= the engineData.player.health) false
-            else { p.health = minOf(the engineData.player.health, p.health + it.amount); true }
+    private fun pickUp(p: Actor, it: the engineData.Item): Boolean {
+        val kit = p.loadout ?: return false
+        return when (it.kind) {
+            the engineData.ITEM_HEALTH -> {
+                if (p.health >= the engineData.player.health) false
+                else { p.health = minOf(the engineData.player.health, p.health + it.amount); true }
+            }
+            the engineData.ITEM_ARMOR -> {
+                if (kit.armorPoints >= it.amount) false
+                else { kit.armorPoints = it.amount; kit.armorType = it.extra; true }
+            }
+            the engineData.ITEM_WEAPON -> {
+                giveAmmo(kit, the engineData.weapons[it.extra].ammo, it.amount)
+                if (it.extra > kit.weapon) kit.weapon = it.extra
+                true
+            }
+            else -> giveAmmo(kit, it.extra, it.amount)
         }
-        the engineData.ITEM_ARMOR -> {
-            if (p.armorPoints >= it.amount) false
-            else { p.armorPoints = it.amount; p.armorType = it.extra; true }
-        }
-        the engineData.ITEM_WEAPON -> {
-            val w = the engineData.weapons[it.extra]
-            giveAmmo(p, w.ammo, it.amount)
-            if (it.extra > p.weapon) p.weapon = it.extra
-            true
-        }
-        else -> giveAmmo(p, it.extra, it.amount)
     }
 
-    private fun giveAmmo(p: Actor, type: Int, clips: Int): Boolean {
+    private fun giveAmmo(kit: Loadout, type: Int, clips: Int): Boolean {
         if (type < 0) return false
-        if (p.ammo[type] >= the engineData.maxAmmo[type]) return false
-        p.ammo[type] = minOf(the engineData.maxAmmo[type], p.ammo[type] + clips * the engineData.clipAmmo[type])
+        if (kit.ammo[type] >= the engineData.maxAmmo[type]) return false
+        kit.ammo[type] = minOf(the engineData.maxAmmo[type], kit.ammo[type] + clips * the engineData.clipAmmo[type])
         return true
     }
 
     /** The best owned weapon that still has ammunition. */
     private fun currentWeapon(p: Actor): the engineData.Weapon {
-        for (i in p.weapon downTo 0) {
+        val kit = p.loadout ?: return the engineData.weapons[the engineData.WEAPON_PISTOL]
+        for (i in kit.weapon downTo 0) {
             val w = the engineData.weapons[i]
-            if (w.ammo < 0 || p.ammo[w.ammo] > 0) return w
+            if (w.ammo < 0 || kit.ammo[w.ammo] > 0) return w
         }
         return the engineData.weapons[the engineData.WEAPON_PISTOL]
     }
@@ -484,7 +494,7 @@ class Scene(
                 // p_pspr.c: every pellet deals 5*(P_Random()%3+1). Only the pellet count
                 // changes: one for pistol and chaingun, seven for the shotgun.
                 val w = currentWeapon(a)
-                if (w.ammo >= 0) a.ammo[w.ammo]--
+                if (w.ammo >= 0) a.loadout?.ammo?.let { it[w.ammo]-- }
                 var total = 0
                 repeat(w.pellets) { total += the engineData.gunShotDamage() }
                 damageActor(target, total, true)
@@ -552,13 +562,14 @@ class Scene(
         // p_inter.c: armour absorbs a third of the damage when green, half when blue, and
         // is consumed by the same amount. Once it runs out, the type is cleared too.
         var amount = amount
-        if (target.isPlayer && target.armorType > 0) {
-            var saved = the engineData.armorSaved(amount, target.armorType)
-            if (target.armorPoints <= saved) {
-                saved = target.armorPoints
-                target.armorType = 0
+        val kit = target.loadout
+        if (kit != null && kit.armorType > 0) {
+            var saved = the engineData.armorSaved(amount, kit.armorType)
+            if (kit.armorPoints <= saved) {
+                saved = kit.armorPoints
+                kit.armorType = 0
             }
-            target.armorPoints -= saved
+            kit.armorPoints -= saved
             amount -= saved
         }
 
@@ -600,9 +611,9 @@ class Scene(
         }
 
         val target = enemyOf(a)
+        val dist = if (target != null) approxDistance(a, target) else Int.MAX_VALUE
 
         if (target != null) {
-            val dist = approxDistance(a, target)
             if (a.isPlayer && dist < KEEP_AWAY) {
                 // The marine does not walk into the demons: he backs off and shoots from a
                 // distance. Charging them, he died every twenty seconds and never got past
@@ -625,7 +636,7 @@ class Scene(
         }
 
         // With no enemy on top of him, the marine goes and collects whatever is lying around.
-        if (a.isPlayer && (target == null || approxDistance(a, target) > KEEP_AWAY)) {
+        if (a.isPlayer && dist > KEEP_AWAY) {
             nearestItem(a)?.let { a.targetX = it.x; a.targetY = it.y }
         }
 

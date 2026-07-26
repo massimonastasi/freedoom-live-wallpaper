@@ -106,7 +106,6 @@ object the engineData {
         val meleeMul: Int = 0,
         val hitscanShots: Int = 0,
         val projectile: Int = -1,
-        val floats: Boolean = false,
     ) {
         var spriteIndex = -1
     }
@@ -177,7 +176,7 @@ object the engineData {
             attack = Anim(intArrayOf(1, 2, 3), intArrayOf(5, 5, 5)),
             pain = Anim(intArrayOf(4, 4), intArrayOf(3, 3)),
             death = Anim(intArrayOf(6, 7, 8, 9, 10, 11), intArrayOf(8, 8, 8, 8, 8, -1)),
-            painChance = 128, meleeMod = 6, meleeMul = 10, projectile = 0, floats = true,
+            painChance = 128, meleeMod = 6, meleeMul = 10, projectile = 0,
         ),
         // mobjinfo[MT_BRUISER]; A_BruisAttack: melee (P_Random()%8+1)*10, otherwise MT_BRUISERSHOT
         Creature(
