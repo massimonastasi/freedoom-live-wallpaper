@@ -33,6 +33,12 @@ android {
         noCompress += "wad"
     }
 
+    // Enabled for BuildConfig.DEBUG alone, which gates the on-screen debug overlay. Tying it
+    // to the build type rather than to a constant is what stops the overlay ever shipping.
+    buildFeatures {
+        buildConfig = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

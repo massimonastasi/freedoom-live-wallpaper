@@ -64,6 +64,9 @@ class FreedoomWallpaperService : WallpaperService() {
     /** Floor texture per skill level, tiled behind the scene. Null entries when absent. */
     private var floorTiles: Array<Bitmap?> = arrayOfNulls(GameData.skills.size)
 
+    /** Which flat each skill actually resolved to, for the debug overlay. */
+    private var floorNames: Array<String> = Array(GameData.skills.size) { "?" }
+
     /** Status bar numerals from the WAD. */
     private var digits: Array<Bitmap>? = null
 
@@ -128,6 +131,7 @@ class FreedoomWallpaperService : WallpaperService() {
             if (i < 0) return@firstNotNullOfOrNull null
             val f = w.decodeFlat(i)
             Log.i(TAG, "floor for ${GameData.skills[skill].name}: $name")
+            floorNames[skill] = name
             Bitmap.createBitmap(f.pixels, f.width, f.height, Bitmap.Config.ARGB_8888)
         }
     }
@@ -432,6 +436,7 @@ class FreedoomWallpaperService : WallpaperService() {
             }
 
             drawReadout(canvas, s)
+            drawDebug(canvas, s)
 
             // Marine death: the screen washes red. The colour is not invented, it is
             // PLAYPAL palette 8, the original game's damage flash — but at full strength it
@@ -483,6 +488,42 @@ class FreedoomWallpaperService : WallpaperService() {
             // The right-hand block is measured so it ends at the margin however wide it is.
             hudPaint.colorFilter = healthFilter
             drawNumber(canvas, health, frame.width() - digitCount(health) * gw - pad, baseline, scale)
+        }
+
+        /**
+         * Debug overlay: the flat in use top left, the skill and wave top right.
+         *
+         * Present only in debug builds, gated on BuildConfig.DEBUG rather than on a constant
+         * someone has to remember to flip, so it cannot reach a release APK. It draws with
+         * the platform font instead of the WAD numerals: those cover the ten digits and
+         * nothing else, and this needs letters.
+         */
+        private val debugPaint = Paint().apply {
+            color = 0x99FFFFFF.toInt()
+            textSize = 13f * resources.displayMetrics.density
+            isAntiAlias = true
+        }
+
+        /** Rebuilt only when it changes, so the draw loop keeps allocating nothing. */
+        private var debugRight = ""
+        private var debugSkill = -1
+        private var debugWave = -1
+
+        private fun drawDebug(canvas: Canvas, s: Scene) {
+            if (!BuildConfig.DEBUG) return
+
+            if (s.skill != debugSkill || s.wave != debugWave) {
+                debugSkill = s.skill
+                debugWave = s.wave
+                debugRight = "skill ${s.skill + 1}/${GameData.skills.size}  wave ${s.wave + 1}/${GameData.waves.size}"
+            }
+
+            // Clear of the status bar, which a wallpaper is drawn behind.
+            val pad = READOUT_PADDING * spriteScale * READOUT_SCALE
+            val y = pad + debugPaint.textSize + STATUS_BAR_CLEARANCE * resources.displayMetrics.density
+
+            canvas.drawText(floorNames.getOrElse(s.skill) { "?" }, pad, y, debugPaint)
+            canvas.drawText(debugRight, frame.width() - debugPaint.measureText(debugRight) - pad, y, debugPaint)
         }
 
         private fun digitCount(value: Int) = when {
@@ -622,6 +663,9 @@ class FreedoomWallpaperService : WallpaperService() {
          * darker still and remain a backdrop rather than a black screen.
          */
         const val FLOOR_DIM = 0.35f
+
+        /** Room left above the debug overlay for the status bar, in dp. */
+        const val STATUS_BAR_CLEARANCE = 34f
 
         /**
          * Peak opacity of the death wash, reached at the end of the fade.
