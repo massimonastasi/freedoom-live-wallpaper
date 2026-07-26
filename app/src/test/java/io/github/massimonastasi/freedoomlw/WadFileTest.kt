@@ -53,6 +53,27 @@ class WadFileTest {
     }
 
     @Test
+    fun `decodes a floor flat as a fully opaque 64x64 tile`() {
+        val wad = openWad()
+        val i = wad.flatIndex("CEIL5_1")
+        assertTrue(i >= 0, "CEIL5_1 missing")
+        val f = wad.decodeFlat(i)
+        assertEquals(64, f.width)
+        assertEquals(64, f.height)
+        // Flats are raw palette indices with no transparency: every pixel must be opaque,
+        // otherwise the backdrop would show holes when tiled.
+        assertTrue(f.pixels.all { it ushr 24 == 0xFF }, "a flat must be fully opaque")
+        // It has to stay dark and neutral, or it competes with the launcher icons.
+        val avg = f.pixels.map { (it shr 16 and 0xFF) * 0.299 + (it shr 8 and 0xFF) * 0.587 + (it and 0xFF) * 0.114 }.average()
+        assertTrue(avg < 60, "backdrop too bright: $avg")
+        val chroma = f.pixels.map {
+            val r = it shr 16 and 0xFF; val g = it shr 8 and 0xFF; val b = it and 0xFF
+            maxOf(r, g, b) - minOf(r, g, b)
+        }.average()
+        assertTrue(chroma < 20, "backdrop too saturated: $chroma")
+    }
+
+    @Test
     fun `mirrored rotations share a single lump`() {
         val wad = openWad()
         val set = SpriteSet(wad, "TROO")

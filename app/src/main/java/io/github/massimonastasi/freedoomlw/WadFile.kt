@@ -120,6 +120,27 @@ class WadFile(private val buf: ByteBuffer) {
         lumpName.indices.filter { lumpName[it].startsWith(prefix) }
 
     /**
+     * Index of a floor flat by name, or -1. Flats live between the F_START and F_END
+     * markers and are raw 64x64 palette indices with no header, unlike the patch format.
+     */
+    fun flatIndex(name: String): Int {
+        val start = byName["F_START"] ?: return -1
+        val end = byName["F_END"] ?: return -1
+        for (i in start + 1 until end) {
+            if (lumpName[i] == name && lumpSize[i] == FLAT_SIZE * FLAT_SIZE) return i
+        }
+        return -1
+    }
+
+    /** Decodes a flat: 4096 raw bytes, one palette index per pixel. */
+    fun decodeFlat(index: Int): Patch {
+        val p = lumpPos[index]
+        val pixels = IntArray(FLAT_SIZE * FLAT_SIZE)
+        for (i in pixels.indices) pixels[i] = palette[buf.get(p + i).toInt() and 0xFF]
+        return Patch(FLAT_SIZE, FLAT_SIZE, 0, 0, pixels)
+    }
+
+    /**
      * Decodes a lump in the patch format.
      *
      * The format is natively sparse: each column is a list of posts (topdelta, length,
@@ -150,5 +171,9 @@ class WadFile(private val buf: ByteBuffer) {
             }
         }
         return Patch(w, h, xOff, yOff, pixels)
+    }
+
+    private companion object {
+        const val FLAT_SIZE = 64
     }
 }

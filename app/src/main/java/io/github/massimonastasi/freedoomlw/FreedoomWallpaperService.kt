@@ -1,10 +1,15 @@
 package io.github.massimonastasi.freedoomlw
 
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.Shader
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -34,6 +39,9 @@ class FreedoomWallpaperService : WallpaperService() {
     /** Red damage flash colour, read from PLAYPAL. */
     private var damageTint = 0xFFAA1400.toInt()
 
+    /** Floor texture from the WAD, tiled behind the scene. Null when unavailable. */
+    private var floorTile: Bitmap? = null
+
     override fun onCreate() {
         super.onCreate()
         try {
@@ -47,6 +55,7 @@ class FreedoomWallpaperService : WallpaperService() {
             // Only the creatures whose sprites actually exist in this WAD: the file
             // declares itself, no per-IWAD compatibility table needed.
             damageTint = w.damageTint
+            floorTile = loadFloor(w)
             sprites = the engineData.spritePrefixes.map { SpriteSet(w, it) }
             val missing = the engineData.spritePrefixes.filterIndexed { i, _ -> sprites[i].frameCount == 0 }
             Log.i(TAG, "WAD loaded: ${w.lumpCount} lumps, ${sprites.size - missing.size}/${sprites.size} sprites" +
@@ -58,6 +67,32 @@ class FreedoomWallpaperService : WallpaperService() {
         }
     }
 
+    /**
+     * Picks a floor flat that works as a backdrop.
+     *
+     * A wallpaper sits *behind* the launcher icons, so the texture has to stay quiet. The
+     * candidates were chosen by measuring every flat in the WAD on three axes: mean
+     * luminance, standard deviation, and chroma.
+     *
+     * Chroma is the one that is easy to forget. Ranking on luminance alone picked FLOOR6_1,
+     * dark at 26/255 and very uniform — and visibly a saturated red, which shouts on screen
+     * and collides with the red damage flash. CEIL5_1 is dark, uniform *and* has a chroma of
+     * exactly zero: pure greyscale, which is what a backdrop wants to be.
+     *
+     * The list is a fallback chain because a user-supplied WAD may not have all of them.
+     */
+    private fun loadFloor(w: WadFile): Bitmap? {
+        for (name in listOf("CEIL5_1", "RROCK03", "FLOOR1_6", "FLAT14", "FLOOR0_1")) {
+            val i = w.flatIndex(name)
+            if (i < 0) continue
+            val f = w.decodeFlat(i)
+            Log.i(TAG, "floor texture: $name")
+            return Bitmap.createBitmap(f.pixels, f.width, f.height, Bitmap.Config.ARGB_8888)
+        }
+        Log.i(TAG, "no usable floor flat, falling back to a flat colour")
+        return null
+    }
+
     override fun onCreateEngine(): Engine = FreedoomEngine()
 
     private inner class FreedoomEngine : WallpaperService.Engine() {
@@ -66,7 +101,38 @@ class FreedoomWallpaperService : WallpaperService() {
         // thread. The process is ours alone, so no synchronisation with surfaceDestroyed
         // is needed.
         private val handler = Handler(Looper.getMainLooper())
-        private val paint = Paint().apply { isFilterBitmap = false }
+
+        /**
+         * Everything is drawn dimmed. A wallpaper competing with the launcher icons is a
+         * bad wallpaper: sprites and floor texture together were bright enough to make
+         * icons hard to read, so the whole scene is scaled down in brightness. Applied as
+         * a colour filter rather than a translucent overlay, so it costs nothing per frame.
+         */
+        private val dim = ColorMatrixColorFilter(
+            ColorMatrix(
+                floatArrayOf(
+                    SCENE_DIM, 0f, 0f, 0f, 0f,
+                    0f, SCENE_DIM, 0f, 0f, 0f,
+                    0f, 0f, SCENE_DIM, 0f, 0f,
+                    0f, 0f, 0f, 1f, 0f,
+                )
+            )
+        )
+
+        private val paint = Paint().apply {
+            isFilterBitmap = false
+            colorFilter = dim
+        }
+
+        /** Tiled floor. Its shader matrix carries the home screen parallax. */
+        private val floorPaint = Paint().apply {
+            isFilterBitmap = false
+            colorFilter = dim
+        }
+        private val floorMatrix = Matrix()
+        private var floorShader: BitmapShader? = null
+        private var offset = 0.5f
+
         private val matrix = Matrix()
         private val frame = Rect()
 
@@ -93,9 +159,22 @@ class FreedoomWallpaperService : WallpaperService() {
 
         override fun onCreate(holder: SurfaceHolder) {
             super.onCreate(holder)
-            // Enabled only once the features that use them exist (phases 5 and 6).
-            setOffsetNotificationsEnabled(false)
+            // Offsets drive the background parallax. Touch events stay off until the tap
+            // interaction exists (phase 6): a wallpaper that receives events it discards
+            // is pure waste.
+            setOffsetNotificationsEnabled(true)
             setTouchEventsEnabled(false)
+        }
+
+        override fun onOffsetsChanged(
+            xOffset: Float,
+            yOffset: Float,
+            xStep: Float,
+            yStep: Float,
+            xPixels: Int,
+            yPixels: Int,
+        ) {
+            offset = xOffset
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
@@ -133,6 +212,10 @@ class FreedoomWallpaperService : WallpaperService() {
 
             Log.i(TAG, "drawing surface: ${width}x$height")
             frame.set(0, 0, width, height)
+            floorShader = floorTile?.let {
+                BitmapShader(it, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                    .also { s -> floorPaint.shader = s }
+            }
             scene = Scene(
                 worldWidth = (width / pxPerUnit).toInt(),
                 worldHeight = (height / pxPerUnit).toInt(),
@@ -183,7 +266,7 @@ class FreedoomWallpaperService : WallpaperService() {
         }
 
         private fun drawScene(canvas: Canvas) {
-            canvas.drawColor(Color.rgb(48, 34, 30))
+            drawFloor(canvas)
 
             val s = scene
             if (s == null || sprites.isEmpty()) {
@@ -213,19 +296,40 @@ class FreedoomWallpaperService : WallpaperService() {
                 canvas.drawBitmap(sprite.bitmap, matrix, paint)
             }
 
-            // Marine death: the screen sinks into red. The colour is not invented, it is
-            // PLAYPAL palette 8, the original game's damage flash.
+            // Marine death: the screen washes red. The colour is not invented, it is
+            // PLAYPAL palette 8, the original game's damage flash — but at full strength it
+            // was an unreadable red wall every time he died, so it only ever reaches
+            // DEATH_MAX_ALPHA. A wallpaper has to stay usable even at its most dramatic.
             val fade = s.deathFade
             if (fade > 0f) {
-                paint.color = damageTint
-                paint.alpha = (fade * 255f).toInt().coerceIn(0, 255)
-                canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), paint)
-                paint.alpha = 255
+                overlay.color = damageTint
+                overlay.alpha = (fade * DEATH_MAX_ALPHA).toInt().coerceIn(0, 255)
+                canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
             }
         }
 
+        /**
+         * Tiled floor texture, shifted by the home screen paging. The shader repeats the
+         * 64x64 flat, so the whole background is one draw call whatever the screen size.
+         */
+        private fun drawFloor(canvas: Canvas) {
+            val shader = floorShader
+            if (shader == null) {
+                canvas.drawColor(BACKDROP)
+                return
+            }
+            floorMatrix.setScale(FLOOR_SCALE, FLOOR_SCALE)
+            floorMatrix.postTranslate((0.5f - offset) * PARALLAX_PX, 0f)
+            shader.setLocalMatrix(floorMatrix)
+            canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), floorPaint)
+        }
+
+        /** Solid colour overlays: the death wash and the no-WAD placeholder. */
+        private val overlay = Paint()
+
         /** Visible placeholder when the WAD is missing: better than a silent black screen. */
         private fun drawPlaceholder(canvas: Canvas) {
+            val paint = overlay
             paint.color = Color.rgb(220, 60, 30)
             val w = frame.width() * 0.2f
             val progress = (tic % (TICRATE * 4)).toFloat() / (TICRATE * 4)
@@ -255,5 +359,24 @@ class FreedoomWallpaperService : WallpaperService() {
          * 0.5 = a quarter of the pixels, hence a quarter of the memory per buffer.
          */
         const val RENDER_SCALE = 0.5f
+
+        /**
+         * Brightness multiplier for the whole scene. The wallpaper has to stay behind the
+         * launcher icons, and floor texture plus lit sprites together were bright enough to
+         * fight them for attention.
+         */
+        const val SCENE_DIM = 0.62f
+
+        /** Peak opacity of the death wash. Full red was unusable as a wallpaper. */
+        const val DEATH_MAX_ALPHA = 110f
+
+        /** Magnification of the 64x64 floor tile. */
+        const val FLOOR_SCALE = 1.5f
+
+        /** How far the floor slides across the full home screen paging range. */
+        const val PARALLAX_PX = 120f
+
+        /** Used when the WAD has no usable flat. */
+        const val BACKDROP = 0xFF201814.toInt()
     }
 }
