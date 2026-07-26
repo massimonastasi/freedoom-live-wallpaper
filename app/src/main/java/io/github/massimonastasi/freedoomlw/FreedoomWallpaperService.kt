@@ -162,11 +162,38 @@ class FreedoomWallpaperService : WallpaperService() {
 
         override fun onCreate(holder: SurfaceHolder) {
             super.onCreate(holder)
-            // Offsets drive the background parallax. Touch events stay off until the tap
-            // interaction exists (phase 6): a wallpaper that receives events it discards
-            // is pure waste.
             setOffsetNotificationsEnabled(true)
+            // Deliberately left off even though the wallpaper now reacts to taps. Raw touch
+            // delivery would wake this process for every finger movement anywhere on the
+            // home screen; the launcher already sends a single WALLPAPER_TAP command for
+            // the gesture we care about, through onCommand, at no cost.
             setTouchEventsEnabled(false)
+        }
+
+        /**
+         * The launcher's own channel for wallpaper interaction: a tap on empty space, and an
+         * icon being dropped. Coordinates arrive in display pixels, and the render scale
+         * cancels out when converting to map units, because the world was sized from the
+         * reduced surface using the same factor.
+         */
+        override fun onCommand(
+            action: String?,
+            x: Int,
+            y: Int,
+            z: Int,
+            extras: android.os.Bundle?,
+            resultRequested: Boolean,
+        ): android.os.Bundle? {
+            val s = scene
+            if (s != null) {
+                val wx = (x / PX_PER_UNIT * the engineData.FRACUNIT).toInt()
+                val wy = (y / PX_PER_UNIT * the engineData.FRACUNIT).toInt()
+                when (action) {
+                    WALLPAPER_TAP -> s.tapAt(wx, wy)
+                    HOME_DROP -> s.dropAt(wx, wy)
+                }
+            }
+            return super.onCommand(action, x, y, z, extras, resultRequested)
         }
 
         override fun onOffsetsChanged(
@@ -408,5 +435,9 @@ class FreedoomWallpaperService : WallpaperService() {
 
         /** Used when the WAD has no usable flat. */
         const val BACKDROP = 0xFF201814.toInt()
+
+        /** Commands the launcher sends to the wallpaper. */
+        const val WALLPAPER_TAP = "android.wallpaper.tap"
+        const val HOME_DROP = "android.home.drop"
     }
 }

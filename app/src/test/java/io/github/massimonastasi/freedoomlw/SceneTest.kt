@@ -185,6 +185,72 @@ class SceneTest {
     }
 
     @Test
+    fun `an actor walking towards the camera is drawn from the front`() {
+        val a = Actor(0)
+
+        // Screen y grows downwards and DI_NORTH moves towards +y, so DI_NORTH is towards
+        // the viewer. Getting this backwards draws everyone walking away from where they go.
+        a.facing = 2                                   // DI_NORTH, down the screen
+        assertEquals(1, a.spriteRotation(), "walking towards the camera must show the front")
+
+        a.facing = 6                                   // DI_SOUTH, up the screen
+        assertEquals(5, a.spriteRotation(), "walking away must show the back")
+
+        // The other six angles must be distinct and cover the range once each.
+        val all = (0..7).map { a.facing = it; a.spriteRotation() }
+        assertEquals((1..8).toList().sorted(), all.sorted(), "the eight angles must map one to one")
+
+        a.facing = the engineData.DI_NODIR
+        assertEquals(1, a.spriteRotation(), "a still actor faces the viewer")
+    }
+
+    @Test
+    fun `tapping drops a pickup, dropping an icon sends demons`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+        for (t in 1..TICRATE) scene.tick(t)
+
+        val itemsBefore = scene.actors.count { it.mode == Mode.ITEM }
+        scene.tapAt(300 * the engineData.FRACUNIT, 800 * the engineData.FRACUNIT)
+        assertEquals(itemsBefore + 1, scene.actors.count { it.mode == Mode.ITEM }, "the tap dropped nothing")
+
+        val demonsBefore = scene.actors.count { it.creature != null && !it.isPlayer }
+        scene.dropAt(400 * the engineData.FRACUNIT, 900 * the engineData.FRACUNIT)
+        assertTrue(
+            scene.actors.count { it.creature != null && !it.isPlayer } > demonsBefore,
+            "the icon drop summoned nobody",
+        )
+
+        // Even a tap in the corner has to land where the whole sprite is visible.
+        scene.tapAt(0, 0)
+        val corner = scene.actors.last { it.mode == Mode.ITEM }
+        assertTrue(corner.x >= 80 * the engineData.FRACUNIT, "item dropped too close to the edge")
+        assertTrue(corner.y >= 80 * the engineData.FRACUNIT, "item dropped too close to the edge")
+    }
+
+    @Test
+    fun `interaction is ignored while the marine is dead`() {
+        the engineData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+
+        var checked = false
+        for (t in 1..TICRATE * 600) {
+            scene.tick(t)
+            if (scene.deathFade <= 0f) continue
+            // The red wash is a pause: it must not be possible to litter it with pickups
+            // nobody can collect, or with demons attacking a corpse.
+            val items = scene.actors.count { it.mode == Mode.ITEM }
+            val demons = scene.actors.count { it.creature != null && !it.isPlayer }
+            scene.tapAt(300 * the engineData.FRACUNIT, 800 * the engineData.FRACUNIT)
+            scene.dropAt(300 * the engineData.FRACUNIT, 800 * the engineData.FRACUNIT)
+            assertEquals(items, scene.actors.count { it.mode == Mode.ITEM }, "tic $t: tap accepted while dead")
+            assertEquals(demons, scene.actors.count { it.creature != null && !it.isPlayer }, "tic $t: drop accepted while dead")
+            checked = true
+        }
+        assertTrue(checked, "the marine never died: this test verified nothing")
+    }
+
+    @Test
     fun `combat actually happens`() {
         the engineData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)

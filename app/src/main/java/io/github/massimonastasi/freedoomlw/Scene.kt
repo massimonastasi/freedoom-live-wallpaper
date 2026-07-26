@@ -96,13 +96,25 @@ class Actor(val spriteIndex: Int) {
     }
 
     /**
-     * Sprite rotation (1-8) as seen from a camera placed south of the scene.
-     * r_things.c picks it from the relative angle; here the camera is fixed, so it reduces
-     * to a rotation of the movement direction.
+     * Sprite rotation (1-8) as seen from a fixed camera below the scene.
+     *
+     * r_things.c computes `rot = (ang - thing->angle + (ANG45/2)*9) >> 29`, where `ang` is
+     * the angle from the viewer to the thing. In eighths that is
+     * `rotation = ((viewerToThing - facing) + 4) mod 8 + 1`.
+     *
+     * Screen y grows downwards while DI_NORTH moves towards +y, so the camera sits at large
+     * y and the direction from it to any actor is DI_SOUTH. Substituting gives the constant
+     * below. An actor walking down the screen is walking towards us and must be drawn from
+     * the front, which is rotation 1; walking up the screen shows its back, rotation 5.
      */
     fun spriteRotation(): Int {
         if (facing == DI_NODIR) return 1
-        return ((6 - facing) and 7) + 1
+        return ((VIEWER_TO_ACTOR - facing + 4) and 7) + 1
+    }
+
+    private companion object {
+        /** DI_SOUTH: the camera is below the scene, so it looks north across it. */
+        const val VIEWER_TO_ACTOR = 6
     }
 }
 
@@ -320,16 +332,58 @@ class Scene(
 
     private fun spawnBlood(x: Int, y: Int) = spawnEffect(the engineData.bloodSpriteIndex, the engineData.bloodAnim, x, y)
 
-    /** Drops a pickup somewhere on the map. */
-    private fun spawnItem() {
+    /** Drops a pickup somewhere on the map, or at a chosen spot. */
+    private fun spawnItem(
+        x: Int = randomIn(SPAWN_MARGIN, worldWidth - SPAWN_MARGIN) * FRACUNIT,
+        y: Int = randomIn(SPAWN_MARGIN, worldHeight - SPAWN_MARGIN) * FRACUNIT,
+    ) {
         val it = the engineData.items[pRandom() % the engineData.items.size]
         val a = Actor(it.spriteIndex)
         a.mode = Mode.ITEM
         a.item = it
-        a.x = randomIn(32, worldWidth - 32) * FRACUNIT
-        a.y = randomIn(32, worldHeight - 32) * FRACUNIT
+        a.x = clampX(x)
+        a.y = clampY(y)
         a.spawnTic = tic
         actors.add(a)
+    }
+
+    private fun clampX(x: Int) =
+        x.coerceIn(SPAWN_MARGIN * FRACUNIT, (worldWidth - SPAWN_MARGIN) * FRACUNIT)
+
+    private fun clampY(y: Int) =
+        y.coerceIn(SPAWN_MARGIN * FRACUNIT, (worldHeight - SPAWN_MARGIN) * FRACUNIT)
+
+    // ---------------------------------------------------------------- interaction
+
+    /**
+     * The user tapped the home screen: drop a pickup where they touched.
+     *
+     * Ignored while the marine is dead, so the red wash stays a pause rather than something
+     * the user can litter with items nobody will collect.
+     */
+    fun tapAt(x: Int, y: Int) {
+        if (deadUntil > 0) return
+        spawnItem(clampX(x), clampY(y))
+    }
+
+    /**
+     * An icon was dropped on the home screen: send demons to that spot.
+     *
+     * They arrive outside the wave sequence, so this never disturbs the wave pacing: the
+     * current wave still has to be cleared before the next begins, these are simply extra.
+     */
+    fun dropAt(x: Int, y: Int) {
+        if (deadUntil > 0) return
+        val count = 1 + pRandom() % 2
+        repeat(count) {
+            val c = the engineData.creatures[pRandom() % 3]        // only the lighter creatures
+            val a = newCreature(c)
+            a.x = clampX(x + (pRandom() - 128) * FRACUNIT / 2)
+            a.y = clampY(y + (pRandom() - 128) * FRACUNIT / 2)
+            spawnFog(a.x, a.y)
+            actors.add(a)
+            newTarget(a)
+        }
     }
 
     /** false once the pickup has been taken or has sat on the ground for too long. */
