@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        AppCompat rather than a plain platform theme: PreferenceFragmentCompat requires one,
+        and DayNight means the settings follow the system instead of forcing a light screen
+        onto someone who chose dark.
+    -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.DarkActionBar" />
+</resources>

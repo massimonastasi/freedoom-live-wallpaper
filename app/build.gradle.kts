@@ -48,9 +48,11 @@ android {
     }
 }
 
-// ponytail: no runtime dependencies. WallpaperService and Canvas are part of the framework.
-// Only the tests have dependencies, and those never reach the APK.
+// The wallpaper engine itself still uses nothing but the framework: WallpaperService and
+// Canvas are platform classes, and no dependency here is reachable from the draw loop.
+// These serve the settings screen, which needs a preference list and a document picker.
 dependencies {
+    implementation("androidx.preference:preference:1.2.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation(kotlin("test"))
 }

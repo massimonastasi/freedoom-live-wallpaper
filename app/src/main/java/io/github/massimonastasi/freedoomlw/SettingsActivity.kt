@@ -18,115 +18,86 @@
  */
 package io.github.massimonastasi.freedoomlw
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.view.Gravity
-import android.view.View
-import android.view.ViewGroup.LayoutParams.MATCH_PARENT
-import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.Switch
-import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.preference.Preference
+import androidx.preference.PreferenceFragmentCompat
 
 /**
  * The settings screen, reached from the wallpaper picker's own Settings button and from the
  * launcher icon.
- *
- * ponytail: views built in code rather than a layout plus a preference library. The screen
- * is three controls and two buttons, and the project ships with no runtime dependencies at
- * all — adding one to draw five rows would be a poor trade.
  */
-class SettingsActivity : Activity() {
+class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val prefs = Settings.of(this)
-        val pad = (16 * resources.displayMetrics.density).toInt()
-
-        val column = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(pad, pad, pad, pad)
+        setContentView(R.layout.settings)
+        if (savedInstanceState == null) {
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.settings_container, SettingsFragment())
+                .commit()
         }
+    }
 
-        fun heading(text: String) = column.addView(TextView(this).apply {
-            this.text = text
-            textSize = 20f
-            setPadding(0, pad, 0, pad / 2)
-        })
+    class SettingsFragment : PreferenceFragmentCompat() {
 
-        fun note(text: String) = column.addView(TextView(this).apply {
-            this.text = text
-            alpha = 0.7f
-            setPadding(0, 0, 0, pad / 2)
-        })
-
-        fun toggle(label: String, on: Boolean, set: (Boolean) -> Unit) =
-            column.addView(Switch(this).apply {
-                text = label
-                isChecked = on
-                layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
-                setOnCheckedChangeListener { _, v -> set(v) }
-            })
-
-        fun button(label: String, action: () -> Unit) =
-            column.addView(Button(this).apply {
-                text = label
-                layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
-                setOnClickListener { action() }
-            })
-
-        heading(getString(R.string.settings_frame_rate))
-        note(getString(R.string.settings_frame_rate_note))
-
-        // A row of frame rates rather than a slider: there are three, and a slider would
-        // imply values in between that the draw loop does not offer.
-        val rates = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val buttons = mutableListOf<Button>()
-        fun paintRates() {
-            val chosen = Settings.fps(prefs)
-            buttons.forEachIndexed { i, b -> b.alpha = if (Settings.FPS_CHOICES[i] == chosen) 1f else 0.45f }
-        }
-        for (fps in Settings.FPS_CHOICES) {
-            val b = Button(this).apply {
-                text = getString(R.string.settings_fps, fps)
-                layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
-                setOnClickListener { Settings.setFps(prefs, fps); paintRates() }
+        /**
+         * The document picker.
+         *
+         * OpenDocument rather than GetContent, because the persistable read permission is
+         * what makes the copy possible without a second prompt. The MIME filter is the
+         * wildcard: a WAD has no registered type, and filtering by extension would hide the
+         * file on providers that do not expose one.
+         */
+        private val choose = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri ?: return@registerForActivityResult
+            val context = requireContext()
+            val problem = WadStore.import(context, uri)
+            if (problem == null) {
+                Toast.makeText(context, R.string.wad_imported, Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, problem, Toast.LENGTH_LONG).show()
             }
-            buttons += b
-            rates.addView(b)
-        }
-        column.addView(rates)
-        paintRates()
-
-        heading(getString(R.string.settings_scene))
-        toggle(getString(R.string.settings_readout), Settings.readout(prefs)) {
-            Settings.setReadout(prefs, it)
-        }
-        toggle(getString(R.string.settings_god), Settings.godMode(prefs)) {
-            Settings.setGodMode(prefs, it)
+            showWadState()
         }
 
-        heading(getString(R.string.settings_about))
-        note(getString(R.string.settings_about_note))
-        button(getString(R.string.settings_licences)) {
-            startActivity(Intent(this, LicencesActivity::class.java))
-        }
-        button(getString(R.string.settings_set_wallpaper)) {
-            startActivity(Intent(this, SetupActivity::class.java))
-        }
+        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+            // The engine reads its own preference file directly, with no library on its
+            // side: naming it here is what keeps the two looking at the same values.
+            preferenceManager.sharedPreferencesName = Settings.FILE
+            setPreferencesFromResource(R.xml.settings, rootKey)
 
-        setContentView(ScrollView(this).apply {
-            addView(column, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
-            // Edge to edge is the default under targetSdk 36, so the content has to keep
-            // clear of the bars itself rather than assume an inset.
-            setOnApplyWindowInsetsListener { v, insets ->
-                val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
-                v.setPadding(0, bars.top, 0, bars.bottom)
-                insets
+            click(Settings.KEY_WAD) { choose.launch(arrayOf("*/*")) }
+            click(Settings.KEY_WAD_RESET) {
+                WadStore.clear(requireContext())
+                Toast.makeText(requireContext(), R.string.wad_reset_done, Toast.LENGTH_SHORT).show()
+                showWadState()
             }
-        })
+            click(Settings.KEY_LICENCES) {
+                startActivity(Intent(requireContext(), LicencesActivity::class.java))
+            }
+            click(Settings.KEY_SET_WALLPAPER) {
+                startActivity(Intent(requireContext(), SetupActivity::class.java))
+            }
+            showWadState()
+        }
+
+        private fun click(key: String, action: () -> Unit) {
+            findPreference<Preference>(key)?.setOnPreferenceClickListener { action(); true }
+        }
+
+        /** Says which sprites are in use, and hides the reset when there is nothing to reset. */
+        private fun showWadState() {
+            val file = WadStore.active(requireContext())
+            findPreference<Preference>(Settings.KEY_WAD)?.summary = if (file == null) {
+                getString(R.string.settings_wad_note)
+            } else {
+                getString(R.string.settings_wad_active, file.length() / (1024 * 1024))
+            }
+            findPreference<Preference>(Settings.KEY_WAD_RESET)?.isVisible = file != null
+        }
     }
 }

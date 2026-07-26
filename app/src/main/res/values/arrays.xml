@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Only rates the draw loop actually offers. Measured on a Pixel 6a: 20 fps costs 12.0%
+        of one core and 10 fps costs 9.2%, so the saving is real but not proportional - there
+        is a fixed cost per frame delivered that does not scale with the rate.
+    -->
+    <string-array name="fps_labels">
+        <item>20 fps</item>
+        <item>15 fps</item>
+        <item>10 fps</item>
+    </string-array>
+
+    <string-array name="fps_values">
+        <item>20</item>
+        <item>15</item>
+        <item>10</item>
+    </string-array>
+</resources>

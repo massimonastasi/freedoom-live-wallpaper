@@ -30,36 +30,34 @@ import android.content.SharedPreferences
  */
 object Settings {
 
-    private const val FILE = "settings"
+    /** Shared with the preference screen, which is told to use this file rather than the default. */
+    const val FILE = "settings"
 
-    private const val KEY_FPS = "fps"
-    private const val KEY_READOUT = "readout"
-    private const val KEY_GOD = "god"
-
-    /** Frame rates offered. The lower one is the real battery lever, and it is visible. */
-    val FPS_CHOICES = intArrayOf(20, 15, 10)
+    const val KEY_FPS = "fps"
+    const val KEY_READOUT = "readout"
+    const val KEY_GOD = "god"
+    const val KEY_WAD = "wad"
+    const val KEY_WAD_RESET = "wad_reset"
+    const val KEY_LICENCES = "licences"
+    const val KEY_SET_WALLPAPER = "set_wallpaper"
 
     const val DEFAULT_FPS = 20
 
     fun of(context: Context): SharedPreferences =
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
+    /**
+     * Stored as a string because that is what a ListPreference writes, and one format is
+     * better than two with a conversion between them.
+     */
     fun fps(p: SharedPreferences): Int =
-        p.getInt(KEY_FPS, DEFAULT_FPS).takeIf { it in FPS_CHOICES } ?: DEFAULT_FPS
-
-    fun setFps(p: SharedPreferences, value: Int) = p.edit().putInt(KEY_FPS, value).apply()
+        p.getString(KEY_FPS, null)?.toIntOrNull()?.takeIf { it in 5..60 } ?: DEFAULT_FPS
 
     fun readout(p: SharedPreferences): Boolean = p.getBoolean(KEY_READOUT, true)
-
-    fun setReadout(p: SharedPreferences, value: Boolean) =
-        p.edit().putBoolean(KEY_READOUT, value).apply()
 
     /**
      * The marine cannot die. Not a cheat so much as a mood: it turns the wallpaper into an
      * endless advance rather than a loop of deaths, and the skill ladder then climbs.
      */
     fun godMode(p: SharedPreferences): Boolean = p.getBoolean(KEY_GOD, false)
-
-    fun setGodMode(p: SharedPreferences, value: Boolean) =
-        p.edit().putBoolean(KEY_GOD, value).apply()
 }

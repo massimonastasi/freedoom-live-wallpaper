@@ -5,10 +5,21 @@
 
     <string name="settings_frame_rate">Frame rate</string>
     <string name="settings_frame_rate_note">The scene always thinks at the original 35 steps a second. This is only how often it is drawn, and it is the one setting that changes battery use.</string>
-    <string name="settings_fps">%d fps</string>
     <string name="settings_scene">Scene</string>
     <string name="settings_readout">Show health and armour</string>
     <string name="settings_god">The marine cannot die</string>
+    <string name="settings_god_note">Turns the wallpaper into an endless advance instead of a loop of deaths, and lets the difficulty climb.</string>
+    <string name="settings_sprites">Sprites</string>
+    <string name="settings_wad">Use your own WAD</string>
+    <string name="settings_wad_note">Point this at an IWAD you already own and its sprites, palette, floors and numerals replace the bundled ones. The file is copied into this app and never leaves your device.</string>
+    <string name="settings_wad_active">In use, %d MB. Tap to choose a different one.</string>
+    <string name="settings_wad_reset">Go back to the bundled sprites</string>
+    <string name="wad_imported">WAD loaded. The wallpaper will use it the next time it is shown.</string>
+    <string name="wad_reset_done">Back to the bundled sprites.</string>
+    <string name="wad_unreadable">That file could not be read.</string>
+    <string name="wad_not_a_wad">Not a WAD file: %s</string>
+    <string name="wad_no_sprites">That WAD has none of the sprites this wallpaper draws.</string>
+    <string name="wad_too_few">That WAD only has %d of the sprite sets this wallpaper needs. Heretic, Hexen and Strife name their creatures differently and are not supported.</string>
     <string name="settings_about">About</string>
     <string name="settings_about_note">Free, no adverts, no network access, no data collected.</string>
     <string name="settings_licences">Licences and notices</string>

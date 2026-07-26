@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/settings_frame_rate">
+
+        <ListPreference
+            android:defaultValue="20"
+            android:entries="@array/fps_labels"
+            android:entryValues="@array/fps_values"
+            android:key="fps"
+            android:summary="@string/settings_frame_rate_note"
+            android:title="@string/settings_frame_rate"
+            app:useSimpleSummaryProvider="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/settings_scene">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="readout"
+            android:title="@string/settings_readout" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="god"
+            android:summary="@string/settings_god_note"
+            android:title="@string/settings_god" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/settings_sprites">
+
+        <Preference
+            android:key="wad"
+            android:summary="@string/settings_wad_note"
+            android:title="@string/settings_wad" />
+
+        <Preference
+            android:key="wad_reset"
+            android:title="@string/settings_wad_reset" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/settings_about">
+
+        <Preference
+            android:key="licences"
+            android:summary="@string/settings_about_note"
+            android:title="@string/settings_licences" />
+
+        <Preference
+            android:key="set_wallpaper"
+            android:title="@string/settings_set_wallpaper" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

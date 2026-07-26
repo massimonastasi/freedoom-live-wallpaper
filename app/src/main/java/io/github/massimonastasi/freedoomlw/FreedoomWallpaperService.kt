@@ -82,30 +82,63 @@ class FreedoomWallpaperService : WallpaperService() {
     private var healthColor = 0xFF7373FF.toInt()
     private var armorColor = 0xFF77FF6F.toInt()
 
+    /** Which WAD the loaded sprites came from, so a change can be noticed cheaply. */
+    private var loadedWad: String? = null
+
     override fun onCreate() {
         super.onCreate()
+        loadWad()
+    }
+
+    /**
+     * Loads the user's IWAD when there is one, and the bundled assets otherwise.
+     *
+     * Everything the scene draws comes from the same file, so swapping it swaps the whole
+     * look at once — sprites, palette, floors and the readout numerals. That is why nothing
+     * here has a per-IWAD compatibility table: the file declares what it contains and the
+     * loader takes what it finds.
+     */
+    private fun loadWad() {
+        val user = WadStore.active(this)
+        val source = user?.absolutePath ?: BUNDLED
         try {
-            // The WAD is never copied: it is memory-mapped straight from the assets
-            // (build.gradle.kts excludes it from compression, so it is readable in place).
-            val afd = assets.openFd("freedoom1.wad")
-            val buf = afd.createInputStream().use { stream ->
-                stream.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.length)
+            val buf = if (user != null) {
+                user.inputStream().use { it.channel.map(FileChannel.MapMode.READ_ONLY, 0, user.length()) }
+            } else {
+                // Never copied: mapped straight out of the assets, which build.gradle.kts
+                // excludes from compression so it is readable in place.
+                val afd = assets.openFd(BUNDLED)
+                afd.createInputStream().use { stream ->
+                    stream.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.length)
+                }
             }
             val w = WadFile(buf)
-            // Only the creatures whose sprites actually exist in this WAD: the file
-            // declares itself, no per-IWAD compatibility table needed.
             deathTint = w.paletteColor(GameData.PALETTE_DEATH)
             floorTiles = loadFloors(w)
             loadDigits(w)
             sprites = GameData.spritePrefixes.map { SpriteSet(w, it, SCENE_DIM_PERCENT) }
             val missing = GameData.spritePrefixes.filterIndexed { i, _ -> sprites[i].frameCount == 0 }
-            Log.i(TAG, "WAD loaded: ${w.lumpCount} lumps, ${sprites.size - missing.size}/${sprites.size} sprites" +
+            loadedWad = source
+            Log.i(TAG, "WAD loaded from $source: ${w.lumpCount} lumps, " +
+                "${sprites.size - missing.size}/${sprites.size} sprites" +
                 if (missing.isEmpty()) "" else " (missing: $missing)")
         } catch (e: Exception) {
             // Without a WAD the wallpaper stays alive and shows the placeholder rather
-            // than disappearing.
-            Log.e(TAG, "WAD not loaded", e)
+            // than disappearing. A user file that fails here was already checked on import,
+            // so this is the case where it has since been corrupted or removed.
+            Log.e(TAG, "WAD not loaded from $source", e)
+            if (user != null) {
+                WadStore.clear(this)
+                loadedWad = null
+                loadWad()
+            }
         }
+    }
+
+    /** Reloads if the active WAD has changed since the sprites were built. */
+    private fun reloadWadIfChanged() {
+        val wanted = WadStore.active(this)?.absolutePath ?: BUNDLED
+        if (wanted != loadedWad) loadWad()
     }
 
     /**
@@ -289,6 +322,12 @@ class FreedoomWallpaperService : WallpaperService() {
             chosenFps = Settings.fps(prefs)
             readoutVisible = Settings.readout(prefs)
             scene?.invulnerable = Settings.godMode(prefs)
+
+            // A different WAD means every sprite, colour and floor is different, so the
+            // shader built from the old tiles has to go with them.
+            val before = loadedWad
+            reloadWadIfChanged()
+            if (loadedWad != before) shaderSkill = -1
         }
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
@@ -651,6 +690,9 @@ class FreedoomWallpaperService : WallpaperService() {
          * integer pixel channels at load, not to a float colour matrix per frame.
          */
         const val FLOOR_DIM_PERCENT = 35
+
+        /** The IWAD shipped in assets, used until the user supplies one of their own. */
+        const val BUNDLED = "freedoom1.wad"
 
         /** Room left above the debug overlay for the status bar, in dp. */
         const val STATUS_BAR_CLEARANCE = 34f
