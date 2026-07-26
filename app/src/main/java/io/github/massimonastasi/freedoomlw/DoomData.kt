@@ -1,0 +1,371 @@
+package io.github.massimonastasi.freedoomlw
+
+/**
+ * Constants extracted from the original id source (linuxdoom-1.10, GPL-2.0).
+ *
+ * No value here is invented or estimated: each one carries the file and symbol it came
+ * from. That is also the project's legal footing — every number has a traceable, licensed
+ * provenance, independent of any other implementation.
+ */
+object the engineData {
+
+    // m_fixed.h
+    const val FRACBITS = 16
+    const val FRACUNIT = 1 shl FRACBITS
+
+    // p_local.h:57
+    const val MELEERANGE = 64 * FRACUNIT
+
+    /**
+     * p_enemy.c: the 8 movement directions of the monsters. No trigonometry, just a
+     * table. 47000 is the diagonal (~0.717, slightly above 0.707: that is id's original
+     * approximation, not a transcription error).
+     */
+    val xspeed = intArrayOf(FRACUNIT, 47000, 0, -47000, -FRACUNIT, -47000, 0, 47000)
+    val yspeed = intArrayOf(0, 47000, FRACUNIT, 47000, 0, -47000, -FRACUNIT, -47000)
+
+    /** p_enemy.c: opposite[] — the reverse direction. DI_NODIR (8) stays 8. */
+    val opposite = intArrayOf(4, 5, 6, 7, 0, 1, 2, 3, 8)
+
+    /** p_enemy.c: diags[] — the four diagonals, in NW, NE, SW, SE order. */
+    val diags = intArrayOf(3, 1, 5, 7)
+
+    const val DI_NODIR = 8
+
+    /**
+     * m_random.c: rndtable[]. the engine uses no generator but a fixed 256-byte table with an
+     * advancing index. Deterministic, reproducible for debugging, and cheaper than
+     * kotlin.random.Random.
+     */
+    val rndtable = intArrayOf(
+        0, 8, 109, 220, 222, 241, 149, 107, 75, 248, 254, 140, 16, 66,
+        74, 21, 211, 47, 80, 242, 154, 27, 205, 128, 161, 89, 77, 36,
+        95, 110, 85, 48, 212, 140, 211, 249, 22, 79, 200, 50, 28, 188,
+        52, 140, 202, 120, 68, 145, 62, 70, 184, 190, 91, 197, 152, 224,
+        149, 104, 25, 178, 252, 182, 202, 182, 141, 197, 4, 81, 181, 242,
+        145, 42, 39, 227, 156, 198, 225, 193, 219, 93, 122, 175, 249, 0,
+        175, 143, 70, 239, 46, 246, 163, 53, 163, 109, 168, 135, 2, 235,
+        25, 92, 20, 145, 138, 77, 69, 166, 78, 176, 173, 212, 166, 113,
+        94, 161, 41, 50, 239, 49, 111, 164, 70, 60, 2, 37, 171, 75,
+        136, 156, 11, 56, 42, 146, 138, 229, 73, 146, 77, 61, 98, 196,
+        135, 106, 63, 197, 195, 86, 96, 203, 113, 101, 170, 247, 181, 113,
+        80, 250, 108, 7, 255, 237, 129, 226, 79, 107, 112, 166, 103, 241,
+        24, 223, 239, 120, 198, 58, 60, 82, 128, 3, 184, 66, 143, 224,
+        145, 224, 81, 206, 163, 45, 63, 90, 168, 114, 59, 33, 159, 95,
+        28, 139, 123, 98, 125, 196, 15, 70, 194, 253, 54, 14, 109, 226,
+        71, 17, 161, 93, 186, 87, 244, 138, 20, 52, 123, 251, 26, 36,
+        17, 46, 52, 231, 232, 76, 31, 221, 84, 37, 216, 165, 212, 106,
+        197, 242, 98, 43, 39, 175, 254, 145, 190, 84, 118, 222, 187, 136,
+        120, 163, 236, 249
+    )
+
+    private var prndindex = 0
+
+    /** m_random.c: P_Random(). */
+    fun pRandom(): Int {
+        prndindex = (prndindex + 1) and 0xff
+        return rndtable[prndindex]
+    }
+
+    fun clearRandom() {
+        prndindex = 0
+    }
+
+    /**
+     * A sequence from states[]: frame indices and how many tics each one lasts.
+     * A tic value of -1 means "stays forever" (the last death frame: the corpse).
+     */
+    class Anim(val frames: IntArray, val tics: IntArray) {
+        val length get() = frames.size
+    }
+
+    /**
+     * A creature: the values come from info.c, mobjinfo[] and states[].
+     *
+     * [lumpPrefix] is the sprite name, identical in every the engine-compatible IWAD because the
+     * engine hardcodes it in sprnames[].
+     * [walkTics] and [walkFrames] give the walk animation: the engine repeats each frame twice
+     * (A,A,B,B,...), so every frame lasts walkTics*2.
+     *
+     * Attacks, from p_enemy.c: melee deals `(P_Random() % meleeMod + 1) * meleeMul`,
+     * [hitscanShots] is the number of instant shots, [projectile] an index into [projectiles].
+     */
+    class Creature(
+        val name: String,
+        val lumpPrefix: String,
+        val speed: Int,
+        val health: Int,
+        val radius: Int,
+        val walkFrames: Int,
+        val walkTics: Int,
+        val attack: Anim,
+        val pain: Anim,
+        val death: Anim,
+        val painChance: Int,
+        val meleeMod: Int = 0,
+        val meleeMul: Int = 0,
+        val hitscanShots: Int = 0,
+        val projectile: Int = -1,
+        val floats: Boolean = false,
+    ) {
+        var spriteIndex = -1
+    }
+
+    /** info.c: the missiles. Their `speed` is already in FRACUNIT, unlike the monsters'. */
+    class Projectile(
+        val lumpPrefix: String,
+        val speed: Int,
+        val damage: Int,
+    ) {
+        var spriteIndex = -1
+    }
+
+    // info.c mobjinfo[MT_TROOPSHOT] / mobjinfo[MT_BRUISERSHOT], states S_TBALL1 / S_BRBALL1.
+    val projectiles = listOf(
+        Projectile("BAL1", speed = 10, damage = 3),
+        Projectile("BAL7", speed = 15, damage = 8),
+    )
+
+    /** Blood: states S_BLOOD1..3, sprite BLUD, frames C,B,A at 8 tics each. */
+    val bloodAnim = Anim(intArrayOf(2, 1, 0), intArrayOf(8, 8, 8))
+
+    /** Teleport fog: states S_TFOG*, 6 tics per frame. */
+    val fogAnim = Anim(IntArray(10) { it }, IntArray(10) { 6 })
+
+    /** Fireball in flight: 2 frames of 4 tics looping (S_TBALL1/2, S_BRBALL1/2). */
+    val ballAnim = Anim(intArrayOf(0, 1), intArrayOf(4, 4))
+
+    // The names are the Freedoom ones: safer on the trademark and consistent with the assets.
+    val creatures = listOf(
+        // mobjinfo[MT_POSSESSED]; S_POSS_RUN 4 tics, ATK 10/8/8, PAIN 3+3, DIE 5,5,5,5,-1
+        Creature(
+            "Zombie", "POSS", speed = 8, health = 20, radius = 20, walkFrames = 4, walkTics = 4,
+            attack = Anim(intArrayOf(4, 5, 4), intArrayOf(10, 8, 8)),
+            pain = Anim(intArrayOf(6, 6), intArrayOf(3, 3)),
+            death = Anim(intArrayOf(7, 8, 9, 10, 11), intArrayOf(5, 5, 5, 5, -1)),
+            painChance = 200, hitscanShots = 1,
+        ),
+        // mobjinfo[MT_SHOTGUY]; A_SPosAttack fires 3 shots
+        Creature(
+            "ShotgunZombie", "SPOS", speed = 8, health = 30, radius = 20, walkFrames = 4, walkTics = 3,
+            attack = Anim(intArrayOf(4, 5, 4), intArrayOf(10, 10, 10)),
+            pain = Anim(intArrayOf(6, 6), intArrayOf(3, 3)),
+            death = Anim(intArrayOf(7, 8, 9, 10, 11), intArrayOf(5, 5, 5, 5, -1)),
+            painChance = 170, hitscanShots = 3,
+        ),
+        // mobjinfo[MT_TROOP]; A_TroopAttack: melee (P_Random()%8+1)*3, otherwise MT_TROOPSHOT
+        Creature(
+            "Serpentipede", "TROO", speed = 8, health = 60, radius = 20, walkFrames = 4, walkTics = 3,
+            attack = Anim(intArrayOf(4, 5, 6), intArrayOf(8, 8, 6)),
+            pain = Anim(intArrayOf(7, 7), intArrayOf(2, 2)),
+            death = Anim(intArrayOf(8, 9, 10, 11, 12), intArrayOf(8, 8, 6, 6, -1)),
+            painChance = 200, meleeMod = 8, meleeMul = 3, projectile = 0,
+        ),
+        // mobjinfo[MT_SERGEANT] speed 10; A_SargAttack: melee only, (P_Random()%10+1)*4
+        Creature(
+            "FleshWorm", "SARG", speed = 10, health = 150, radius = 30, walkFrames = 4, walkTics = 2,
+            attack = Anim(intArrayOf(4, 5, 6), intArrayOf(8, 8, 8)),
+            pain = Anim(intArrayOf(7, 7), intArrayOf(2, 2)),
+            death = Anim(intArrayOf(8, 9, 10, 11, 12, 13), intArrayOf(8, 8, 4, 4, 4, -1)),
+            painChance = 180, meleeMod = 10, meleeMul = 4,
+        ),
+        // mobjinfo[MT_HEAD]; A_HeadAttack: melee (P_Random()%6+1)*10, otherwise MT_HEADSHOT.
+        // ponytail: reuses BAL1 instead of BAL2 — one fireball sprite less to handle, and
+        // BAL2 is not guaranteed to exist in every IWAD.
+        Creature(
+            "Trilobite", "HEAD", speed = 8, health = 400, radius = 31, walkFrames = 1, walkTics = 3,
+            attack = Anim(intArrayOf(1, 2, 3), intArrayOf(5, 5, 5)),
+            pain = Anim(intArrayOf(4, 4), intArrayOf(3, 3)),
+            death = Anim(intArrayOf(6, 7, 8, 9, 10, 11), intArrayOf(8, 8, 8, 8, 8, -1)),
+            painChance = 128, meleeMod = 6, meleeMul = 10, projectile = 0, floats = true,
+        ),
+        // mobjinfo[MT_BRUISER]; A_BruisAttack: melee (P_Random()%8+1)*10, otherwise MT_BRUISERSHOT
+        Creature(
+            "PainLord", "BOSS", speed = 8, health = 1000, radius = 24, walkFrames = 4, walkTics = 3,
+            attack = Anim(intArrayOf(4, 5, 6), intArrayOf(8, 8, 8)),
+            pain = Anim(intArrayOf(7, 7), intArrayOf(2, 2)),
+            death = Anim(intArrayOf(8, 9, 10, 11, 12, 13, 14), intArrayOf(8, 8, 8, 8, 8, 8, -1)),
+            painChance = 50, meleeMod = 8, meleeMul = 10, projectile = 1,
+        ),
+    )
+
+    /**
+     * The marine. mobjinfo[MT_PLAYER] / states S_PLAY_RUN1..4 (4 tics), DIE 6x10 then -1.
+     * The attack animation here is a fallback: in practice the marine uses the animation
+     * of the weapon he is holding (see [weapons]).
+     */
+    val player = Creature(
+        "Player", "PLAY", speed = 8, health = 100, radius = 16, walkFrames = 4, walkTics = 4,
+        attack = Anim(intArrayOf(4, 5, 4), intArrayOf(4, 6, 4)),
+        pain = Anim(intArrayOf(6, 6), intArrayOf(4, 4)),
+        death = Anim(intArrayOf(7, 8, 9, 10, 11, 12, 13), intArrayOf(10, 10, 10, 10, 10, 10, -1)),
+        painChance = 255, hitscanShots = 1,
+    )
+
+    /** Damage of an enemy instant shot: A_PosAttack, `((P_Random()%5)+1)*3`. */
+    fun hitscanDamage(): Int = ((pRandom() % 5) + 1) * 3
+
+    /** p_pspr.c P_GunShot: `5*(P_Random()%3+1)`. One pellet from the marine's gun. */
+    fun gunShotDamage(): Int = 5 * (pRandom() % 3 + 1)
+
+    /** p_pspr.c A_FireShotgun: seven pellets per shot. */
+    const val SHOTGUN_PELLETS = 7
+
+    // ------------------------------------------------------------------ weapons
+
+    /**
+     * The marine's weapons. All of them fire instant shots with the same per-pellet damage
+     * (p_pspr.c P_GunShot); what changes is the pellet count and the rate of fire.
+     *
+     * ponytail: only the three hitscan weapons. The rocket launcher and plasma gun would
+     * need exploding projectiles, i.e. another mechanic: add them if they are ever needed.
+     */
+    class Weapon(
+        val name: String,
+        val pellets: Int,
+        val ammo: Int,          // index into AMMO_*; -1 = consumes nothing
+        val attack: Anim,
+    )
+
+    const val AMMO_BULLETS = 0
+    const val AMMO_SHELLS = 1
+
+    /** p_inter.c: maxammo[] = {200, 50, ...}. */
+    val maxAmmo = intArrayOf(200, 50)
+
+    /** p_inter.c: clipammo[] = {10, 4, ...}. A picked-up weapon carries two clip loads. */
+    val clipAmmo = intArrayOf(10, 4)
+
+    val weapons = listOf(
+        // The pistol consumes no ammo: in a wallpaper, being disarmed forever would be a
+        // deadlock, and the marine cannot go looking for ammo the way a player would.
+        Weapon("Pistol", pellets = 1, ammo = -1, attack = Anim(intArrayOf(4, 5, 4), intArrayOf(6, 8, 6))),
+        Weapon("Shotgun", pellets = SHOTGUN_PELLETS, ammo = AMMO_SHELLS, attack = Anim(intArrayOf(4, 5, 4), intArrayOf(6, 10, 8))),
+        Weapon("Chaingun", pellets = 1, ammo = AMMO_BULLETS, attack = Anim(intArrayOf(4, 5), intArrayOf(3, 3))),
+    )
+
+    const val WEAPON_PISTOL = 0
+    const val WEAPON_SHOTGUN = 1
+    const val WEAPON_CHAINGUN = 2
+
+    // ------------------------------------------------------------------ items
+
+    const val ITEM_HEALTH = 0
+    const val ITEM_ARMOR = 1
+    const val ITEM_WEAPON = 2
+    const val ITEM_AMMO = 3
+
+    /**
+     * The pickups. Values from p_inter.c: stimpack 10, medikit 25, green armour 100 points
+     * of type 1, blue 200 of type 2, and a picked-up weapon carries two clip loads.
+     */
+    class Item(
+        val lumpPrefix: String,
+        val kind: Int,
+        val amount: Int,
+        /** Armour type, weapon index or ammo index depending on [kind]. */
+        val extra: Int = 0,
+        val frames: Int = 1,
+    ) {
+        var spriteIndex = -1
+    }
+
+    val items = listOf(
+        Item("STIM", ITEM_HEALTH, 10),                                   // stimpack
+        Item("MEDI", ITEM_HEALTH, 25),                                   // medikit
+        Item("ARM1", ITEM_ARMOR, 100, extra = 1, frames = 2),            // green armour
+        Item("ARM2", ITEM_ARMOR, 200, extra = 2, frames = 2),            // blue armour
+        Item("SHOT", ITEM_WEAPON, 2, extra = WEAPON_SHOTGUN),            // shotgun + 2 clips
+        Item("MGUN", ITEM_WEAPON, 2, extra = WEAPON_CHAINGUN),           // chaingun
+        Item("CLIP", ITEM_AMMO, 1, extra = AMMO_BULLETS),                // ammo clip
+        Item("SHEL", ITEM_AMMO, 1, extra = AMMO_SHELLS),                 // shells
+    )
+
+    /** p_inter.c: armour absorbs a third of the damage when green, half when blue. */
+    fun armorSaved(damage: Int, armorType: Int): Int =
+        if (armorType == 1) damage / 3 else damage / 2
+
+    // ------------------------------------------------------------------ waves
+
+    /**
+     * A wave: which creatures, in what order, and how calmly.
+     *
+     * [order] is the arrival sequence, [spawnDelay] the tics between one arrival and the
+     * next, [burst] how many show up together on each arrival, [rest] the pause once the
+     * wave has been cleared.
+     */
+    class Wave(
+        val order: IntArray,
+        val spawnDelay: Int,
+        val burst: Int = 1,
+        val rest: Int = TICRATE * 2,
+    ) {
+        val size get() = order.size
+    }
+
+    /**
+     * info.c: `reactiontime` is 8 for every creature we use. A monster that has just
+     * appeared stands still for that many tics before moving — the engine wiki describes it
+     * as "newly spawned monsters initially stand idle". It reinforces the staggered
+     * arrival: first it materialises in the fog, then it wakes up.
+     */
+    const val REACTION_TIME = 8
+
+    /**
+     * The waves.
+     *
+     * The progression follows the order in which the engine actually introduces its monsters in
+     * the first episode — zombies, then imps, then demons, then cacodemons, with the
+     * barons as the final encounter (E1M8).
+     *
+     * Tension grows along four axes: tougher creatures, a delay shrinking from three
+     * seconds to under one, paired arrivals only in the second half, and shorter pauses
+     * between waves. Early on the marine faces one enemy at a time; by the end they pour in.
+     *
+     * The curve is not a smooth ramp: every new creature enters in a *short* wave (the
+     * FleshWorm in 5, the Trilobite in 7) so it gets noticed instead of being lost in the
+     * crowd, and every peak is followed by breathing room. The PainLord appears alone in
+     * wave 12 as a single duel, returns escorted in 15, and closes as a pair in 16.
+     */
+    val waves = listOf(
+        //   creatures                      delay                 burst  rest after
+        Wave(intArrayOf(0, 0), /*           3.00 s */ TICRATE * 3, 1, TICRATE * 3),
+        Wave(intArrayOf(0, 0, 1), /*        2.75 s */ TICRATE * 11 / 4, 1, TICRATE * 3),
+        Wave(intArrayOf(1, 0, 2), /*        2.50 s */ TICRATE * 5 / 2, 1, TICRATE * 5 / 2),
+        Wave(intArrayOf(2, 2, 1, 0), /*     2.25 s */ TICRATE * 9 / 4, 1, TICRATE * 5 / 2),
+        Wave(intArrayOf(3, 2, 2), /*        2.00 s */ TICRATE * 2, 1, TICRATE * 5 / 2),
+        Wave(intArrayOf(2, 3, 1, 3), /*     2.00 s */ TICRATE * 2, 1, TICRATE * 2),
+        Wave(intArrayOf(4, 2, 2), /*        1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 2),
+        Wave(intArrayOf(3, 4, 2, 3, 1), /*  1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 2),
+        Wave(intArrayOf(2, 2, 3, 3, 4), /*  1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 2),
+        Wave(intArrayOf(1, 3, 4, 3, 1, 2), /* 1.50 s */ TICRATE * 3 / 2, 2, TICRATE * 2),
+        Wave(intArrayOf(4, 4, 3, 2), /*     1.25 s */ TICRATE * 5 / 4, 2, TICRATE * 5 / 2),
+        Wave(intArrayOf(5), /*              1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 3),
+        Wave(intArrayOf(2, 3, 4, 3, 2, 1), /* 1.25 s */ TICRATE * 5 / 4, 2, TICRATE * 2),
+        Wave(intArrayOf(4, 4, 3, 3, 2, 2), /* 1.00 s */ TICRATE, 3, TICRATE * 2),
+        Wave(intArrayOf(1, 3, 4, 5), /*     1.00 s */ TICRATE, 2, TICRATE * 5 / 2),
+        Wave(intArrayOf(5, 5), /*           0.75 s */ TICRATE * 3 / 4, 2, TICRATE * 5),
+    )
+
+    /**
+     * Every sprite prefix in use, in a stable order. Each Creature/Projectile/Item stores
+     * its own index here, so the draw loop needs no lookup at all.
+     */
+    val spritePrefixes: List<String> =
+        creatures.map { it.lumpPrefix } + player.lumpPrefix +
+            projectiles.map { it.lumpPrefix } + items.map { it.lumpPrefix } +
+            listOf("BLUD", "TFOG")
+
+    val bloodSpriteIndex = spritePrefixes.indexOf("BLUD")
+    val fogSpriteIndex = spritePrefixes.indexOf("TFOG")
+
+    // This must stay the last block in the file: the properties of an object initialise in
+    // declaration order, and assigning the indices before spritePrefixes exists would let
+    // the default values overwrite them.
+    init {
+        for (c in creatures) c.spriteIndex = spritePrefixes.indexOf(c.lumpPrefix)
+        player.spriteIndex = spritePrefixes.indexOf(player.lumpPrefix)
+        for (p in projectiles) p.spriteIndex = spritePrefixes.indexOf(p.lumpPrefix)
+        for (i in items) i.spriteIndex = spritePrefixes.indexOf(i.lumpPrefix)
+    }
+}
