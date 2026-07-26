@@ -330,6 +330,44 @@ class SceneTest {
         assertEquals(0, kit.owned, "with nothing loaded he is back to the pistol")
     }
 
+    /**
+     * A weapon already carried is replaced, not duplicated, and reloads what is there.
+     *
+     * The arsenal is a bitmask with one bit per weapon, so a second shotgun can never become
+     * a second shotgun: it takes the place of the one held. Since no ammunition is dropped
+     * on its own, that is also the only way to reload — and a pickup that would give nothing
+     * at all must be left on the ground rather than swallowed.
+     */
+    @Test
+    fun `a weapon already carried is replaced and reloaded, not stacked`() {
+        GameData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+        val shotgun = GameData.items.first { it.kind == GameData.ITEM_WEAPON && it.extra == GameData.WEAPON_SHOTGUN }
+        val shells = GameData.weapons[GameData.WEAPON_SHOTGUN].ammo
+
+        val marine = Actor(0).apply {
+            creature = GameData.player
+            isPlayer = true
+            loadout = Loadout()
+        }
+        val kit = marine.loadout!!
+
+        assertTrue(scene.pickUpForTest(marine, shotgun), "the first shotgun must be taken")
+        val afterFirst = kit.ammo[shells]
+        assertTrue(afterFirst > 0, "a weapon must arrive loaded")
+        val ownedAfterFirst = kit.owned
+
+        // A second one: same single bit, more shells.
+        assertTrue(scene.pickUpForTest(marine, shotgun), "a second shotgun must reload him")
+        assertEquals(ownedAfterFirst, kit.owned, "the arsenal must not grow from a duplicate")
+        assertTrue(kit.ammo[shells] > afterFirst, "the duplicate must add shells")
+
+        // Full up: it now gives nothing, so it must stay where it lies.
+        kit.ammo[shells] = GameData.maxAmmo[shells]
+        assertTrue(!scene.pickUpForTest(marine, shotgun), "a pickup that gives nothing must be left alone")
+        assertEquals(GameData.maxAmmo[shells], kit.ammo[shells], "and must not change anything")
+    }
+
     @Test
     fun `ammunition is never dropped on its own`() {
         assertTrue(

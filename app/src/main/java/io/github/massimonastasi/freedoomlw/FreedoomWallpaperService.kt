@@ -554,12 +554,30 @@ class FreedoomWallpaperService : WallpaperService() {
         /** Which skill's tile the shader currently holds, so it is rebuilt only on change. */
         private var shaderSkill = -1
 
+        /**
+         * The ground the scene is leaving, kept alive for the length of the crossfade.
+         *
+         * Swapping the tile outright made the whole screen change texture between one frame
+         * and the next, which is the most abrupt thing a wallpaper can do and reads as a
+         * glitch rather than as progress. The old ground is held underneath and the new one
+         * brought up over it.
+         */
+        private val fadePaint = Paint().apply {
+            isFilterBitmap = false
+            colorFilter = floorDim
+        }
+        private var fadeUntil = 0
+
         private fun drawFloor(canvas: Canvas) {
             // The ground changes with the difficulty. Rebuilding a BitmapShader is cheap but
             // not free, and the skill changes a handful of times an hour, so it is keyed on
             // the value rather than done per frame.
             val skill = scene?.skill ?: 0
             if (skill != shaderSkill) {
+                // Only fade between two real grounds. The first tile of all appears with the
+                // scene itself, and fading that one in would just be a slow start.
+                fadePaint.shader = if (shaderSkill >= 0) floorPaint.shader else null
+                fadeUntil = if (fadePaint.shader != null) tic + FLOOR_FADE_TICS else 0
                 shaderSkill = skill
                 floorPaint.shader = floorTiles.getOrNull(skill)?.let {
                     BitmapShader(it, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
@@ -567,14 +585,32 @@ class FreedoomWallpaperService : WallpaperService() {
             }
 
             val shader = floorPaint.shader
-            if (shader == null) {
+            if (shader == null && fadePaint.shader == null) {
                 canvas.drawColor(BACKDROP)
                 return
             }
+
             floorMatrix.setScale(FLOOR_SCALE, FLOOR_SCALE)
             floorMatrix.postTranslate((0.5f - offset) * PARALLAX_PX, 0f)
+            val w = frame.width().toFloat()
+            val h = frame.height().toFloat()
+
+            val left = fadeUntil - tic
+            if (left > 0) {
+                fadePaint.shader?.let {
+                    it.setLocalMatrix(floorMatrix)
+                    canvas.drawRect(0f, 0f, w, h, fadePaint)
+                }
+            } else if (fadePaint.shader != null) {
+                fadePaint.shader = null            // released once it has finished showing
+            }
+
+            shader ?: return
             shader.setLocalMatrix(floorMatrix)
-            canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), floorPaint)
+            // Opaque unless a fade is running, in which case it rises over the old ground.
+            floorPaint.alpha =
+                if (left > 0) (255 - left * 255 / FLOOR_FADE_TICS).coerceIn(0, 255) else 255
+            canvas.drawRect(0f, 0f, w, h, floorPaint)
         }
 
         /** Solid colour overlays: the death wash and the no-WAD placeholder. */
@@ -663,6 +699,14 @@ class FreedoomWallpaperService : WallpaperService() {
          * darker still and remain a backdrop rather than a black screen.
          */
         const val FLOOR_DIM = 0.35f
+
+        /**
+         * How long the ground takes to change, in tics.
+         *
+         * Quick on purpose: this is scenery, not an event. Long enough that the eye reads a
+         * dissolve rather than a cut, short enough that nobody watches it happen.
+         */
+        const val FLOOR_FADE_TICS = TICRATE / 2
 
         /** Room left above the debug overlay for the status bar, in dp. */
         const val STATUS_BAR_CLEARANCE = 34f

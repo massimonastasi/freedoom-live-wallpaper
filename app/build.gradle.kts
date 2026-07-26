@@ -96,7 +96,7 @@ tasks.register("reduceWad") {
             // One floor flat per skill level, plus the fallbacks the loader walks when a
             // user-supplied WAD is missing one. Restated here because GameData is app code
             // and not on the build script's classpath; WadFileTest fails if the two drift.
-            addAll(listOf("FLAT4", "RROCK13", "GRNROCK", "BLOOD1", "RROCK01"))
+            addAll(listOf("AQF069", "RROCK13", "GRNROCK", "BLOOD1", "RROCK01"))
             addAll(listOf("RROCK03", "FLOOR1_6", "FLAT14", "FLOOR0_1"))
             add("F_START"); add("F_END")      // flat markers: flatIndex searches between them
             for (d in 0..9) add("STTNUM$d")   // readout numerals

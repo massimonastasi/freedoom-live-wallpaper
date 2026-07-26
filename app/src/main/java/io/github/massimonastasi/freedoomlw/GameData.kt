@@ -435,7 +435,7 @@ object GameData {
 
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
-        Skill("I'm too young to die", 4, 215, toughen = 0, halfDamage = true, doubleAmmo = true, flat = "FLAT4"),
+        Skill("I'm too young to die", 4, 215, toughen = 0, halfDamage = true, doubleAmmo = true, flat = "AQF069"),
         Skill("Hey, not too rough", 4, 160, toughen = 0, flat = "RROCK13"),
         Skill("Hurt me plenty", 4, 235, toughen = 60, flat = "GRNROCK"),
         Skill("Ultra-Violence", 4, 375, toughen = 120, flat = "BLOOD1"),

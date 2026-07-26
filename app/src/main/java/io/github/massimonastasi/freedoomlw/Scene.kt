@@ -602,6 +602,9 @@ class Scene(
      * when the one already worn is better, and a weapon carries two clip loads.
      * Returns false when the item is not needed and should stay on the ground.
      */
+    /** Test hook: pickUp is the rule set worth pinning, and it is otherwise unreachable. */
+    internal fun pickUpForTest(p: Actor, item: GameData.Item) = pickUp(p, item)
+
     private fun pickUp(p: Actor, it: GameData.Item): Boolean {
         val kit = p.loadout ?: return false
         return when (it.kind) {
@@ -614,11 +617,16 @@ class Scene(
                 else { kit.armorPoints = it.amount; kit.armorType = it.extra; true }
             }
             else -> {
-                // A weapon is always worth taking, even one already carried: it is the only
-                // source of ammunition left, so picking up a second shotgun is a reload.
-                giveAmmo(kit, GameData.weapons[it.extra].ammo, it.amount)
-                kit.take(it.extra)
-                true
+                // One bit per weapon, so a second shotgun never becomes a second shotgun: it
+                // replaces the one carried and reloads it, which is the only source of
+                // ammunition left now that none is dropped on its own.
+                //
+                // Taken only if it actually gives something. It used to be taken always, so
+                // a marine already holding the weapon with full ammunition walked over it and
+                // it vanished for nothing.
+                val reloaded = giveAmmo(kit, GameData.weapons[it.extra].ammo, it.amount)
+                val isNew = !kit.has(it.extra)
+                if (reloaded || isNew) { kit.take(it.extra); true } else false
             }
         }
     }
