@@ -236,14 +236,23 @@ object GameData {
     /**
      * Palette entries used to recolour the corner readout.
      *
-     * Chosen by measuring PLAYPAL rather than by picking the most saturated entry, because
-     * on this palette those are not the same thing. Index 200 is pure blue and the least
-     * legible colour in the whole set on a dark backdrop, at a luminance of 29 against the
-     * red numerals' 76. the original engine's blue ramp brightens by mixing in red and green, so 196 is
-     * still unmistakably the palette's blue while sitting at 131, comfortably above the red
-     * we already accept as readable. The green at 112 needs no such compromise, at 198.
+     * Chosen by measuring PLAYPAL rather than by eye, because on this palette saturation and
+     * legibility pull against each other. The blue ramp runs 193 (199,199,255) down to 200
+     * (0,0,255): it gets bluer by *removing* red and green, so it darkens as it saturates.
+     * Pure blue at 200 has a luminance of 29 and is the least legible entry in the set on a
+     * dark backdrop.
+     *
+     * 198 is (55,55,255) at luminance 78 — unmistakably a saturated blue rather than the
+     * washed-out periwinkle of 196, and level with the WAD's own red numerals at 76, which
+     * are already accepted as readable. That is the floor this sits on, not a guess.
+     *
+     * Note the potion itself could not be sampled: the engine's health bonus is the blue vial, but
+     * Freedoom redrew it green — decoding BON1A0 gives dominant colours around (75,159,63).
+     * The palette is shared, so the ramp is the right source; the sprite is not.
+     *
+     * The green at 112 needs no such compromise, at luminance 198.
      */
-    const val PALETTE_HEALTH = 196          // 115, 115, 255
+    const val PALETTE_HEALTH = 198          // 55, 55, 255
     const val PALETTE_ARMOR = 112           // 119, 255, 111
 
     // ------------------------------------------------------------------ weapons
@@ -398,18 +407,28 @@ object GameData {
          * The ladder climbs by **hue, not brightness**. All five sit between 28 and 38 mean
          * luminance, so the contrast behind the launcher icons never changes while the mood
          * does: neutral, then masonry, then a sick green, then blood, then magma.
+         *
+         * The first level was CEIL5_1, which measures *brighter* than most of the others at
+         * 38 and still read as a plain black screen, because it is uniform noise with no
+         * structure at all. FLAT4 sits at the same luminance and is a visible grid, which is
+         * the difference between a dark backdrop and no backdrop. Mean luminance alone would
+         * never have caught that; looking at it did.
          */
         val flat: String,
     )
 
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
-        Skill("I'm too young to die", 7, 6, halfDamage = true, doubleAmmo = true, flat = "CEIL5_1"),
-        Skill("Hey, not too rough", 7, 7, toughen = 120, flat = "RROCK13"),
-        Skill("Hurt me plenty", 8, 8, toughen = 168, flat = "GRNROCK"),
-        Skill("Ultra-Violence", 9, 10, toughen = 208, flat = "BLOOD1"),
+        Skill("I'm too young to die", 7, 6, toughen = 185, halfDamage = true, doubleAmmo = true, flat = "FLAT4"),
+        Skill("Hey, not too rough", 7, 8, toughen = 220, flat = "RROCK13"),
+        Skill("Hurt me plenty", 9, 10, toughen = 215, flat = "GRNROCK"),
+        Skill("Ultra-Violence", 13, 12, toughen = 240, flat = "BLOOD1"),
+        // Lower toughen than Ultra-Violence and still far harder: this level alone brings
+        // fast FleshWorms and monsters that come back, and a wave that refills is a wave the
+        // marine is very unlikely to finish. The parameter is not the difficulty; the
+        // measured outcome is, and that is what the test asserts.
         Skill(
-            "Nightmare!", 9, 12, toughen = 216,
+            "Nightmare!", 13, 14, toughen = 168,
             doubleAmmo = true, fast = true, respawn = true, flat = "RROCK01",
         ),
     )

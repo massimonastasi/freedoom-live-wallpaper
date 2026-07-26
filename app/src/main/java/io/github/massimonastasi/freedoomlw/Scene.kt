@@ -403,6 +403,11 @@ class Scene(
         val n = (w.order.size * rules.countEighths + 7) / 8
         queue.clear()
         for (i in 0 until n) {
+            // Exactly one step, never more. Promoting further was tried and measured worse:
+            // the bestiary is ordered by the original's own toughness, which is health, and
+            // that is not lethality here. Two steps turns a Zombie into a Serpentipede,
+            // whose fireballs the marine sidesteps, instead of a ShotgunZombie, whose three
+            // hitscan shots cannot be dodged at all. The odds went *up* at the hard end.
             var c = w.order[i % w.order.size]
             if (pRandom() < rules.toughen && c + 1 < GameData.creatures.size) c++
             queue.add(c)
@@ -638,7 +643,6 @@ class Scene(
         return GameData.WEAPON_PISTOL
     }
 
-    private fun currentWeapon(p: Actor) = GameData.weapons[currentWeaponIndex(p)]
 
     // ---------------------------------------------------------------- animation
 
@@ -751,7 +755,7 @@ class Scene(
         val c = a.creature ?: return
         // The marine uses the rate of fire of the weapon in hand: the chaingun is far
         // faster than the shotgun.
-        begin(a, Mode.ATTACK, if (a.isPlayer) currentWeapon(a).attack else c.attack)
+        begin(a, Mode.ATTACK, if (a.isPlayer) GameData.weapons[currentWeaponIndex(a)].attack else c.attack)
     }
 
     private fun fireAttack(a: Actor) {

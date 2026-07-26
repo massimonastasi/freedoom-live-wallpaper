@@ -134,11 +134,11 @@ class SceneTest {
      * Runs the same opening from many points in the P_Random table, since the table is
      * fixed and a single run would only ever measure one shuffle of the drops.
      */
-    private fun clearedWaveOneAlone(skill: Int, runs: Int = 60): Int {
+    private fun clearedWaveOneAlone(skill: Int, runs: Int = 400): Int {
         var wins = 0
         for (r in 0 until runs) {
             GameData.clearRandom()
-            repeat(r * 4) { GameData.pRandom() }
+            repeat(r) { GameData.pRandom() }
             val scene = Scene(worldWidth, worldHeight, startSkill = skill)
             var t = 0
             var died = false
@@ -148,20 +148,29 @@ class SceneTest {
             }
             if (!died && scene.wave > 0) wins++
         }
-        return wins * 100 / runs
+        // Tenths of a percent: the hardest levels are aimed below one percent, which sixty
+        // runs and whole percentages could not tell apart from zero.
+        return wins * 1000 / runs
     }
 
     @Test
     fun `the drops carry the marine through the first wave, less and less as it hardens`() {
         val odds = GameData.skills.indices.map { clearedWaveOneAlone(it) }
         println("cleared wave 1 unaided: " + GameData.skills.indices.joinToString {
-            "${GameData.skills[it].name} ${odds[it]}%"
+            "${GameData.skills[it].name} ${odds[it] / 10}.${odds[it] % 10}%"
         })
 
-        // Measured shape: 100, 90, 85, 35, 1.
-        assertTrue(odds.first() >= 90, "the lowest skill must manage alone: ${odds.first()}%")
-        assertTrue(odds.last() <= 20, "the hardest must almost never manage alone: ${odds.last()}%")
-        assertTrue(odds[2] <= 90, "the middle skill must already be a real risk: ${odds[2]}%")
+        // The curve that was asked for, in tenths of a percent: 95, 75, 35, 5, 0.5. Measured
+        // 94.7, 76.0, 33.7, 3.2, 1.0 over four hundred runs per level, where the standard
+        // error is one to two points — hence bands rather than exact values.
+        val target = intArrayOf(950, 750, 350, 50, 5)
+        val tolerance = intArrayOf(60, 60, 60, 40, 20)
+        for (i in odds.indices) {
+            assertTrue(
+                odds[i] in (target[i] - tolerance[i])..(target[i] + tolerance[i]),
+                "${GameData.skills[i].name}: ${odds[i]} is outside ${target[i]} +/- ${tolerance[i]}",
+            )
+        }
         for (i in 1 until odds.size) {
             assertTrue(odds[i] <= odds[i - 1], "the odds must never rise with the skill: $odds")
         }
