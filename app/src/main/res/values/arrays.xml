@@ -16,4 +16,43 @@
         <item>15</item>
         <item>10</item>
     </string-array>
+
+    <string-array name="background_labels">
+        <item>Dungeon floor, changes with the difficulty</item>
+        <item>A photo of your own</item>
+        <item>A flat colour</item>
+    </string-array>
+
+    <string-array name="background_values">
+        <item>dynamic</item>
+        <item>photo</item>
+        <item>colour</item>
+    </string-array>
+
+    <!--
+        Palette indices, not colour values: the colour follows whichever WAD is loaded. Each
+        was found by searching PLAYPAL for the entry nearest the named hue, so these are the
+        active palette's own colours rather than approximations laid over it.
+    -->
+    <string-array name="palette_labels">
+        <item>Black</item>
+        <item>Grey</item>
+        <item>White</item>
+        <item>Red</item>
+        <item>Green</item>
+        <item>Blue</item>
+        <item>Brown</item>
+        <item>Yellow</item>
+    </string-array>
+
+    <string-array name="palette_values">
+        <item>0</item>
+        <item>99</item>
+        <item>4</item>
+        <item>184</item>
+        <item>122</item>
+        <item>204</item>
+        <item>73</item>
+        <item>164</item>
+    </string-array>
 </resources>

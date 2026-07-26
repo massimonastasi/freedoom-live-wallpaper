@@ -36,6 +36,9 @@ object Settings {
     const val KEY_FPS = "fps"
     const val KEY_READOUT = "readout"
     const val KEY_GOD = "god"
+    const val KEY_BACKGROUND = "background"
+    const val KEY_BACKGROUND_PHOTO = "background_photo"
+    const val KEY_BACKGROUND_COLOUR = "background_colour"
     const val KEY_WAD = "wad"
     const val KEY_WAD_RESET = "wad_reset"
     const val KEY_LICENCES = "licences"
@@ -60,4 +63,24 @@ object Settings {
      * endless advance rather than a loop of deaths, and the skill ladder then climbs.
      */
     fun godMode(p: SharedPreferences): Boolean = p.getBoolean(KEY_GOD, false)
+
+    /** What is drawn behind the fight. */
+    enum class Background { DYNAMIC, PHOTO, COLOUR }
+
+    /**
+     * The dynamic ground is the default and stays so: it is the only one that reports the
+     * difficulty, and it is the thing the wallpaper was built around.
+     */
+    fun background(p: SharedPreferences): Background = when (p.getString(KEY_BACKGROUND, null)) {
+        "photo" -> Background.PHOTO
+        "colour" -> Background.COLOUR
+        else -> Background.DYNAMIC
+    }
+
+    /**
+     * Palette index for the flat colour, from the active WAD's own PLAYPAL rather than an
+     * ARGB value, so the choice follows whichever WAD is loaded.
+     */
+    fun backgroundColour(p: SharedPreferences): Int =
+        p.getString(KEY_BACKGROUND_COLOUR, null)?.toIntOrNull()?.coerceIn(0, 255) ?: 0
 }

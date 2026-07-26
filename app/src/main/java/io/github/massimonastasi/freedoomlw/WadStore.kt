@@ -98,10 +98,27 @@ object WadStore {
         val wad = file.inputStream().use { s ->
             WadFile(s.channel.map(FileChannel.MapMode.READ_ONLY, 0, file.length()))
         }
-        val present = GameData.spritePrefixes.count { wad.lumpsStartingWith(it).isNotEmpty() }
+
+        var present = 0
+        var decoded = 0
+        for (prefix in GameData.spritePrefixes) {
+            val set = SpriteSet(wad, prefix)
+            if (set.frameCount == 0) continue
+            present++
+            // Names are not enough. A lump can carry the right name and contents the patch
+            // decoder cannot read, and that failure would otherwise surface inside the draw
+            // loop rather than here. Every frame of every creature is decoded now, once,
+            // where a rejection is still possible.
+            for (f in 0 until set.frameCount) {
+                val packed = set.resolve(f, 1)
+                if (packed >= 0 && set.sprite(packed shr 1) != null) decoded++
+            }
+        }
+
         when {
             present == 0 -> context.getString(R.string.wad_no_sprites)
             present < GameData.spritePrefixes.size / 2 -> context.getString(R.string.wad_too_few, present)
+            decoded == 0 -> context.getString(R.string.wad_undecodable)
             else -> null
         }
     } catch (e: WadFile.NotAWadException) {

@@ -85,6 +85,16 @@ class FreedoomWallpaperService : WallpaperService() {
     /** Which WAD the loaded sprites came from, so a change can be noticed cheaply. */
     private var loadedWad: String? = null
 
+    /**
+     * The active WAD's PLAYPAL, kept so a flat backdrop colour can be named by palette index.
+     *
+     * An index rather than an ARGB value means the choice follows the WAD: pick "red" and a
+     * commercial IWAD gives its own red, not Freedoom's.
+     */
+    private var palette = IntArray(256)
+
+    fun paletteColour(index: Int): Int = palette[index.coerceIn(0, 255)]
+
     override fun onCreate() {
         super.onCreate()
         loadWad()
@@ -113,6 +123,7 @@ class FreedoomWallpaperService : WallpaperService() {
                 }
             }
             val w = WadFile(buf)
+            palette = IntArray(256) { w.paletteColor(it) }
             deathTint = w.paletteColor(GameData.PALETTE_DEATH)
             floorTiles = loadFloors(w)
             loadDigits(w)
@@ -328,7 +339,29 @@ class FreedoomWallpaperService : WallpaperService() {
             val before = loadedWad
             reloadWadIfChanged()
             if (loadedWad != before) shaderSkill = -1
+
+            background = Settings.background(prefs)
+            backgroundColour = paletteColour(Settings.backgroundColour(prefs))
+
+            // Held only while it is the chosen backdrop: a decoded photograph is the largest
+            // bitmap this process ever owns, and keeping it after the setting changed would
+            // be several megabytes retained for something nobody is looking at. Keyed on the
+            // file's timestamp so choosing a different photo actually replaces it.
+            val stamp = PhotoStore.file(this@FreedoomWallpaperService)?.lastModified() ?: 0L
+            if (background != Settings.Background.PHOTO) {
+                photo = null
+                photoStamp = 0L
+            } else if (photo == null || stamp != photoStamp) {
+                photoStamp = stamp
+                photo = PhotoStore.load(
+                    this@FreedoomWallpaperService,
+                    frame.width().coerceAtLeast(1),
+                    frame.height().coerceAtLeast(1),
+                )
+            }
         }
+
+        private var photoStamp = 0L
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
             super.onSurfaceDestroyed(holder)
@@ -443,7 +476,9 @@ class FreedoomWallpaperService : WallpaperService() {
                 val set = sprites[a.spriteIndex]
                 val packed = set.resolve(a.frame(tic), a.spriteRotation())
                 if (packed < 0) continue
-                val sprite = set.sprite(packed shr 1)
+                // Null when the lump refused to decode, which only a user-supplied WAD can
+                // cause. One actor goes undrawn rather than the wallpaper going down.
+                val sprite = set.sprite(packed shr 1) ?: continue
                 val flip = packed and 1 == 1
 
                 // Oblique projection: x horizontal, y into the depth. The sprite anchor
@@ -578,7 +613,44 @@ class FreedoomWallpaperService : WallpaperService() {
         /** Which skill's tile the shader currently holds, so it is rebuilt only on change. */
         private var shaderSkill = -1
 
+        /** What the user chose to sit behind the fight, re-read with the other settings. */
+        private var background = Settings.Background.DYNAMIC
+        private var backgroundColour = 0
+        private var photo: Bitmap? = null
+        private val photoMatrix = Matrix()
+
         private fun drawFloor(canvas: Canvas) {
+            when (background) {
+                Settings.Background.COLOUR -> {
+                    // Undimmed, unlike the dungeon floor. A flat colour was picked
+                    // deliberately and showing something else would be a worse answer; a
+                    // uniform field also has no texture to compete with the icons.
+                    canvas.drawColor(backgroundColour)
+                    return
+                }
+                Settings.Background.PHOTO -> {
+                    val p = photo
+                    if (p != null) {
+                        // Scaled to cover and centred, so no edge of the screen is ever left
+                        // bare whatever shape the photograph is.
+                        val scale = maxOf(
+                            frame.width().toFloat() / p.width,
+                            frame.height().toFloat() / p.height,
+                        )
+                        photoMatrix.setScale(scale, scale)
+                        photoMatrix.postTranslate(
+                            (frame.width() - p.width * scale) / 2f,
+                            (frame.height() - p.height * scale) / 2f,
+                        )
+                        canvas.drawBitmap(p, photoMatrix, null)
+                        return
+                    }
+                    // Chosen but missing: fall through to the dungeon floor rather than
+                    // leaving the screen blank.
+                }
+                Settings.Background.DYNAMIC -> Unit
+            }
+
             // The ground changes with the difficulty. Rebuilding a BitmapShader is cheap but
             // not free, and the skill changes a handful of times an hour, so it is keyed on
             // the value rather than done per frame.

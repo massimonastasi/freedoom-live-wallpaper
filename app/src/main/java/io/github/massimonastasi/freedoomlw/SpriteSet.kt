@@ -88,16 +88,35 @@ class SpriteSet(private val wad: WadFile, prefix: String, private val dim: Int =
      * ponytail: resolve() + sprite() instead of a single get() returning a pair — the
      * draw loop allocates nothing.
      */
-    fun sprite(lump: Int): Sprite = cache.get(lump) ?: wad.decodePatch(lump).let {
-        // Dimmed here, once per lump, rather than by a colour filter on every frame. The
-        // array is freshly decoded, so this costs no allocation. See dimInPlace.
-        it.pixels.dimInPlace(dim)
-        Sprite(
-            Bitmap.createBitmap(it.pixels, it.width, it.height, Bitmap.Config.ARGB_8888),
-            it.xOffset,
-            it.yOffset,
-        )
-    }.also { cache.put(lump, it) }
+    /**
+     * Lumps that could not be decoded, so a broken one is attempted once and not again.
+     *
+     * Without this a malformed lump would be re-decoded and re-fail on every frame it is
+     * asked for, twenty times a second.
+     */
+    private val broken = HashSet<Int>()
+
+    fun sprite(lump: Int): Sprite? {
+        cache.get(lump)?.let { return it }
+        if (lump in broken) return null
+        return try {
+            val p = wad.decodePatch(lump)
+            // Dimmed here, once per lump, rather than by a colour filter on every frame. The
+            // array is freshly decoded, so this costs no allocation. See dimInPlace.
+            p.pixels.dimInPlace(dim)
+            Sprite(
+                Bitmap.createBitmap(p.pixels, p.width, p.height, Bitmap.Config.ARGB_8888),
+                p.xOffset,
+                p.yOffset,
+            ).also { cache.put(lump, it) }
+        } catch (e: Exception) {
+            // A user-supplied WAD can carry a lump with the right name and the wrong
+            // contents, and this runs inside the draw loop: throwing here would take the
+            // wallpaper down over one bad sprite. It is skipped instead.
+            broken += lump
+            null
+        }
+    }
 
     private companion object {
         /** Budget per actor. A creature's full sprite set stays comfortably below it. */

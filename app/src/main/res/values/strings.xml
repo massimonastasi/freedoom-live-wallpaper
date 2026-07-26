@@ -5,6 +5,13 @@
 
     <string name="settings_frame_rate">Frame rate</string>
     <string name="settings_frame_rate_note">The scene always thinks at the original 35 steps a second. This is only how often it is drawn, and it is the one setting that changes battery use.</string>
+    <string name="settings_background">Background</string>
+    <string name="settings_background_photo">Choose the photo</string>
+    <string name="settings_background_colour">Flat colour</string>
+    <string name="settings_background_photo_none">No photo chosen yet.</string>
+    <string name="settings_background_photo_set">A photo is in use. Tap to choose another.</string>
+    <string name="photo_unreadable">That image could not be read.</string>
+    <string name="wad_undecodable">That WAD names the right sprites but none of them could be read.</string>
     <string name="settings_scene">Scene</string>
     <string name="settings_readout">Show health and armour</string>
     <string name="settings_god">The marine cannot die</string>

@@ -64,12 +64,26 @@ class SettingsActivity : AppCompatActivity() {
             showWadState()
         }
 
+        /** Images have a registered MIME type, unlike WADs, so this one can filter properly. */
+        private val choosePhoto = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri ?: return@registerForActivityResult
+            val context = requireContext()
+            val ok = PhotoStore.import(context, uri)
+            Toast.makeText(
+                context,
+                if (ok) R.string.wad_imported else R.string.photo_unreadable,
+                Toast.LENGTH_LONG,
+            ).show()
+            showPhotoState()
+        }
+
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             // The engine reads its own preference file directly, with no library on its
             // side: naming it here is what keeps the two looking at the same values.
             preferenceManager.sharedPreferencesName = Settings.FILE
             setPreferencesFromResource(R.xml.settings, rootKey)
 
+            click(Settings.KEY_BACKGROUND_PHOTO) { choosePhoto.launch(arrayOf("image/*")) }
             click(Settings.KEY_WAD) { choose.launch(arrayOf("*/*")) }
             click(Settings.KEY_WAD_RESET) {
                 WadStore.clear(requireContext())
@@ -83,6 +97,14 @@ class SettingsActivity : AppCompatActivity() {
                 startActivity(Intent(requireContext(), SetupActivity::class.java))
             }
             showWadState()
+            showPhotoState()
+        }
+
+        private fun showPhotoState() {
+            findPreference<Preference>(Settings.KEY_BACKGROUND_PHOTO)?.setSummary(
+                if (PhotoStore.file(requireContext()) == null) R.string.settings_background_photo_none
+                else R.string.settings_background_photo_set
+            )
         }
 
         private fun click(key: String, action: () -> Unit) {
