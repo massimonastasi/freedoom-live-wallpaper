@@ -1087,10 +1087,13 @@ class Scene(
 
         /**
          * How long the red screen lasts before restarting from the first wave.
+         *
          * Kept short: at ten seconds the marine died often enough to leave the screen red
-         * half the time, which is unwatchable as a wallpaper.
+         * half the time, which is unwatchable as a wallpaper. Now shorter again, at two and
+         * a quarter seconds, because the wash is the one moment the wallpaper insists on
+         * being looked at and it should not outstay that.
          */
-        const val DEATH_DELAY = TICRATE * 3
+        const val DEATH_DELAY = TICRATE * 9 / 4
 
         /** Below this distance the marine backs off instead of closing in. */
         const val KEEP_AWAY = 220 * FRACUNIT

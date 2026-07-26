@@ -58,31 +58,8 @@ class FreedoomWallpaperService : WallpaperService() {
     /** Red damage flash colour, read from PLAYPAL. */
     private var damageTint = 0xFFAA1400.toInt()
 
-    /**
-     * The same flash, pulled back towards grey for use as a full-screen wash.
-     *
-     * Measured on the shipped WAD, PLAYPAL palette 8 gives 255, 25, 25: ninety percent
-     * saturation, which is right for a brief flash across a game viewport and much too loud
-     * held over a whole home screen. Desaturating towards the colour's own luminance keeps
-     * it recognisably the original red while taking the glare out, rather than inventing a
-     * different colour or simply fading it until it reads as a grey smudge.
-     */
-    private var deathTint = damageTint
-
-    /**
-     * Moves a colour towards its own luminance. 0 leaves it alone, 1 makes it grey.
-     *
-     * Its own luminance, not a fixed grey, so a WAD whose damage ramp is darker or lighter
-     * than Freedoom's is muted rather than shifted in brightness.
-     */
-    private fun desaturate(color: Int, amount: Float): Int {
-        val r = Color.red(color)
-        val g = Color.green(color)
-        val b = Color.blue(color)
-        val lum = 0.299f * r + 0.587f * g + 0.114f * b
-        fun mix(c: Int) = (c + (lum - c) * amount).toInt().coerceIn(0, 255)
-        return Color.rgb(mix(r), mix(g), mix(b))
-    }
+    /** Colour of the death wash, straight from the active WAD's palette. */
+    private var deathTint = 0xFFB30000.toInt()
 
     /** Floor texture per skill level, tiled behind the scene. Null entries when absent. */
     private var floorTiles: Array<Bitmap?> = arrayOfNulls(GameData.skills.size)
@@ -115,7 +92,7 @@ class FreedoomWallpaperService : WallpaperService() {
             // Only the creatures whose sprites actually exist in this WAD: the file
             // declares itself, no per-IWAD compatibility table needed.
             damageTint = w.damageTint
-            deathTint = desaturate(damageTint, DEATH_DESATURATION)
+            deathTint = w.paletteColor(GameData.PALETTE_DEATH)
             floorTiles = loadFloors(w)
             loadDigits(w)
             sprites = GameData.spritePrefixes.map { SpriteSet(w, it) }
@@ -188,16 +165,29 @@ class FreedoomWallpaperService : WallpaperService() {
          * icons hard to read, so the whole scene is scaled down in brightness. Applied as
          * a colour filter rather than a translucent overlay, so it costs nothing per frame.
          */
-        private val dim = ColorMatrixColorFilter(
+        private fun dimBy(amount: Float) = ColorMatrixColorFilter(
             ColorMatrix(
                 floatArrayOf(
-                    SCENE_DIM, 0f, 0f, 0f, 0f,
-                    0f, SCENE_DIM, 0f, 0f, 0f,
-                    0f, 0f, SCENE_DIM, 0f, 0f,
+                    amount, 0f, 0f, 0f, 0f,
+                    0f, amount, 0f, 0f, 0f,
+                    0f, 0f, amount, 0f, 0f,
                     0f, 0f, 0f, 1f, 0f,
                 )
             )
         )
+
+        private val dim = dimBy(SCENE_DIM)
+
+        /**
+         * The floor is dimmed harder than the sprites.
+         *
+         * One shared value could not serve both. The backdrop covers the whole screen and
+         * only has to hint that there is ground; the sprites are the thing being watched and
+         * have to stay legible. Tuned to the same brightness the previous, textureless
+         * backdrop happened to land on, so the ground reads as barely there while keeping
+         * the structure that stops it looking like a black screen.
+         */
+        private val floorDim = dimBy(FLOOR_DIM)
 
         private val paint = Paint().apply {
             isFilterBitmap = false
@@ -207,7 +197,7 @@ class FreedoomWallpaperService : WallpaperService() {
         /** Tiled floor. Its shader matrix carries the home screen parallax. */
         private val floorPaint = Paint().apply {
             isFilterBitmap = false
-            colorFilter = dim
+            colorFilter = floorDim
         }
         private val floorMatrix = Matrix()
         private var offset = 0.5f
@@ -623,20 +613,24 @@ class FreedoomWallpaperService : WallpaperService() {
         const val SCENE_DIM = 0.62f
 
         /**
-         * Peak opacity of the death wash. Full red was unusable as a wallpaper.
+         * Brightness multiplier for the floor alone, well below SCENE_DIM.
          *
-         * Lowered together with the desaturation rather than instead of it: opacity alone
-         * would have left the same glaring hue, just thinner, and the two levers do
-         * different jobs — one decides how much of the home screen is covered, the other how
-         * loud what covers it is.
+         * FLAT4 measures 37.7 mean luminance; at 0.35 it lands near 13, against the 23 the
+         * old textureless CEIL5_1 reached at the shared value. That older backdrop was
+         * reported as the better one to sit behind icons, and this is what matches it — with
+         * a visible grid rather than featureless noise, which is why it can afford to be
+         * darker still and remain a backdrop rather than a black screen.
          */
-        const val DEATH_MAX_ALPHA = 78f
+        const val FLOOR_DIM = 0.35f
 
         /**
-         * How far the damage flash is pulled towards grey before being used as the death
-         * wash. Measured on the shipped WAD, this turns 255, 25, 25 into 174, 59, 59.
+         * Peak opacity of the death wash, reached at the end of the fade.
+         *
+         * The colour it washes with is now a deep 179,0,0 rather than the glaring 255,25,25
+         * of the damage ramp, so the same opacity reads far calmer than it used to. This is
+         * the one number to change if the wash should be fainter still.
          */
-        const val DEATH_DESATURATION = 0.5f
+        const val DEATH_MAX_ALPHA = 60f
 
         /** Magnification of the 64x64 floor tile. */
         const val FLOOR_SCALE = 1.5f

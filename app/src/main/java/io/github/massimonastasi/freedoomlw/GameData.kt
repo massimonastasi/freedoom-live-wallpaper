@@ -255,6 +255,19 @@ object GameData {
     const val PALETTE_HEALTH = 198          // 55, 55, 255
     const val PALETTE_ARMOR = 112           // 119, 255, 111
 
+    /**
+     * The death wash, 179,0,0 — a deep red with no desaturation needed.
+     *
+     * Taken from the palette rather than computed from PLAYPAL's damage ramp, which is what
+     * this used to do: the ramp's flash is 255,25,25 at ninety percent saturation, right for
+     * a brief flash across a game viewport and far too loud over a home screen. Reading a
+     * palette entry directly makes the colour a fact of the active WAD, like the two readout
+     * colours, instead of an arithmetic adjustment layered on one.
+     *
+     * 182 is the nearest entry to the intended 174,0,0, five units away in RGB.
+     */
+    const val PALETTE_DEATH = 182           // 179, 0, 0
+
     // ------------------------------------------------------------------ weapons
 
     /**
