@@ -281,11 +281,25 @@ class Scene(
     // ---------------------------------------------------------------- spawning
 
     /**
+     * The spawn margin, clamped so it can never exceed a quarter of the world.
+     *
+     * SPAWN_MARGIN is derived from the widest sprite and is right for a phone, where the
+     * world is around 720 by 1600 units. It is not right for every surface the wallpaper can
+     * be handed: split screen, a foldable cover display or a picker thumbnail can be small
+     * enough that twice the margin exceeds the whole world, at which point the spawn range
+     * inverts and actors are placed outside it. Measured, not imagined: a 180 by 320 world
+     * put them off screen within seconds.
+     */
+    private val marginX = minOf(SPAWN_MARGIN, worldWidth / 4)
+    private val marginY = minOf(SPAWN_MARGIN, worldHeight / 4)
+
+    /**
      * P_Random returns 0-255: in the original engine it serves probabilities and small
      * offsets, never the choice of a point on a map. Using it with `%` over a range larger
      * than 256 would confine everything to one corner, so it gets scaled instead.
      */
-    private fun randomIn(min: Int, max: Int): Int = min + pRandom() * (max - min) / 256
+    private fun randomIn(min: Int, max: Int): Int =
+        if (max <= min) min else min + pRandom() * (max - min) / 256
 
     private fun spawnPlayer() {
         val a = newCreature(the engineData.player)
@@ -294,8 +308,8 @@ class Scene(
         // marine stayed on the pistol forever in the early waves and half the bestiary was
         // never seen.
         a.loadout = Loadout().apply { copyFrom(kept) }
-        a.x = randomIn(SPAWN_MARGIN, worldWidth - SPAWN_MARGIN) * FRACUNIT
-        a.y = randomIn(SPAWN_MARGIN, worldHeight - SPAWN_MARGIN) * FRACUNIT
+        a.x = randomIn(marginX, worldWidth - marginX) * FRACUNIT
+        a.y = randomIn(marginY, worldHeight - marginY) * FRACUNIT
         // Longer than the creatures' reactiontime of 8 tics, which at under a quarter of a
         // second reads as no pause at all. He arrives alone and the first enemy is seconds
         // away, so he can afford to stand in the fog long enough to be noticed.
@@ -327,8 +341,8 @@ class Scene(
         // Enters from a side edge, but a whole sprite width inside it: arriving exactly on
         // the boundary left half the creature off screen, and a quick kill could then remove
         // it before it had ever been properly seen.
-        a.x = (if (pRandom() and 1 == 0) SPAWN_MARGIN else worldWidth - SPAWN_MARGIN) * FRACUNIT
-        a.y = randomIn(SPAWN_MARGIN, worldHeight - SPAWN_MARGIN) * FRACUNIT
+        a.x = (if (pRandom() and 1 == 0) marginX else worldWidth - marginX) * FRACUNIT
+        a.y = randomIn(marginY, worldHeight - marginY) * FRACUNIT
         materialise(a)
     }
 
@@ -347,8 +361,8 @@ class Scene(
 
     /** Drops a pickup somewhere on the map, or at a chosen spot. */
     private fun spawnItem(
-        x: Int = randomIn(SPAWN_MARGIN, worldWidth - SPAWN_MARGIN) * FRACUNIT,
-        y: Int = randomIn(SPAWN_MARGIN, worldHeight - SPAWN_MARGIN) * FRACUNIT,
+        x: Int = randomIn(marginX, worldWidth - marginX) * FRACUNIT,
+        y: Int = randomIn(marginY, worldHeight - marginY) * FRACUNIT,
     ) {
         val it = the engineData.items[pRandom() % the engineData.items.size]
         val a = Actor(it.spriteIndex)
@@ -361,10 +375,10 @@ class Scene(
     }
 
     private fun clampX(x: Int) =
-        x.coerceIn(SPAWN_MARGIN * FRACUNIT, (worldWidth - SPAWN_MARGIN) * FRACUNIT)
+        x.coerceIn(marginX * FRACUNIT, (worldWidth - marginX) * FRACUNIT)
 
     private fun clampY(y: Int) =
-        y.coerceIn(SPAWN_MARGIN * FRACUNIT, (worldHeight - SPAWN_MARGIN) * FRACUNIT)
+        y.coerceIn(marginY * FRACUNIT, (worldHeight - marginY) * FRACUNIT)
 
     // ---------------------------------------------------------------- interaction
 

@@ -334,6 +334,31 @@ class SceneTest {
     }
 
     @Test
+    fun `a small surface still keeps everyone on screen`() {
+        // The world is derived from the surface, so it follows the display. What it must
+        // also survive is a surface small enough that the spawn margin no longer fits:
+        // split screen, a cover display, or the thumbnail in a wallpaper picker.
+        the engineData.clearRandom()
+        val narrow = 180
+        val short = 320
+        val scene = Scene(narrow, short)
+
+        for (t in 1..TICRATE * 120) {
+            scene.tick(t)
+            for (a in scene.actors) {
+                assertTrue(
+                    a.x >= 0 && a.x <= narrow * the engineData.FRACUNIT,
+                    "tic $t: x=${a.x / the engineData.FRACUNIT} outside a $narrow unit world",
+                )
+                assertTrue(
+                    a.y >= 0 && a.y <= short * the engineData.FRACUNIT,
+                    "tic $t: y=${a.y / the engineData.FRACUNIT} outside a $short unit world",
+                )
+            }
+        }
+    }
+
+    @Test
     fun `combat actually happens`() {
         the engineData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)

@@ -168,8 +168,21 @@ class FreedoomWallpaperService : WallpaperService() {
         private var ticAccumulator = 0L
         private var scene: Scene? = null
 
-        private val pxPerUnit = PX_PER_UNIT
-        private val spriteScale = SPRITE_SCALE
+        /**
+         * Both scales follow the display density, so a map unit and a sprite pixel keep a
+         * constant *physical* size on any screen.
+         *
+         * Without this the constants are raw pixels: on a 560 dpi phone the marine would be
+         * two thirds the size he is here, and on a 240 dpi tablet half again as large. The
+         * world, measured in map units, is then free to vary with the physical size of the
+         * screen, which is what should happen — a bigger display shows more of the scene
+         * rather than the same scene magnified.
+         *
+         * The reference is the density these values were tuned on.
+         */
+        private val densityScale = resources.displayMetrics.density / REFERENCE_DENSITY
+        private val pxPerUnit = PX_PER_UNIT * densityScale
+        private val spriteScale = SPRITE_SCALE * densityScale
 
         private val drawRunnable = Runnable { step() }
 
@@ -543,6 +556,9 @@ class FreedoomWallpaperService : WallpaperService() {
 
         /** How far the floor slides across the full home screen paging range, in surface pixels. */
         const val PARALLAX_PX = 240f
+
+        /** Display density the pixel scales above were tuned at: a Pixel 6a, 420 dpi. */
+        const val REFERENCE_DENSITY = 2.625f
 
         /** Used when the WAD has no usable flat. */
         const val BACKDROP = 0xFF201814.toInt()
