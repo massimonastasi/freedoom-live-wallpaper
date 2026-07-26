@@ -503,7 +503,8 @@ class Scene(
     private fun newCreature(c: GameData.Creature): Actor {
         val a = Actor(c.spriteIndex)
         a.creature = c
-        a.health = c.health
+        // Monsters are softer than the originals; the marine is not. See MONSTER_HEALTH.
+        a.health = if (c === GameData.player) c.health else c.health * MONSTER_HEALTH / 100
         a.spawnTic = tic
         a.reactionTime = GameData.REACTION_TIME
         return a
@@ -1086,8 +1087,15 @@ class Scene(
          */
         val WAVES_PER_PROMOTION = GameData.waves.size
 
-        /** ponytail: corpses in the original stay forever; in a wallpaper they would pile up. */
-        const val CORPSE_LIFETIME = TICRATE * 12
+        /**
+         * How long a body stays before it is removed.
+         *
+         * ponytail: corpses in the original stay forever; in a wallpaper they would pile up.
+         * Raised from twelve seconds to thirty, which the thinned wave table pays for: at 61
+         * arrivals the bodies were the thing keeping the actor list long, and at 30 they are
+         * what keeps the ground from looking empty between waves.
+         */
+        const val CORPSE_LIFETIME = TICRATE * 30
 
         /**
          * How long the red screen lasts before restarting from the first wave.
@@ -1138,6 +1146,23 @@ class Scene(
          * way, the worst is the Trilobite at 8 pixels, so 16 map units.
          */
         const val BOTTOM_MARGIN = 16
+
+        /**
+         * Monster health as a percentage of the value in mobjinfo.
+         *
+         * A deliberate divergence, and the only one applied to a creature's own numbers.
+         * Everything else about them — speed, animation timing, pain chance, damage — is the
+         * original's. It is applied here, at spawn, rather than by editing GameData, so the
+         * licensed values stay in the table with their provenance and this stays one number
+         * in one place.
+         *
+         * It exists to pay for a slower supply of pickups. Difficulty over a table lasting
+         * minutes is the balance between how fast the marine is worn down and how fast he
+         * can heal; the drops were frequent enough to be visible clutter, so they were thinned
+         * and the monsters softened to match. The marine's own 100 is untouched: it is
+         * MAXHEALTH, and it is what the readout shows.
+         */
+        const val MONSTER_HEALTH = 60
 
         /** How long the marine stands still after materialising. */
         const val PLAYER_REACTION = TICRATE / 2
