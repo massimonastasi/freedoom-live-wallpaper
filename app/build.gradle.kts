@@ -80,7 +80,7 @@ tasks.register("reduceWad") {
         val spritePrefixes = listOf(
             "POSS", "SPOS", "TROO", "SARG", "HEAD", "BOSS", "PLAY",
             "BAL1", "BAL7", "BLUD", "TFOG",
-            "STIM", "MEDI", "ARM1", "ARM2", "SHOT", "MGUN", "CLIP", "SHEL",
+            "STIM", "MEDI", "ARM1", "ARM2", "SHOT", "MGUN",
         )
         val exactNames = buildSet {
             add("PLAYPAL")                    // palette, and the damage flash ramp

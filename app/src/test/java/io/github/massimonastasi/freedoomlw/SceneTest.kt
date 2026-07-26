@@ -99,6 +99,76 @@ class SceneTest {
         assertEquals(0, scene.skill, "death must restart from the lowest skill")
     }
 
+    /**
+     * How often the marine clears the opening wave on his own, with nobody touching the
+     * screen — only the drops the scene hands him.
+     *
+     * Runs the same opening from many points in the P_Random table, since the table is
+     * fixed and a single run would only ever measure one shuffle of the drops.
+     */
+    private fun clearedWaveOneAlone(skill: Int, runs: Int = 60): Int {
+        var wins = 0
+        for (r in 0 until runs) {
+            the engineData.clearRandom()
+            repeat(r * 4) { the engineData.pRandom() }
+            val scene = Scene(worldWidth, worldHeight, startSkill = skill)
+            var t = 0
+            var died = false
+            while (t < TICRATE * 120 && scene.wave == 0 && !died) {
+                scene.tick(++t)
+                if (scene.deathFade > 0f) died = true
+            }
+            if (!died && scene.wave > 0) wins++
+        }
+        return wins * 100 / runs
+    }
+
+    @Test
+    fun `the drops carry the marine through the first wave, less and less as it hardens`() {
+        val odds = the engineData.skills.indices.map { clearedWaveOneAlone(it) }
+        println("cleared wave 1 unaided: " + the engineData.skills.indices.joinToString {
+            "${the engineData.skills[it].name} ${odds[it]}%"
+        })
+
+        // Measured shape: 100, 90, 85, 35, 1.
+        assertTrue(odds.first() >= 90, "the lowest skill must manage alone: ${odds.first()}%")
+        assertTrue(odds.last() <= 20, "the hardest must almost never manage alone: ${odds.last()}%")
+        assertTrue(odds[2] <= 90, "the middle skill must already be a real risk: ${odds[2]}%")
+        for (i in 1 until odds.size) {
+            assertTrue(odds[i] <= odds[i - 1], "the odds must never rise with the skill: $odds")
+        }
+    }
+
+    @Test
+    fun `the arsenal keeps the best loaded weapon and falls back to the pistol`() {
+        val kit = Loadout()
+        assertEquals(0, kit.owned, "the marine starts with the pistol alone, which is not owned")
+
+        kit.take(the engineData.WEAPON_SHOTGUN)
+        kit.take(the engineData.WEAPON_CHAINGUN)
+        assertTrue(kit.has(the engineData.WEAPON_SHOTGUN) && kit.has(the engineData.WEAPON_CHAINGUN), "both must be carried")
+
+        // Emptying the chaingun takes it away, and the shotgun is what is left loaded.
+        kit.drop(the engineData.WEAPON_CHAINGUN)
+        assertTrue(kit.has(the engineData.WEAPON_SHOTGUN), "the shotgun must survive losing the chaingun")
+        assertTrue(!kit.has(the engineData.WEAPON_CHAINGUN), "an empty weapon must be gone, not merely unused")
+
+        kit.drop(the engineData.WEAPON_SHOTGUN)
+        assertEquals(0, kit.owned, "with nothing loaded he is back to the pistol")
+    }
+
+    @Test
+    fun `ammunition is never dropped on its own`() {
+        assertTrue(
+            the engineData.items.none { it.kind !in intArrayOf(the engineData.ITEM_HEALTH, the engineData.ITEM_ARMOR, the engineData.ITEM_WEAPON) },
+            "the drop table must hold only health, armour and weapons",
+        )
+        // Healing outweighs armour, which outweighs the guns.
+        fun share(kind: Int) = the engineData.items.filter { it.kind == kind }.sumOf { it.weight }
+        assertTrue(share(the engineData.ITEM_HEALTH) > share(the engineData.ITEM_ARMOR), "health must lead")
+        assertTrue(share(the engineData.ITEM_ARMOR) > share(the engineData.ITEM_WEAPON), "armour must come before the guns")
+    }
+
     @Test
     fun `nightmare makes the FleshWorm fast and nothing else`() {
         the engineData.clearRandom()

@@ -20,13 +20,31 @@ enum class Mode { WALK, ATTACK, PAIN, DEATH, PROJECTILE, EFFECT, ITEM }
 class Loadout {
     var armorPoints = 0
     var armorType = 0
-    var weapon = the engineData.WEAPON_PISTOL
+
+    /**
+     * One bit per weapon: the marine carries an arsenal, not a single gun, and always
+     * reaches for the most powerful thing in it.
+     *
+     * A set rather than a "highest owned" index, because a weapon that runs dry is taken
+     * away entirely. With ammunition no longer dropped on its own, an empty gun can never be
+     * refilled where it stands, so keeping it would only leave a hole in the arsenal that
+     * nothing could fill. The pistol is never in the set — it is the floor everything falls
+     * back to, and it needs no ammunition.
+     */
+    var owned = 0
+
     val ammo = IntArray(the engineData.maxAmmo.size)
+
+    fun has(weapon: Int) = owned and (1 shl weapon) != 0
+
+    fun take(weapon: Int) { owned = owned or (1 shl weapon) }
+
+    fun drop(weapon: Int) { owned = owned and (1 shl weapon).inv() }
 
     fun copyFrom(other: Loadout) {
         armorPoints = other.armorPoints
         armorType = other.armorType
-        weapon = other.weapon
+        owned = other.owned
         other.ammo.copyInto(ammo)
     }
 }
@@ -141,6 +159,8 @@ class Actor(val spriteIndex: Int) {
 class Scene(
     private val worldWidth: Int,
     private val worldHeight: Int,
+    /** Skill to open on. Only the first run uses it: a death always drops back to zero. */
+    startSkill: Int = 0,
 ) {
 
     val actors = ArrayList<Actor>()
@@ -157,7 +177,7 @@ class Scene(
      * wave table is finished, so the marine walks the whole difficulty ladder from
      * "I'm too young to die" up to "Nightmare!" — and a death drops him back to the bottom.
      */
-    var skill = 0
+    var skill = startSkill.coerceIn(the engineData.skills.indices)
         private set
 
     private val rules get() = the engineData.skills[skill]
@@ -208,7 +228,9 @@ class Scene(
 
         // An item every now and then: it gives the marine a reason to cross the scene and
         // makes the fighting less predictable.
-        if (deadUntil == 0 && tic % ITEM_INTERVAL == 0) spawnItem()
+        // Rarer the harder it gets: on the lowest skill the supply is generous enough that a
+        // lucky run of it carries the marine through the opening wave unaided.
+        if (deadUntil == 0 && tic % (ITEM_INTERVAL * rules.dropEighths / 8) == 0) spawnItem()
 
         var i = 0
         while (i < actors.size) {
@@ -337,9 +359,15 @@ class Scene(
      */
     private fun startWave() {
         val w = the engineData.waves[wave]
-        val n = (w.order.size * rules.countEighths + 4) / 8
+        // Rounded up, so the ratio still bites on the short early waves: rounding to nearest
+        // gave the opening wave two enemies at every skill, and the ladder started flat.
+        val n = (w.order.size * rules.countEighths + 7) / 8
         queue.clear()
-        for (i in 0 until n) queue.add(w.order[i % w.order.size])
+        for (i in 0 until n) {
+            var c = w.order[i % w.order.size]
+            if (pRandom() < rules.toughen && c + 1 < the engineData.creatures.size) c++
+            queue.add(c)
+        }
         spawnIndex = 0
         nextSpawnAt = tic + w.spawnDelay
     }
@@ -433,7 +461,7 @@ class Scene(
         x: Int = randomIn(marginX, worldWidth - marginX) * FRACUNIT,
         y: Int = randomIn(marginY, worldHeight - marginY) * FRACUNIT,
     ) {
-        val it = the engineData.items[pRandom() % the engineData.items.size]
+        val it = the engineData.items[the engineData.dropTable[pRandom() % the engineData.dropTable.size]]
         val a = Actor(it.spriteIndex)
         a.mode = Mode.ITEM
         a.item = it
@@ -507,12 +535,13 @@ class Scene(
                 if (kit.armorPoints >= it.amount) false
                 else { kit.armorPoints = it.amount; kit.armorType = it.extra; true }
             }
-            the engineData.ITEM_WEAPON -> {
+            else -> {
+                // A weapon is always worth taking, even one already carried: it is the only
+                // source of ammunition left, so picking up a second shotgun is a reload.
                 giveAmmo(kit, the engineData.weapons[it.extra].ammo, it.amount)
-                if (it.extra > kit.weapon) kit.weapon = it.extra
+                kit.take(it.extra)
                 true
             }
-            else -> giveAmmo(kit, it.extra, it.amount)
         }
     }
 
@@ -527,15 +556,21 @@ class Scene(
         return true
     }
 
-    /** The best owned weapon that still has ammunition. */
-    private fun currentWeapon(p: Actor): the engineData.Weapon {
-        val kit = p.loadout ?: return the engineData.weapons[the engineData.WEAPON_PISTOL]
-        for (i in kit.weapon downTo 0) {
+    /**
+     * The weapon in hand: the most powerful one carried that still has ammunition,
+     * otherwise the pistol he started with.
+     */
+    private fun currentWeaponIndex(p: Actor): Int {
+        val kit = p.loadout ?: return the engineData.WEAPON_PISTOL
+        for (i in the engineData.weapons.indices.reversed()) {
+            if (!kit.has(i)) continue
             val w = the engineData.weapons[i]
-            if (w.ammo < 0 || kit.ammo[w.ammo] > 0) return w
+            if (w.ammo < 0 || kit.ammo[w.ammo] > 0) return i
         }
-        return the engineData.weapons[the engineData.WEAPON_PISTOL]
+        return the engineData.WEAPON_PISTOL
     }
+
+    private fun currentWeapon(p: Actor) = the engineData.weapons[currentWeaponIndex(p)]
 
     // ---------------------------------------------------------------- animation
 
@@ -665,8 +700,14 @@ class Scene(
             if (a.isPlayer) {
                 // p_pspr.c: every pellet deals 5*(P_Random()%3+1). Only the pellet count
                 // changes: one for pistol and chaingun, seven for the shotgun.
-                val w = currentWeapon(a)
-                if (w.ammo >= 0) a.loadout?.ammo?.let { it[w.ammo]-- }
+                val i = currentWeaponIndex(a)
+                val w = the engineData.weapons[i]
+                val kit = a.loadout
+                if (w.ammo >= 0 && kit != null) {
+                    // Firing the last round costs him the gun: it drops out of the arsenal
+                    // and he falls back to whatever he still has that is loaded.
+                    if (--kit.ammo[w.ammo] <= 0) kit.drop(i)
+                }
                 var total = 0
                 repeat(w.pellets) { total += the engineData.gunShotDamage() }
                 damageActor(target, total, true)

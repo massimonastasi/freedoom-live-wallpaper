@@ -270,7 +270,6 @@ object the engineData {
     const val ITEM_HEALTH = 0
     const val ITEM_ARMOR = 1
     const val ITEM_WEAPON = 2
-    const val ITEM_AMMO = 3
 
     /**
      * The pickups. Values from p_inter.c: stimpack 10, medikit 25, green armour 100 points
@@ -280,23 +279,43 @@ object the engineData {
         val lumpPrefix: String,
         val kind: Int,
         val amount: Int,
-        /** Armour type, weapon index or ammo index depending on [kind]. */
+        /** Armour type or weapon index, depending on [kind]. */
         val extra: Int = 0,
         val frames: Int = 1,
+        /** Relative share of the drops. See [dropTable]. */
+        val weight: Int = 1,
     ) {
         var spriteIndex = -1
     }
 
+    /**
+     * The pickups, and how often each one is dropped.
+     *
+     * There is no ammunition here on purpose. Ammo only ever arrives inside a weapon now,
+     * which is what makes an empty weapon a real loss rather than a pause: it cannot be
+     * refilled where it lies, so the marine falls back down his arsenal and has to find
+     * another one.
+     *
+     * The weights lean towards staying alive, in that order: healing first, then armour,
+     * then the guns, with the more powerful one of each pair rarer than the plain one.
+     */
     val items = listOf(
-        Item("STIM", ITEM_HEALTH, 10),                                   // stimpack
-        Item("MEDI", ITEM_HEALTH, 25),                                   // medikit
-        Item("ARM1", ITEM_ARMOR, 100, extra = 1, frames = 2),            // green armour
-        Item("ARM2", ITEM_ARMOR, 200, extra = 2, frames = 2),            // blue armour
-        Item("SHOT", ITEM_WEAPON, 2, extra = WEAPON_SHOTGUN),            // shotgun + 2 clips
-        Item("MGUN", ITEM_WEAPON, 2, extra = WEAPON_CHAINGUN),           // chaingun
-        Item("CLIP", ITEM_AMMO, 1, extra = AMMO_BULLETS),                // ammo clip
-        Item("SHEL", ITEM_AMMO, 1, extra = AMMO_SHELLS),                 // shells
+        Item("STIM", ITEM_HEALTH, 10, weight = 5),                       // stimpack
+        Item("MEDI", ITEM_HEALTH, 25, weight = 4),                       // medikit
+        Item("ARM1", ITEM_ARMOR, 100, extra = 1, frames = 2, weight = 4), // green armour
+        Item("ARM2", ITEM_ARMOR, 200, extra = 2, frames = 2, weight = 2), // blue armour
+        Item("SHOT", ITEM_WEAPON, 2, extra = WEAPON_SHOTGUN, weight = 3), // shotgun + 2 clips
+        Item("MGUN", ITEM_WEAPON, 2, extra = WEAPON_CHAINGUN, weight = 2), // chaingun
     )
+
+    /**
+     * The weighted draw, flattened once at startup: an item index repeated as many times as
+     * its weight, so choosing one is a single indexed read of P_Random rather than a walk
+     * over a cumulative total on every drop.
+     */
+    val dropTable: IntArray = items.indices
+        .flatMap { i -> List(items[i].weight) { i } }
+        .toIntArray()
 
     /** p_inter.c: armour absorbs a third of the damage when green, half when blue. */
     fun armorSaved(damage: Int, armorType: Int): Int =
@@ -322,6 +341,26 @@ object the engineData {
         val name: String,
         /** Arrival-queue length as eighths of the wave's own order. */
         val countEighths: Int,
+        /**
+         * Interval between automatic drops, in eighths of [Scene.ITEM_INTERVAL].
+         *
+         * This is the wallpaper's own lever, not the engine's: the engine varies difficulty
+         * by what a map contains, and this scene has no map. It carries the requirement that
+         * on the lowest skill a lucky run of drops is enough to get the marine through the
+         * opening wave with nobody touching the screen, and that the odds fall away from
+         * there.
+         */
+        val dropEighths: Int,
+        /**
+         * Odds out of 256 that an arrival is replaced by the next creature up the bestiary.
+         *
+         * The engine's hard skill does not merely add monsters, it admits nastier ones: the
+         * MTF_HARD things in a map include creatures the easy pass never spawns. With only
+         * sixteen authored waves there is nowhere to hide that, so it is applied per arrival
+         * instead. Counting arrivals alone was measured to make no difference at all in the
+         * opening wave — two zombies at every skill, and a marine who beats them every time.
+         */
+        val toughen: Int = 0,
         /** p_inter.c:799 — the player takes half damage in trainer mode. */
         val halfDamage: Boolean = false,
         /** p_inter.c:95 — double ammo on the easiest and the hardest. */
@@ -334,11 +373,11 @@ object the engineData {
 
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
-        Skill("I'm too young to die", 7, halfDamage = true, doubleAmmo = true),
-        Skill("Hey, not too rough", 7),
-        Skill("Hurt me plenty", 8),
-        Skill("Ultra-Violence", 9),
-        Skill("Nightmare!", 9, doubleAmmo = true, fast = true, respawn = true),
+        Skill("I'm too young to die", 7, 6, halfDamage = true, doubleAmmo = true),
+        Skill("Hey, not too rough", 7, 7, toughen = 120),
+        Skill("Hurt me plenty", 8, 8, toughen = 168),
+        Skill("Ultra-Violence", 9, 10, toughen = 208),
+        Skill("Nightmare!", 9, 12, toughen = 216, doubleAmmo = true, fast = true, respawn = true),
     )
 
     /** g_game.c:1425 — every monster missile is forced to this speed when fast. */
