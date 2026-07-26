@@ -185,20 +185,30 @@ class SceneTest {
     }
 
     @Test
-    fun `an actor walking towards the camera is drawn from the front`() {
+    fun `sprite rotation matches the artwork on all four axes`() {
         val a = Actor(0)
 
-        // Screen y grows downwards and DI_NORTH moves towards +y, so DI_NORTH is towards
-        // the viewer. Getting this backwards draws everyone walking away from where they go.
+        // Taken from the sprites themselves, not from the engine formula: decoding the
+        // eight rotations of the walk frame shows 1 facing the camera, 5 facing away,
+        // 3 a profile facing left and 7 a profile facing right.
+        //
+        // Checking only the vertical pair is what let a mirrored horizontal mapping through
+        // once already: 2 and 6 survive a reflection of the horizontal axis unchanged, so
+        // they cannot tell a rotation from a reflection. All four are needed.
         a.facing = 2                                   // DI_NORTH, down the screen
         assertEquals(1, a.spriteRotation(), "walking towards the camera must show the front")
 
         a.facing = 6                                   // DI_SOUTH, up the screen
         assertEquals(5, a.spriteRotation(), "walking away must show the back")
 
-        // The other six angles must be distinct and cover the range once each.
-        val all = (0..7).map { a.facing = it; a.spriteRotation() }
-        assertEquals((1..8).toList().sorted(), all.sorted(), "the eight angles must map one to one")
+        a.facing = 4                                   // DI_WEST, leftwards
+        assertEquals(3, a.spriteRotation(), "walking left must show the left-facing profile")
+
+        a.facing = 0                                   // DI_EAST, rightwards
+        assertEquals(7, a.spriteRotation(), "walking right must show the right-facing profile")
+
+        // The diagonals follow from the four above, and the eight must map one to one.
+        assertEquals(8, (0..7).map { a.facing = it; a.spriteRotation() }.toSet().size)
 
         a.facing = the engineData.DI_NODIR
         assertEquals(1, a.spriteRotation(), "a still actor faces the viewer")

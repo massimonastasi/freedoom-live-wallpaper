@@ -98,23 +98,26 @@ class Actor(val spriteIndex: Int) {
     /**
      * Sprite rotation (1-8) as seen from a fixed camera below the scene.
      *
-     * r_things.c computes `rot = (ang - thing->angle + (ANG45/2)*9) >> 29`, where `ang` is
-     * the angle from the viewer to the thing. In eighths that is
-     * `rotation = ((viewerToThing - facing) + 4) mod 8 + 1`.
+     * Read off the artwork rather than derived, because deriving it got the handedness
+     * wrong twice. Decoding the eight rotations of the walk frame and looking at them shows
+     * the convention plainly:
      *
-     * Screen y grows downwards while DI_NORTH moves towards +y, so the camera sits at large
-     * y and the direction from it to any actor is DI_SOUTH. Substituting gives the constant
-     * below. An actor walking down the screen is walking towards us and must be drawn from
-     * the front, which is rotation 1; walking up the screen shows its back, rotation 5.
+     *   1 faces the camera, 5 faces away, 3 is a profile facing left, 7 a profile facing
+     *   right, and the four in between are the diagonals.
+     *
+     * With DI_NORTH moving towards +y and screen y growing downwards, DI_NORTH is towards
+     * the camera and must give 1, DI_WEST must give 3, DI_SOUTH 5 and DI_EAST 7. Those four
+     * fix the mapping as a rotation by two eighths.
+     *
+     * The engine formula in r_things.c looks like a reflection instead, because the engine
+     * measures angles anticlockwise with +y pointing north on the map, while our screen has
+     * +y pointing down. That flip of handedness reverses the direction of rotation, and
+     * ignoring it produced a version with the vertical directions right and the horizontal
+     * ones mirrored.
      */
     fun spriteRotation(): Int {
         if (facing == DI_NODIR) return 1
-        return ((VIEWER_TO_ACTOR - facing + 4) and 7) + 1
-    }
-
-    private companion object {
-        /** DI_SOUTH: the camera is below the scene, so it looks north across it. */
-        const val VIEWER_TO_ACTOR = 6
+        return ((facing - 2) and 7) + 1
     }
 }
 
