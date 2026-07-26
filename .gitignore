@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+build/
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+
+# WAD files stay out of the repo: freedoom1.wad is downloaded during setup (see README),
+# and a user's own WADs must never end up under version control.
+*.wad
