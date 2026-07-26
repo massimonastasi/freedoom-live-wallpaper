@@ -3,7 +3,6 @@ package io.github.massimonastasi.freedoomlw
 import io.github.massimonastasi.freedoomlw.the engineData.DI_NODIR
 import io.github.massimonastasi.freedoomlw.the engineData.FRACUNIT
 import io.github.massimonastasi.freedoomlw.the engineData.MELEERANGE
-import io.github.massimonastasi.freedoomlw.the engineData.diags
 import io.github.massimonastasi.freedoomlw.the engineData.opposite
 import io.github.massimonastasi.freedoomlw.the engineData.pRandom
 import io.github.massimonastasi.freedoomlw.the engineData.xspeed
@@ -759,26 +758,21 @@ class Scene(
     }
 
     /**
-     * The 8-way direction from one actor to another, used as A_FaceTarget.
+     * The direction from one actor to another, used as A_FaceTarget when an attack starts.
      *
-     * The engine gets there via R_PointToAngle and a shift; here the octant is classified
-     * from the ratio of the deltas, which stays in integers like everything else. 5/12
-     * approximates tan(22.5 degrees), the boundary between a cardinal and a diagonal.
+     * Cardinal only, like movement. The engine resolves eight octants here via
+     * R_PointToAngle, but returning a diagonal would put the diagonal sprite views back on
+     * screen through the back door: an actor can be walking north and turn north-east to
+     * shoot. Snapping to the dominant axis costs a little aiming precision that nothing in
+     * the scene depends on, since damage is applied directly rather than along the facing.
      */
     private fun dirTo(from: Actor, to: Actor): Int {
         val dx = to.x - from.x
         val dy = to.y - from.y
-        val ax = abs(dx)
-        val ay = abs(dy)
-        val east = dx > 0
-        val north = dy > 0
-        return when {
-            ay * 12 < ax * 5 -> if (east) 0 else 4          // DI_EAST / DI_WEST
-            ax * 12 < ay * 5 -> if (north) 2 else 6         // DI_NORTH / DI_SOUTH
-            east && north -> 1                              // DI_NORTHEAST
-            !east && north -> 3                             // DI_NORTHWEST
-            !east && !north -> 5                            // DI_SOUTHWEST
-            else -> 7                                       // DI_SOUTHEAST
+        return if (abs(dx) >= abs(dy)) {
+            if (dx > 0) 0 else 4                            // DI_EAST / DI_WEST
+        } else {
+            if (dy > 0) 2 else 6                            // DI_NORTH / DI_SOUTH
         }
     }
 
@@ -813,17 +807,9 @@ class Scene(
             else -> DI_NODIR
         }
 
-        // The engine reaches for the diagonal first, which suits a monster closing in from
-        // anywhere. The marine skips it: with diagonals preferred his path across the screen
-        // reads as a drift, while along the axes it reads as deliberate movement, and the
-        // sprite spends more time in the profile and front views that show him best.
-        val cardinalFirst = a.isPlayer
-
-        if (!cardinalFirst && d1 != DI_NODIR && d2 != DI_NODIR) {
-            a.moveDir = diags[(if (deltaY < 0) 2 else 0) + (if (deltaX > 0) 1 else 0)]
-            if (a.moveDir != turnAround && tryWalk(a)) return
-        }
-
+        // The engine tries the diagonal first here. Nobody in this scene moves diagonally at
+        // all: everything reads more clearly along the axes, and it halves the sprite angles
+        // in play, so only rotations 1, 3, 5 and 7 are ever decoded.
         if (pRandom() > 200 || abs(deltaY) > abs(deltaX)) {
             val t = d1; d1 = d2; d2 = t
         }
@@ -834,12 +820,18 @@ class Scene(
         if (d2 != DI_NODIR) { a.moveDir = d2; if (tryWalk(a)) return }
         if (oldDir != DI_NODIR) { a.moveDir = oldDir; if (tryWalk(a)) return }
 
-        if (cardinalFirst) {
-            for (d in CARDINALS_FIRST) { if (d == turnAround) continue; a.moveDir = d; if (tryWalk(a)) return }
-        } else if (pRandom() and 1 != 0) {
-            for (d in 0..7) { if (d == turnAround) continue; a.moveDir = d; if (tryWalk(a)) return }
+        // Exhaustive fallback, still cardinals only. The random direction of travel through
+        // the list is the engine's, and keeps a blocked actor from always picking the same
+        // way out.
+        if (pRandom() and 1 != 0) {
+            for (d in CARDINALS) { if (d == turnAround) continue; a.moveDir = d; if (tryWalk(a)) return }
         } else {
-            for (d in 7 downTo 0) { if (d == turnAround) continue; a.moveDir = d; if (tryWalk(a)) return }
+            for (i in CARDINALS.indices.reversed()) {
+                val d = CARDINALS[i]
+                if (d == turnAround) continue
+                a.moveDir = d
+                if (tryWalk(a)) return
+            }
         }
 
         if (turnAround != DI_NODIR) { a.moveDir = turnAround; if (tryWalk(a)) return }
@@ -889,8 +881,8 @@ class Scene(
         /** How long the marine stands still after materialising. */
         const val PLAYER_REACTION = TICRATE / 2
 
-        /** Exhaustive search order when cardinal movement is preferred over diagonal. */
-        val CARDINALS_FIRST = intArrayOf(0, 2, 4, 6, 1, 3, 5, 7)
+        /** The only directions anything moves in: east, north, west, south. */
+        val CARDINALS = intArrayOf(0, 2, 4, 6)
 
         /** How often an item drops, and how long it stays if nobody picks it up. */
         const val ITEM_INTERVAL = TICRATE * 12

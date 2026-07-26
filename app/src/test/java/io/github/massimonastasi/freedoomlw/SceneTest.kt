@@ -261,27 +261,28 @@ class SceneTest {
     }
 
     @Test
-    fun `the marine moves mostly along the axes`() {
+    fun `nothing ever moves diagonally`() {
         the engineData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
 
-        var cardinal = 0
-        var diagonal = 0
+        var moves = 0
         for (t in 1..TICRATE * 600) {
             scene.tick(t)
-            val p = scene.actors.firstOrNull { it.isPlayer && !it.dead } ?: continue
-            when (p.moveDir) {
-                0, 2, 4, 6 -> cardinal++
-                1, 3, 5, 7 -> diagonal++
+            for (a in scene.actors) {
+                if (a.creature == null || a.moveDir == the engineData.DI_NODIR) continue
+                moves++
+                assertTrue(
+                    a.moveDir % 2 == 0,
+                    "tic $t: ${a.creature?.name} moving diagonally, moveDir=${a.moveDir}",
+                )
+                // Only the four axial sprite angles can ever be needed.
+                assertTrue(
+                    a.spriteRotation() in intArrayOf(1, 3, 5, 7),
+                    "tic $t: rotation ${a.spriteRotation()} is a diagonal view",
+                )
             }
         }
-        assertTrue(cardinal + diagonal > 1000, "not enough movement sampled")
-        // Diagonals stay available as a fallback when a cardinal step is blocked, so this
-        // is about preference rather than exclusion.
-        assertTrue(
-            cardinal > diagonal * 3,
-            "expected mostly axial movement, got $cardinal cardinal against $diagonal diagonal",
-        )
+        assertTrue(moves > 5000, "not enough movement sampled: $moves")
     }
 
     @Test

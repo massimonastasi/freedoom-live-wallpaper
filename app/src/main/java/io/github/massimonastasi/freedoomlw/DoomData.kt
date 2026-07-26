@@ -20,15 +20,17 @@ object the engineData {
      * p_enemy.c: the 8 movement directions of the monsters. No trigonometry, just a
      * table. 47000 is the diagonal (~0.717, slightly above 0.707: that is id's original
      * approximation, not a transcription error).
+     *
+     * The table is kept whole because it is a verbatim copy of the source, but this scene
+     * only ever selects the four cardinal entries: diagonal movement was dropped because
+     * axial movement reads far more clearly at this scale, and it halves the sprite angles
+     * in play.
      */
     val xspeed = intArrayOf(FRACUNIT, 47000, 0, -47000, -FRACUNIT, -47000, 0, 47000)
     val yspeed = intArrayOf(0, 47000, FRACUNIT, 47000, 0, -47000, -FRACUNIT, -47000)
 
     /** p_enemy.c: opposite[] — the reverse direction. DI_NODIR (8) stays 8. */
     val opposite = intArrayOf(4, 5, 6, 7, 0, 1, 2, 3, 8)
-
-    /** p_enemy.c: diags[] — the four diagonals, in NW, NE, SW, SE order. */
-    val diags = intArrayOf(3, 1, 5, 7)
 
     const val DI_NODIR = 8
 
