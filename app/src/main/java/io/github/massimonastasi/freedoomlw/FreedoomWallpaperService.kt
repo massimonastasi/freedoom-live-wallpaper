@@ -167,12 +167,9 @@ class FreedoomWallpaperService : WallpaperService() {
         private var lastNanos = 0L
         private var ticAccumulator = 0L
         private var scene: Scene? = null
-        private var shrinkPending = true
 
-        // The constants are expressed at full resolution; here they become the values for
-        // the reduced surface, so scene and sprites look identical on screen.
-        private val pxPerUnit = PX_PER_UNIT * RENDER_SCALE
-        private val spriteScale = SPRITE_SCALE * RENDER_SCALE
+        private val pxPerUnit = PX_PER_UNIT
+        private val spriteScale = SPRITE_SCALE
 
         private val drawRunnable = Runnable { step() }
 
@@ -252,24 +249,18 @@ class FreedoomWallpaperService : WallpaperService() {
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
             super.onSurfaceDestroyed(holder)
             visible = false
-            shrinkPending = true
             handler.removeCallbacks(drawRunnable)
         }
 
         override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
             super.onSurfaceChanged(holder, format, width, height)
 
-            // We draw onto a reduced surface and let the hardware compositor scale it up.
-            // This saves no CPU (measured: no difference, the cost is the RenderThread per
-            // delivered frame, not the fill) but it **cuts graphics memory by two thirds**:
-            // each buffer goes from 10.4 MB to 2.6 MB, and Android keeps three of them.
-            // setFixedSize triggers a new onSurfaceChanged with the reduced size.
-            if (shrinkPending) {
-                shrinkPending = false
-                holder.setFixedSize((width * RENDER_SCALE).toInt(), (height * RENDER_SCALE).toInt())
-                return
-            }
-
+            // Do not reach for setFixedSize here. Drawing onto a half-resolution surface and
+            // letting the compositor scale it up saved two thirds of the graphics memory,
+            // and it worked perfectly in the picker preview — but a real wallpaper engine
+            // throws UnsupportedOperationException, "Wallpapers currently only support
+            // sizing from layout". The preview and the live engine are different surface
+            // paths, and only the live one enforces this.
             Log.i(TAG, "drawing surface: ${width}x$height")
             frame.set(0, 0, width, height)
             floorPaint.shader = floorTile?.let {
@@ -538,12 +529,6 @@ class FreedoomWallpaperService : WallpaperService() {
         const val SPRITE_SCALE = 3f
 
         /**
-         * Fraction of the screen resolution we actually draw at.
-         * 0.5 = a quarter of the pixels, hence a quarter of the memory per buffer.
-         */
-        const val RENDER_SCALE = 0.5f
-
-        /**
          * Brightness multiplier for the whole scene. The wallpaper has to stay behind the
          * launcher icons, and floor texture plus lit sprites together were bright enough to
          * fight them for attention.
@@ -556,8 +541,8 @@ class FreedoomWallpaperService : WallpaperService() {
         /** Magnification of the 64x64 floor tile. */
         const val FLOOR_SCALE = 1.5f
 
-        /** How far the floor slides across the full home screen paging range. */
-        const val PARALLAX_PX = 120f
+        /** How far the floor slides across the full home screen paging range, in surface pixels. */
+        const val PARALLAX_PX = 240f
 
         /** Used when the WAD has no usable flat. */
         const val BACKDROP = 0xFF201814.toInt()
