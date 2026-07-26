@@ -435,6 +435,12 @@ object GameData {
         val flat: String,
     )
 
+    /**
+     * Tried in order when a skill's own flat is absent, so a user-supplied WAD that carries
+     * only some of them still gets a floor rather than a flat colour.
+     */
+    val FLOOR_FALLBACKS = listOf("CEIL5_1", "RROCK03", "FLOOR1_6", "FLAT14", "FLOOR0_1")
+
     /** g_game.c skill_t, and the names from the difficulty menu. */
     val skills = listOf(
         Skill("I'm too young to die", 4, 215, toughen = 0, halfDamage = true, doubleAmmo = true, flat = "AQF069"),

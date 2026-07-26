@@ -35,14 +35,25 @@ object Settings {
 
     const val KEY_FPS = "fps"
     const val KEY_READOUT = "readout"
-    const val KEY_GOD = "god"
     const val KEY_BACKGROUND = "background"
     const val KEY_BACKGROUND_PHOTO = "background_photo"
     const val KEY_BACKGROUND_COLOUR = "background_colour"
+    const val KEY_SPRITES = "sprites"
     const val KEY_WAD = "wad"
-    const val KEY_WAD_RESET = "wad_reset"
-    const val KEY_LICENCES = "licences"
+    const val KEY_SAVE = "save"
+    const val KEY_RESET = "reset"
     const val KEY_SET_WALLPAPER = "set_wallpaper"
+    const val KEY_NOTICES = "notices"
+
+    const val SPRITES_BUNDLED = "bundled"
+    const val SPRITES_USER = "user"
+
+    /**
+     * Which sprite set is in use. Importing a WAD keeps it; this says whether it is drawn,
+     * so the bundled assets remain a choice rather than being replaced outright.
+     */
+    fun useUserWad(p: SharedPreferences): Boolean =
+        p.getString(KEY_SPRITES, SPRITES_BUNDLED) == SPRITES_USER
 
     const val DEFAULT_FPS = 20
 
@@ -58,11 +69,6 @@ object Settings {
 
     fun readout(p: SharedPreferences): Boolean = p.getBoolean(KEY_READOUT, true)
 
-    /**
-     * The marine cannot die. Not a cheat so much as a mood: it turns the wallpaper into an
-     * endless advance rather than a loop of deaths, and the skill ladder then climbs.
-     */
-    fun godMode(p: SharedPreferences): Boolean = p.getBoolean(KEY_GOD, false)
 
     /** What is drawn behind the fight. */
     enum class Background { DYNAMIC, PHOTO, COLOUR }

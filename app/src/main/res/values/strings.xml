@@ -4,7 +4,12 @@
     <string name="no_wallpaper_picker">This device has no live wallpaper picker. Set it from Settings, Wallpaper.</string>
 
     <string name="settings_frame_rate">Frame rate</string>
-    <string name="settings_frame_rate_note">The scene always thinks at the original 35 steps a second. This is only how often it is drawn, and it is the one setting that changes battery use.</string>
+    <!--
+        The %s is replaced by the chosen entry: a ListPreference substitutes it into the
+        summary. Without it the row explained the setting and never said which value was in
+        force, which is the one thing the row has to show.
+    -->
+    <string name="settings_frame_rate_note">%s. The scene always thinks at the original 35 steps a second; this is only how often it is drawn, and it is the one setting that changes battery use.</string>
     <string name="settings_background">Background</string>
     <string name="settings_background_photo">Choose the photo</string>
     <string name="settings_background_colour">Flat colour</string>
@@ -14,9 +19,20 @@
     <string name="wad_undecodable">That WAD names the right sprites but none of them could be read.</string>
     <string name="settings_scene">Scene</string>
     <string name="settings_readout">Show health and armour</string>
-    <string name="settings_god">The marine cannot die</string>
-    <string name="settings_god_note">Turns the wallpaper into an endless advance instead of a loop of deaths, and lets the difficulty climb.</string>
     <string name="settings_sprites">Sprites</string>
+    <string name="sprites_bundled">Freedoom (included)</string>
+    <string name="sprites_user">Your own WAD, %d KB</string>
+    <string name="settings_save">Save</string>
+    <string name="settings_saved">Saved.</string>
+    <string name="settings_reset">Reset everything</string>
+    <string name="settings_reset_note">Back to the settings this app started with, and deletes any WAD or photo you imported.</string>
+    <string name="settings_reset_confirm">This puts every setting back and deletes the WAD and photo you imported. It cannot be undone.</string>
+    <string name="settings_reset_done">Everything is back to how it started.</string>
+    <string name="settings_unsaved_title">Unsaved changes</string>
+    <string name="settings_unsaved_message">You have changed settings that have not been saved yet.</string>
+    <string name="settings_discard">Discard</string>
+    <string name="settings_keep_editing">Keep editing</string>
+    <string name="photo_imported">Photo loaded.</string>
     <string name="settings_wad">Use your own WAD</string>
     <string name="settings_wad_note">Point this at an IWAD you already own and its sprites, palette, floors and numerals replace the bundled ones. The file is copied into this app and never leaves your device.</string>
     <string name="settings_wad_active">In use, %d MB. Tap to choose a different one.</string>

@@ -139,6 +139,16 @@ class WadFile(private val buf: ByteBuffer) {
 
     fun nameAt(index: Int): String = lumpName[index]
 
+    fun sizeAt(index: Int): Int = lumpSize[index]
+
+    /** The lump's bytes, undecoded. Used when copying lumps into a reduced WAD. */
+    fun rawLump(index: Int): ByteArray {
+        val out = ByteArray(lumpSize[index])
+        val p = lumpPos[index]
+        for (i in out.indices) out[i] = buf.get(p + i)
+        return out
+    }
+
     /** Indices of every lump whose name starts with [prefix]. */
     fun lumpsStartingWith(prefix: String): List<Int> =
         lumpName.indices.filter { lumpName[it].startsWith(prefix) }

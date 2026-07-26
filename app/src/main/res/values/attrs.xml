@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Reuses the framework entries/entryValues so the XML reads like a ListPreference. -->
+    <declare-styleable name="RadioListPreference">
+        <attr name="android:entries" />
+        <attr name="android:entryValues" />
+    </declare-styleable>
+</resources>

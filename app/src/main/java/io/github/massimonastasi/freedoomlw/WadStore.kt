@@ -77,13 +77,28 @@ object WadStore {
             return problem
         }
 
+        // Kept in reduced form, never whole. An IWAD is mostly maps, wall textures, menu
+        // graphics, music and sound, none of which a wallpaper draws: keeping the original
+        // would occupy tens of megabytes of the user's storage to use about two percent of
+        // it. The file they chose is untouched where it lives; this is our copy.
         val target = File(dir, "active.wad")
-        target.delete()
-        if (!staged.renameTo(target)) {
-            staged.delete()
+        val full = staged.length()
+        val reduced = try {
+            val wad = staged.inputStream().use { s ->
+                WadFile(s.channel.map(FileChannel.MapMode.READ_ONLY, 0, staged.length()))
+            }
+            WadReducer.reduce(wad, target)
+        } catch (e: Exception) {
+            Log.w(TAG, "WAD reduction failed", e)
+            -1
+        }
+        staged.delete()
+
+        if (reduced <= 0) {
+            target.delete()
             return context.getString(R.string.wad_unreadable)
         }
-        Log.i(TAG, "WAD imported: ${target.length() / 1024} KB")
+        Log.i(TAG, "WAD imported: $reduced lumps, ${full / 1024} KB -> ${target.length() / 1024} KB")
         return null
     }
 

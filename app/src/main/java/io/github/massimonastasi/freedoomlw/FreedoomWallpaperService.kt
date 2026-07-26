@@ -95,6 +95,15 @@ class FreedoomWallpaperService : WallpaperService() {
 
     fun paletteColour(index: Int): Int = palette[index.coerceIn(0, 255)]
 
+    /**
+     * The imported WAD, but only while it is the one selected.
+     *
+     * Importing keeps a file; a separate choice says whether it is drawn. That is what lets
+     * the bundled assets stay an option the user can return to without importing again.
+     */
+    private fun activeWad() =
+        if (Settings.useUserWad(Settings.of(this))) WadStore.active(this) else null
+
     override fun onCreate() {
         super.onCreate()
         loadWad()
@@ -109,7 +118,7 @@ class FreedoomWallpaperService : WallpaperService() {
      * loader takes what it finds.
      */
     private fun loadWad() {
-        val user = WadStore.active(this)
+        val user = activeWad()
         val source = user?.absolutePath ?: BUNDLED
         try {
             val buf = if (user != null) {
@@ -148,7 +157,7 @@ class FreedoomWallpaperService : WallpaperService() {
 
     /** Reloads if the active WAD has changed since the sprites were built. */
     private fun reloadWadIfChanged() {
-        val wanted = WadStore.active(this)?.absolutePath ?: BUNDLED
+        val wanted = activeWad()?.absolutePath ?: BUNDLED
         if (wanted != loadedWad) loadWad()
     }
 
@@ -168,7 +177,7 @@ class FreedoomWallpaperService : WallpaperService() {
      * all — a WAD with only one usable flat simply shows the same ground at every level.
      */
     private fun loadFloors(w: WadFile): Array<Bitmap?> = Array(GameData.skills.size) { skill ->
-        val wanted = listOf(GameData.skills[skill].flat) + FLOOR_FALLBACKS
+        val wanted = listOf(GameData.skills[skill].flat) + GameData.FLOOR_FALLBACKS
         wanted.firstNotNullOfOrNull { name ->
             val i = w.flatIndex(name)
             if (i < 0) return@firstNotNullOfOrNull null
@@ -332,7 +341,6 @@ class FreedoomWallpaperService : WallpaperService() {
         private fun applySettings() {
             chosenFps = Settings.fps(prefs)
             readoutVisible = Settings.readout(prefs)
-            scene?.invulnerable = Settings.godMode(prefs)
 
             // A different WAD means every sprite, colour and floor is different, so the
             // shader built from the old tiles has to go with them.
@@ -727,11 +735,6 @@ class FreedoomWallpaperService : WallpaperService() {
          * Speeds stay the original ones *in map units* — this value only decides how fast
          * they appear, i.e. how wide a slice of the world is framed.
          */
-        /**
-         * Tried in order when a skill's own flat is absent, so a user-supplied WAD that
-         * carries only some of them still gets a floor rather than a flat colour.
-         */
-        val FLOOR_FALLBACKS = listOf("CEIL5_1", "RROCK03", "FLOOR1_6", "FLAT14", "FLOOR0_1")
 
         const val PX_PER_UNIT = 1.5f
 
