@@ -66,7 +66,9 @@ class LinkRowPreference @JvmOverloads constructor(
             isClickable = false
             isFocusable = false
         }
-        row.setOnClickListener { performClick() }
+        // The listener directly: performClick() on a Preference with no handler of its own
+        // calls back into the view, which calls this again. See ButtonPreference.
+        row.setOnClickListener { onPreferenceClickListener?.onPreferenceClick(this) }
 
         host.addView(row, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
     }

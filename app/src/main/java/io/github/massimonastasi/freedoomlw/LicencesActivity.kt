@@ -58,9 +58,7 @@ class LicencesActivity : AppCompatActivity() {
     /**
      * NOTICE.md split into labelled sections, then the licence itself.
      *
-     * The markdown is shown as it is written rather than rendered: it is a plain document of
-     * paragraphs and one table, and a markdown renderer would be a dependency added so that a
-     * legal notice could have bold text in it.
+     * The markup is stripped rather than rendered - see clean().
      */
     private fun blocks(): List<Pair<String, String>> {
         val notice = read("NOTICE.md") ?: return listOf(
@@ -84,10 +82,22 @@ class LicencesActivity : AppCompatActivity() {
     private fun read(name: String): String? =
         try { assets.open(name).bufferedReader().use { it.readText() } } catch (e: Exception) { null }
 
-    /** Drops the leading title line and the horizontal rules that separate the sections. */
+    /**
+     * Markdown to plain text, by hand.
+     *
+     * Not a renderer: this is four substitutions against a document whose markup is four
+     * things, and a markdown library would be a dependency added so that a legal notice could
+     * have bold text. What it must not do is change a word - the emphasis markers go, the
+     * quote markers go, a link becomes its own label, and nothing else moves.
+     */
     private fun clean(text: String): String = text
         .lineSequence()
         .filterNot { it.trim() == "---" || it.startsWith("# ") }
+        .map { it.removePrefix("> ").removePrefix(">") }
         .joinToString("\n")
+        .replace(Regex("""\[([^]]+)]\([^)]*\)"""), "$1")
+        .replace("**", "")
+        .replace("`", "")
+        .replace(Regex("""(?<!\*)\*(?!\*)"""), "")
         .trim()
 }

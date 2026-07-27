@@ -45,7 +45,11 @@ class ButtonPreference @JvmOverloads constructor(
         super.onBindViewHolder(holder)
         (holder.findViewById(R.id.button) as MaterialButton).apply {
             text = title
-            setOnClickListener { performClick() }
+            // The listener directly, not performClick(). Preference.performClick() with no
+            // handler of its own falls through to the view's performClick(), which calls
+            // this listener again - measured on the device as a stack overflow that took the
+            // whole app down the first time the button was pressed.
+            setOnClickListener { onPreferenceClickListener?.onPreferenceClick(this@ButtonPreference) }
         }
     }
 }

@@ -141,9 +141,18 @@ class SettingsActivity : AppCompatActivity() {
          */
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             super.onViewCreated(view, savedInstanceState)
-            val density = resources.displayMetrics.density
             listView.clipToPadding = false
-            listView.setPadding(0, 0, 0, (176 * density).toInt())
+            val bar = requireActivity().findViewById<View>(R.id.button_bar)
+            // Its real height, taken once it has been laid out, rather than a constant that
+            // has to be kept in step with the layout by hand. It was 176dp against a bar that
+            // is taller than that with the navigation inset added, so the last row sat under
+            // the buttons.
+            bar.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
+                val height = bottom - top
+                if (listView.paddingBottom != height) {
+                    listView.setPadding(0, 0, 0, height)
+                }
+            }
         }
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
