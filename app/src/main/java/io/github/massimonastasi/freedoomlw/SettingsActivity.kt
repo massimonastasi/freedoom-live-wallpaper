@@ -23,6 +23,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -70,6 +71,11 @@ class SettingsActivity : AppCompatActivity() {
             view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, bottom + view.paddingTop)
             insets
         }
+
+        findViewById<TextView>(R.id.header_caption).text = getString(
+            R.string.settings_version,
+            packageManager.getPackageInfo(packageName, 0).versionName,
+        )
 
         findViewById<MaterialButton>(R.id.set_wallpaper).setOnClickListener {
             startActivity(Intent(this, SetupActivity::class.java))
@@ -125,7 +131,23 @@ class SettingsActivity : AppCompatActivity() {
             // around them; the library draws a hairline between every row on top of that.
             setDivider(null)
             setDividerHeight(0)
+
+            // The list is opaque and starts below the header, so scrolling slides it up over
+            // the header rather than out from under it: the title stays where it is and is
+            // covered. clipToPadding off is what lets the content travel into that space
+            // instead of stopping at it.
+            //
+            // Resolved to a colour rather than left as a theme attribute inside a drawable:
+            // as a drawable it did not paint at all and the header showed straight through.
+            listView.setBackgroundColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    listView, com.google.android.material.R.attr.colorSurfaceContainer,
+                )
+            )
             listView.clipToPadding = false
+            val header = resources.getDimensionPixelSize(R.dimen.header_height)
+            listView.setPadding(0, header, 0, listView.paddingBottom)
+
             val bar = requireActivity().findViewById<View>(R.id.button_bar)
             // Its real height, taken once it has been laid out, rather than a constant that
             // has to be kept in step with the layout by hand. It was 176dp against a bar that
@@ -134,7 +156,7 @@ class SettingsActivity : AppCompatActivity() {
             bar.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
                 val height = bottom - top
                 if (listView.paddingBottom != height) {
-                    listView.setPadding(0, 0, 0, height)
+                    listView.setPadding(0, header, 0, height)
                 }
             }
         }

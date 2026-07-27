@@ -1,83 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The settings screen: a collapsing header, the scrolling list, and two buttons pinned at
+    The settings screen: a fixed header, the list scrolling over it, and two buttons pinned at
     the bottom.
 
-    The header collapses onto the app bar as the list scrolls - the title is displayMedium,
-    far too large to keep on screen, and the app bar is where it ends up. The title block is
-    a child of the collapsing layout rather than its own title property, because the design
-    puts a caption under the title and the built-in title is a single line.
+    The header does not move. It sits at the back and the list slides up over it, so the title
+    stays where it is and is covered rather than carried away. That is why this is a plain
+    layered frame rather than an AppBarLayout: a collapsing header moves its own content,
+    which is the opposite of what is wanted here - and it was also measured, repeatedly,
+    giving the title block less height than it asked for whatever the header was set to.
 
-    That block fills the header and aligns its own content to the bottom, rather than wrapping
-    its height and being gravity-bottom inside it. Measured on the device, the wrapping form
-    was clipped: two lines of displayMedium plus a caption came to more than the space left
-    under the toolbar, and the overflow was cut rather than pushed. Filling the parent cannot
-    overflow it. 220dp rather than the design''s 188 for the same reason - this screen is wider
-    than the 372dp frame the design was drawn on, and the title still wraps to two lines.
+    The back arrow is drawn above everything, so it is reachable at every scroll position.
 
-    The buttons are outside the scrolling view on purpose. They are the two things that act
-    on everything above them, and a button you have to scroll to find is a button that gets
+    The buttons are outside the scrolling view on purpose. They are the two things that act on
+    everything above them, and a button you have to scroll to find is a button that gets
     missed.
 -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fitsSystemWindows="false">
+    android:layout_height="match_parent">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/app_bar"
+    <FrameLayout
+        android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="260dp"
-        android:fitsSystemWindows="true">
+        android:layout_height="@dimen/header_height"
+        android:layout_gravity="top">
 
-        <com.google.android.material.appbar.CollapsingToolbarLayout
-            android:id="@+id/collapsing"
+        <ImageView
+            android:id="@+id/header_image"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:minHeight="?attr/actionBarSize"
-            app:contentScrim="?attr/colorSurface"
-            app:layout_scrollFlags="scroll|exitUntilCollapsed|snap"
-            app:titleEnabled="false">
+            android:contentDescription="@null"
+            android:scaleType="centerCrop"
+            android:src="@mipmap/ic_launcher_foreground" />
 
-            <ImageView
-                android:id="@+id/header_image"
+        <!--
+            A scrim under the text: the title is white over artwork whose brightness is not
+            ours to control. It darkens the image rather than saying anything about the
+            palette, so it is the one colour here that is not a theme role.
+        -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/header_scrim" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp">
+
+            <TextView
+                android:id="@+id/header_title"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:contentDescription="@null"
-                android:scaleType="centerCrop"
-                android:src="@mipmap/ic_launcher_foreground"
-                app:layout_collapseMode="parallax" />
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textAppearance="@style/TextAppearance.Material3.DisplaySmall"
+                android:textColor="@android:color/white" />
 
-            <!--
-                A scrim under the text rather than over the whole image: the title is white on
-                artwork whose brightness is not ours to control, and in the light theme the
-                image sits on a pale surface. Without this the title is unreadable on both.
-            -->
-            <View
+            <TextView
+                android:id="@+id/header_caption"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/header_scrim"
-                app:layout_collapseMode="parallax" />
+                android:layout_height="wrap_content"
+                android:alpha="0.8"
+                android:maxLines="1"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="@android:color/white" />
 
-            <com.google.android.material.appbar.MaterialToolbar
-                android:id="@+id/toolbar"
-                android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
-                app:layout_collapseMode="pin"
-                app:navigationIcon="?attr/homeAsUpIndicator"
-                app:title="@string/app_name" />
+        </LinearLayout>
 
-        </com.google.android.material.appbar.CollapsingToolbarLayout>
-
-    </com.google.android.material.appbar.AppBarLayout>
+    </FrameLayout>
 
     <FrameLayout
         android:id="@+id/settings_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        android:layout_height="match_parent" />
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:layout_gravity="top"
+        android:background="@android:color/transparent"
+        app:navigationIcon="?attr/homeAsUpIndicator" />
 
     <LinearLayout
         android:id="@+id/button_bar"

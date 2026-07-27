@@ -12,6 +12,7 @@
     did - read as a stack of separate cards rather than a single control.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="?attr/colorSurfaceContainer"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="16dp"

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The fixed header behind the list. Named rather than repeated, because the list's top
+        padding has to be exactly this: the content starts where the header ends and slides
+        over it from there.
+    -->
+    <dimen name="header_height">220dp</dimen>
+</resources>
