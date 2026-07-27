@@ -1,97 +1,106 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    One Material 3 list item.
+    One Material 3 list item, from the library's own component.
 
-    Material 3 has no List or ListItem widget for Views - it is a specification, not a
-    component, unlike Compose where ListItem exists. So this is the one thing on the screen
-    that has to be assembled by hand, and everything inside it is a real M3 widget.
+    ListItemCardView arrived in Material 1.14.0 with M3 Expressive. Everything this row used
+    to state by hand now comes from it:
 
-    Measured off the design's own item rather than estimated: on a 340dp row the content
-    starts at 16 and is 244 wide, and the trailing element starts at 272 - so 12dp between
-    the text and the control, and the text sits 10dp from the top and bottom of a 64dp row.
+      cardBackgroundColor  a selector, so the chosen row is tinted and the rest are not
+      shapeAppearance      a state list, so corners answer to selection and pressing
+      contentPadding       16dp leading and trailing, 10dp top and bottom
+      ripple               the list item's own ripple colour
 
-    minHeight rather than a fixed height, because two lines of bodyLarge plus bodyMedium is
-    taller than 64 and a row that clips its own text is worse than one that grows.
+    Those paddings are worth noting: they are the same numbers that were measured off the
+    design file by hand - 16 and 10 - which is a good sign that the reading was right, and a
+    better reason to stop maintaining them here.
 
-    Pulled in with <include> wherever a row is needed, so there is one row in the project and
-    the sections cannot drift apart.
+    The children carry the library's list-item styles too, so the label and supporting text
+    take their typography and their state colours from Material rather than from this file,
+    and the radio and switch come pre-set to non-clickable with the correct tints: the row is
+    the touch target, not the control inside it.
+
+    The Segmented style is the one the design uses - a group of rows that share a container.
+    Which corner each row gets is set from code, by position; see SettingsActivity.shapeGroup.
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.listitem.ListItemCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    style="@style/Widget.Material3.ListItemCardView.Segmented"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/list_row_background"
-    android:gravity="center_vertical"
-    android:minHeight="64dp"
-    android:orientation="horizontal"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp">
-
-    <com.google.android.material.radiobutton.MaterialRadioButton
-        android:id="@+id/row_radio"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:clickable="false"
-        android:duplicateParentState="true"
-        android:focusable="false" />
+    app:swipeEnabled="false">
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp">
+        android:gravity="center_vertical"
+        android:minHeight="44dp"
+        android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/row_label"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:textColor="?attr/colorOnSurface"
-            tools:text="Dungeon floor" />
-
-        <TextView
-            android:id="@+id/row_caption"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:visibility="gone"
-            tools:text="Changes with the difficulty"
-            tools:visibility="visible" />
-
-        <!-- Anything the row carries beyond its text: the colour swatches live in theirs. -->
-        <FrameLayout
-            android:id="@+id/row_extra"
+        <com.google.android.material.radiobutton.MaterialRadioButton
+            android:id="@+id/row_radio"
+            style="@style/Widget.Material3.RadioButton.ListItem"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginEnd="16dp"
+            android:duplicateParentState="true" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/row_label"
+                style="@style/Widget.Material3.TextView.ListItem.LabelText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:duplicateParentState="true"
+                tools:text="Dungeon floor" />
+
+            <TextView
+                android:id="@+id/row_caption"
+                style="@style/Widget.Material3.TextView.ListItem.SupportingText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:duplicateParentState="true"
+                android:visibility="gone"
+                tools:text="Changes with the difficulty"
+                tools:visibility="visible" />
+
+            <!-- Anything the row carries beyond its text: the colour swatches live in theirs. -->
+            <FrameLayout
+                android:id="@+id/row_extra"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/row_switch"
+            style="@style/Widget.Material3.Switch.ListItem"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:duplicateParentState="true"
             android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/row_action"
+            style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@null"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:visibility="gone"
+            app:iconPadding="0dp"
+            app:iconSize="20dp" />
 
     </LinearLayout>
 
-    <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/row_switch"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:clickable="false"
-        android:focusable="false"
-        android:visibility="gone" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/row_action"
-        style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:contentDescription="@null"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:visibility="gone"
-        app:iconPadding="0dp"
-        app:iconSize="20dp" />
-
-</LinearLayout>
+</com.google.android.material.listitem.ListItemCardView>

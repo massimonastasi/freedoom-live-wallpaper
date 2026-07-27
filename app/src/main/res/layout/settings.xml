@@ -181,7 +181,9 @@
                 style="@style/SectionHeader"
                 android:text="@string/settings_background" />
 
-            <LinearLayout style="@style/ListGroup">
+            <LinearLayout
+                android:id="@+id/background_group"
+                style="@style/ListGroup">
 
                 <include
                     android:id="@+id/row_floor"
@@ -213,7 +215,9 @@
                 style="@style/SectionParagraph"
                 android:text="@string/settings_wad_note" />
 
-            <LinearLayout style="@style/ListGroup">
+            <LinearLayout
+                android:id="@+id/sprites_group"
+                style="@style/ListGroup">
 
                 <include
                     android:id="@+id/row_bundled"
@@ -251,7 +255,9 @@
                 style="@style/SectionParagraph"
                 android:text="@string/settings_about_note" />
 
-            <LinearLayout style="@style/ListGroup">
+            <LinearLayout
+                android:id="@+id/about_group"
+                style="@style/ListGroup">
 
                 <!--
                     Present and disabled: the repository is not public yet, so the row says

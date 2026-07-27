@@ -118,6 +118,10 @@ class SettingsActivity : AppCompatActivity() {
         showBackground()
         showSprites()
         showAbout()
+
+        shapeGroup(R.id.switch_group)
+        shapeGroup(R.id.background_group)
+        shapeGroup(R.id.about_group)
     }
 
     // ------------------------------------------------------------------ sections
@@ -219,6 +223,7 @@ class SettingsActivity : AppCompatActivity() {
         // The row exists only when the file does. Nothing is bundled beyond Freedoom, so at
         // first launch there is one option and it is not offered as a choice.
         wadRow.visibility = if (user == null) View.GONE else View.VISIBLE
+        shapeGroup(R.id.sprites_group)
         findViewById<View>(R.id.row_bundled).findViewById<View>(R.id.row_radio).isEnabled = user != null
 
         if (user != null) {
@@ -230,6 +235,7 @@ class SettingsActivity : AppCompatActivity() {
             caption(R.id.row_wad, getString(R.string.sprites_size, user.length() / 1024))
             select(R.id.row_wad, useUser)
             action(R.id.row_wad, R.drawable.ic_delete) { confirmDeleteWad() }
+            shapeGroup(R.id.sprites_group)
             wadRow.setOnClickListener {
                 prefs.edit().putString(Settings.KEY_SPRITES, Settings.SPRITES_USER).apply()
                 showSprites()
@@ -260,6 +266,35 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun openLicences() = startActivity(Intent(this, LicencesActivity::class.java))
+
+    /**
+     * Gives every visible row in a group the corner shape for where it sits.
+     *
+     * Material ships the four shapes - Single, First, Middle, Last - and a segmented list is
+     * just the right one on each row: big corners at the ends of the group, small in between.
+     * Doing it here rather than in the layout is what lets a row appear and disappear, which
+     * two of these groups do: the WAD row exists only once one is imported, and the group has
+     * to close up around it.
+     */
+    private fun shapeGroup(groupId: Int) {
+        val group = findViewById<android.view.ViewGroup>(groupId)
+        val rows = (0 until group.childCount)
+            .map { group.getChildAt(it) }
+            .filter { it.visibility == View.VISIBLE }
+            .filterIsInstance<com.google.android.material.card.MaterialCardView>()
+
+        rows.forEachIndexed { i, card ->
+            val style = when {
+                rows.size == 1 -> com.google.android.material.R.style.ShapeAppearance_Material3_ListItem_Single
+                i == 0 -> com.google.android.material.R.style.ShapeAppearance_Material3_ListItem_First
+                i == rows.lastIndex -> com.google.android.material.R.style.ShapeAppearance_Material3_ListItem_Last
+                else -> com.google.android.material.R.style.ShapeAppearance_Material3_ListItem_Middle
+            }
+            card.shapeAppearanceModel = com.google.android.material.shape.ShapeAppearanceModel
+                .builder(this, style, 0)
+                .build()
+        }
+    }
 
     // ------------------------------------------------------------------ row helpers
 

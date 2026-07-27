@@ -41,9 +41,9 @@
     </style>
 
     <!--
-        A List: one rounded container that clips its rows. The corners belong to the group,
-        not to each row - the design draws square rows inside a 16dp container, and rounding
-        every row reads as a stack of separate cards instead of a single control.
+        A List: rows stacked with a 2dp gap. It paints nothing and clips nothing - each
+        ListItemCardView carries its own background, ripple and corners, and which corner
+        depends on where the row sits in the group. SettingsActivity.shapeGroup assigns that.
     -->
     <style name="ListGroup">
         <item name="android:layout_width">match_parent</item>
@@ -52,7 +52,5 @@
         <item name="android:layout_marginEnd">16dp</item>
         <item name="android:layout_marginBottom">16dp</item>
         <item name="android:orientation">vertical</item>
-        <item name="android:background">@drawable/list_group_background</item>
-        <item name="android:clipToOutline">true</item>
     </style>
 </resources>
