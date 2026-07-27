@@ -190,13 +190,13 @@ class SettingsActivity : AppCompatActivity() {
 
         // Choosing "Image" with nothing behind it would show nothing, so it asks; once there
         // is one, the trailing button removes it.
-        action(R.id.row_photo, if (photo != null) R.drawable.ic_delete else R.drawable.ic_chevron) {
-            if (photo != null) {
+        if (photo != null) {
+            action(R.id.row_photo, R.drawable.ic_delete) {
                 PhotoStore.clear(this)
                 showBackground()
-            } else {
-                choosePhoto.launch(arrayOf("image/*"))
             }
+        } else {
+            pointer(R.id.row_photo, R.drawable.ic_chevron)
         }
 
         rows.forEachIndexed { i, id ->
@@ -261,7 +261,7 @@ class SettingsActivity : AppCompatActivity() {
 
         row(R.id.row_licences, R.string.settings_licences, getString(R.string.settings_licences_note))
         findViewById<View>(R.id.row_licences).findViewById<View>(R.id.row_radio).visibility = View.GONE
-        action(R.id.row_licences, R.drawable.ic_chevron) { openLicences() }
+        pointer(R.id.row_licences, R.drawable.ic_chevron)
         findViewById<View>(R.id.row_licences).setOnClickListener { openLicences() }
     }
 
@@ -320,11 +320,32 @@ class SettingsActivity : AppCompatActivity() {
             .isChecked = on
     }
 
+    /**
+     * A trailing action with its own target: a button, for deleting a file the user imported.
+     */
     private fun action(id: Int, icon: Int, onClick: () -> Unit) {
-        findViewById<View>(id).findViewById<MaterialButton>(R.id.row_action).apply {
+        val row = findViewById<View>(id)
+        row.findViewById<View>(R.id.row_icon).visibility = View.GONE
+        row.findViewById<MaterialButton>(R.id.row_action).apply {
             visibility = View.VISIBLE
             setIconResource(icon)
             setOnClickListener { onClick() }
+        }
+    }
+
+    /**
+     * A trailing icon that only points: the row itself is what gets tapped.
+     *
+     * Not a button. It has no container of its own and is outside the accessibility tree,
+     * because a control announced beside a row that does the same thing is one target too
+     * many.
+     */
+    private fun pointer(id: Int, icon: Int) {
+        val row = findViewById<View>(id)
+        row.findViewById<MaterialButton>(R.id.row_action).visibility = View.GONE
+        row.findViewById<android.widget.ImageView>(R.id.row_icon).apply {
+            visibility = View.VISIBLE
+            setImageResource(icon)
         }
     }
 

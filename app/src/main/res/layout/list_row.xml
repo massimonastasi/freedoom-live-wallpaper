@@ -89,17 +89,36 @@
             android:duplicateParentState="true"
             android:visibility="gone" />
 
+        <!--
+            A row that only points somewhere: the library's own trailing icon. An ImageView
+            with the list item's tint selector, no background of its own, and outside the
+            accessibility tree because the row is the target, not this.
+
+            It replaced a filled tonal icon button, which drew a circle nobody asked for and
+            sat off the text baseline: a MaterialButton carries its own insets and minimum
+            width, so it cannot simply be placed where an icon goes.
+        -->
+        <ImageView
+            android:id="@+id/row_icon"
+            style="@style/Widget.Material3.ImageView.ListItem.TrailingIcon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:duplicateParentState="true"
+            android:visibility="gone" />
+
+        <!--
+            A row that carries its own action - deleting an imported file - needs a target of
+            its own, so this one is a button. The plain icon button rather than the filled
+            tonal: no container until it is touched, which is what a low-priority action
+            beside a row should look like.
+        -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/row_action"
-            style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:contentDescription="@null"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:visibility="gone"
-            app:iconPadding="0dp"
-            app:iconSize="20dp" />
+            android:visibility="gone" />
 
     </LinearLayout>
 
