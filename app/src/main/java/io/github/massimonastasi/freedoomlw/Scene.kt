@@ -551,8 +551,13 @@ class Scene(
     private fun newCreature(c: GameData.Creature): Actor {
         val a = Actor(c.spriteIndex)
         a.creature = c
-        // Monsters are softer than the originals; the marine is not. See MONSTER_HEALTH.
-        a.health = if (c === GameData.player) c.health else c.health * MONSTER_HEALTH / 100
+        // Monsters are softer than the originals; the marine is not. A boss takes both
+        // coefficients, one after the other. See MONSTER_HEALTH and BOSS_HEALTH.
+        a.health = when {
+            c === GameData.player -> c.health
+            c.health >= BOSS_HEALTH_FROM -> c.health * MONSTER_HEALTH / 100 * BOSS_HEALTH / 100
+            else -> c.health * MONSTER_HEALTH / 100
+        }
         a.spawnTic = tic
         a.reactionTime = GameData.REACTION_TIME
         return a
@@ -1238,7 +1243,24 @@ class Scene(
          * and the monsters softened to match. The marine's own 100 is untouched: it is
          * MAXHEALTH, and it is what the readout shows.
          */
-        const val MONSTER_HEALTH = 18
+        const val MONSTER_HEALTH = 35
+
+        /**
+         * The same, for the things at the end of the table.
+         *
+         * One coefficient for everything was measured to work and to cost something: at the
+         * 18% that made the last wave reachable, a Zombie spawns with three health and dies
+         * to the first shot fired at it. The wall was never the small ones - it was a
+         * 4000-health Cyberdemon - so softening them to reach it was paying in the wrong
+         * currency. Two numbers separate the chaff from the wall.
+         *
+         * The threshold is a health value rather than a list of names, so a creature added
+         * to the bestiary is classified by what it is instead of by being remembered.
+         */
+        const val BOSS_HEALTH = 25
+
+        /** Spawn health at or above which a creature is priced as a boss. PainLord and up. */
+        const val BOSS_HEALTH_FROM = 1000
 
         /** How long the marine stands still after materialising. */
         const val PLAYER_REACTION = TICRATE / 2
