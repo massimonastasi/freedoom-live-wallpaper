@@ -57,6 +57,9 @@ class SettingsActivity : AppCompatActivity() {
     private val choosePhoto = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@registerForActivityResult
         val ok = PhotoStore.import(this, uri)
+        // The choice follows the file, not the tap that opened the picker: a cancelled or
+        // unreadable pick leaves the background exactly where it was.
+        if (ok) prefs.edit().putString(Settings.KEY_BACKGROUND, "photo").apply()
         toast(if (ok) getString(R.string.photo_imported) else getString(R.string.photo_unreadable))
         showBackground()
     }
@@ -162,10 +165,13 @@ class SettingsActivity : AppCompatActivity() {
      * there and is the only one who can take away.
      */
     private fun showBackground() {
-        val chosen = prefs.getString(Settings.KEY_BACKGROUND, "dynamic")
         val rows = intArrayOf(R.id.row_floor, R.id.row_colour, R.id.row_photo)
         val values = arrayOf("dynamic", "colour", "photo")
         val photo = PhotoStore.name(this)
+        // "photo" with no photo behind it is what the wallpaper draws as the dungeon floor,
+        // so it is what the screen shows selected too. The two used to disagree.
+        val chosen = prefs.getString(Settings.KEY_BACKGROUND, "dynamic")
+            .takeUnless { it == "photo" && photo == null } ?: "dynamic"
 
         row(R.id.row_floor, R.string.background_floor, getString(R.string.background_floor_note))
         row(R.id.row_colour, R.string.background_colour, getString(R.string.background_colour_note))
@@ -184,9 +190,9 @@ class SettingsActivity : AppCompatActivity() {
             grid.colourOf = { palette[it.coerceIn(0, 255)] }
             grid.onChosen = { prefs.edit().putString(Settings.KEY_BACKGROUND_COLOUR, it).apply() }
             grid.show(prefs.getString(Settings.KEY_BACKGROUND_COLOUR, "0"))
-            // match_parent, so the grid has a width of its own before it has any children.
-            // Sizing the swatches from the grid's own wrapped width could never settle: the
-            // width came from the children and the children came from the width.
+            // match_parent, both here and on the frame in list_row.xml: the swatches are a
+            // share of the width the row gives them, so that width has to be a real number
+            // by the time the grid is measured, not something wrapped around the children.
             extra.addView(
                 grid,
                 android.widget.FrameLayout.LayoutParams(
@@ -202,6 +208,10 @@ class SettingsActivity : AppCompatActivity() {
         if (photo != null) {
             action(R.id.row_photo, R.drawable.ic_delete) {
                 PhotoStore.clear(this)
+                // The image it pointed at is gone, so the choice goes with it. Left alone the
+                // row stayed selected over nothing, and the dungeon floor - which is what the
+                // wallpaper actually draws in that state - showed as unselected.
+                prefs.edit().remove(Settings.KEY_BACKGROUND).apply()
                 showBackground()
             }
         } else {
@@ -211,10 +221,11 @@ class SettingsActivity : AppCompatActivity() {
         rows.forEachIndexed { i, id ->
             select(id, values[i] == chosen)
             findViewById<View>(id).setOnClickListener {
-                prefs.edit().putString(Settings.KEY_BACKGROUND, values[i]).apply()
-                if (values[i] == "photo" && PhotoStore.file(this) == null) {
+                if (values[i] == "photo" && photo == null) {
                     choosePhoto.launch(arrayOf("image/*"))
+                    return@setOnClickListener
                 }
+                prefs.edit().putString(Settings.KEY_BACKGROUND, values[i]).apply()
                 showBackground()
             }
         }

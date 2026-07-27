@@ -21,7 +21,7 @@ package io.github.massimonastasi.freedoomlw
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.view.View
-import android.widget.GridLayout
+import android.view.ViewGroup
 
 /**
  * The flat colours, as circles in two rows of five.
@@ -32,12 +32,18 @@ import android.widget.GridLayout
  *
  * Five columns rather than a scrolling strip, so every colour is on screen at once and none
  * can hide past the edge.
+ *
+ * It measures its own children rather than sizing them beforehand. The earlier version built
+ * fixed-size swatches and rebuilt them from a layout listener when the row turned out to be
+ * narrower - which is a rebuild in the middle of a layout pass, and on some devices left ten
+ * views that were never laid out: the row kept its height and showed nothing at all inside it.
+ * A square is a share of the width, and the width is what onMeasure is handed.
  */
 class SwatchGrid(
     context: Context,
     private val labels: Array<CharSequence>,
     private val values: Array<CharSequence>,
-) : GridLayout(context) {
+) : ViewGroup(context) {
 
     /** Resolves a palette index to a colour. Supplied by the screen, which has the WAD. */
     var colourOf: (Int) -> Int = { 0 }
@@ -47,44 +53,26 @@ class SwatchGrid(
 
     private var current: String? = null
 
-    /** The swatch size the rows were last built at, so a relayout only rebuilds on a change. */
-    private var builtAt = 0
+    private val gap = (8 * resources.displayMetrics.density).toInt()
 
-    init {
-        columnCount = COLUMNS
-        // The size of a swatch is a share of the width the row leaves, which is not known
-        // until the row has been measured - and measuring it depends on the children, so
-        // asking for it before building them can never settle. The rows are therefore built
-        // straight away at the largest size, and rebuilt if the width turns out to be smaller.
-        //
-        // That is what fixes the fifth swatch of each line falling off the right edge of the
-        // card on a screen narrower than the one the fixed 40dp was chosen on.
-        addOnLayoutChangeListener { _, left, _, right, _, _, _, _, _ ->
-            if (right - left > 0 && sizeFor(right - left) != builtAt) show(current)
-        }
-    }
-
-    /** A share of the available width, never bigger than the design's swatch. */
-    private fun sizeFor(available: Int): Int {
-        val dp = resources.displayMetrics.density
-        val gap = (8 * dp).toInt()
-        return ((available - gap * (COLUMNS - 1)) / COLUMNS)
-            .coerceIn((20 * dp).toInt(), (40 * dp).toInt())
-    }
+    /**
+     * The swatch edge for a given width: a fifth of what is left once the gaps are taken,
+     * never bigger than the design's own swatch. On a wide row the spare width stays spare.
+     */
+    private fun cell(width: Int) =
+        ((width - gap * (COLUMNS - 1)) / COLUMNS)
+            .coerceIn(1, (MAX_SWATCH_DP * resources.displayMetrics.density).toInt())
 
     fun show(chosen: String?) {
         current = chosen
         removeAllViews()
         val dp = resources.displayMetrics.density
-        val gap = (8 * dp).toInt()
-        val size = sizeFor(if (width > 0) width else Int.MAX_VALUE)
-        builtAt = size
 
         labels.forEachIndexed { i, label ->
             val value = values.getOrNull(i)?.toString() ?: return@forEachIndexed
             val palette = value.toIntOrNull() ?: 0
             val selected = value == current
-            val swatch = View(context).apply {
+            addView(View(context).apply {
                 // A ring that thickens when chosen, rather than a tick drawn over the colour:
                 // a tick would be invisible on half of these - white on cream, black on black
                 // - and a ring never collides with what it marks.
@@ -104,14 +92,26 @@ class SwatchGrid(
                         show(value)
                     }
                 }
-            }
-            // No trailing margin on the last of a row, which is what pushed the group past
-            // the width it was given.
-            addView(swatch, LayoutParams().apply {
-                width = size
-                height = size
-                setMargins(0, 0, if (i % COLUMNS == COLUMNS - 1) 0 else gap, gap)
             })
+        }
+    }
+
+    override fun onMeasure(widthSpec: Int, heightSpec: Int) {
+        val width = MeasureSpec.getSize(widthSpec)
+        val size = cell(width)
+        val spec = MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY)
+        for (i in 0 until childCount) getChildAt(i).measure(spec, spec)
+
+        val rows = (childCount + COLUMNS - 1) / COLUMNS
+        setMeasuredDimension(width, (rows * size + (rows - 1).coerceAtLeast(0) * gap))
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        val size = cell(r - l)
+        for (i in 0 until childCount) {
+            val x = (i % COLUMNS) * (size + gap)
+            val y = (i / COLUMNS) * (size + gap)
+            getChildAt(i).layout(x, y, x + size, y + size)
         }
     }
 
@@ -123,6 +123,9 @@ class SwatchGrid(
 
     private companion object {
         const val COLUMNS = 5
+
+        /** The size the design draws them at; anything wider is a row, not a swatch. */
+        const val MAX_SWATCH_DP = 40
 
         /** Faint, so black and the surface behind it do not merge into one shape. */
         const val OUTLINE = 0x66888888

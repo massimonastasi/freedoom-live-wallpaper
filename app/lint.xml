@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Two lint findings that are wrong here, silenced with the reason rather than left to be
+    "fixed" again by whoever reads the report next. Everything else lint says is still on.
+-->
+<lint>
+
+    <!--
+        "This folder configuration (v26) is unnecessary; minSdkVersion is 31. Merge all the
+        resources in this folder into mipmap-anydpi."
+
+        Following that advice removes the adaptive icon from the APK. Measured, not assumed:
+        with mipmap-anydpi-v26 the packaged resource table carries
+
+            mipmap/ic_launcher  (mdpi..xxxhdpi) webp  +  (anydpi) xml
+
+        and after renaming the folder to mipmap-anydpi the anydpi entry is gone entirely, so
+        every launcher falls back to the legacy square bitmap and draws it shrunk inside a
+        white circle. That shipped in 0.2 and had to be undone.
+    -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+
+    <!--
+        ic_launcher_round is unused, and deliberately: the manifest declares no roundIcon,
+        because an adaptive icon is already masked to whatever shape the launcher wants. It
+        stays because it is what Asset Studio writes, so regenerating the icon does not show
+        up as a diff, and because it costs six lines in a file the shrinker drops anyway.
+    -->
+    <issue id="UnusedResources">
+        <ignore path="src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml" />
+    </issue>
+
+</lint>
