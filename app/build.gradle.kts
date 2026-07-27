@@ -1,3 +1,5 @@
+import java.util.Properties
+
 // Imported explicitly: inside the Gradle Kotlin DSL, `java` resolves to the plugin
 // accessor rather than the package, so a fully qualified java.io.* reference fails.
 import java.io.ByteArrayOutputStream
@@ -20,8 +22,35 @@ android {
         versionName = "0.1"
     }
 
+    /**
+     * The release signing key, read from keystore.properties beside this file.
+     *
+     * That file and the key it points at are both outside version control: the key is this
+     * application's identity, and an installation can only ever be updated by a build signed
+     * with the same one. Losing it means every device that has the app has to uninstall it.
+     *
+     * When the file is absent - a fresh clone, or a machine that is not the release one - the
+     * release build simply goes unsigned rather than failing, so the project still builds.
+     */
+    val keystore = Properties().apply {
+        val file = rootProject.file("keystore.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+
+    signingConfigs {
+        if (keystore.getProperty("storeFile") != null) {
+            create("release") {
+                storeFile = file(keystore.getProperty("storeFile"))
+                storePassword = keystore.getProperty("storePassword")
+                keyAlias = keystore.getProperty("keyAlias")
+                keyPassword = keystore.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

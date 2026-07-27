@@ -21,3 +21,10 @@ build/
 
 # Built APKs staged for hand-installing on other devices.
 /dist/
+
+# The signing key and its password. The key itself lives outside the repository;
+# neither may ever be committed. Losing them means the app can never be updated
+# on a device that already has it.
+keystore.properties
+*.jks
+*.keystore
