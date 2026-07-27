@@ -77,6 +77,12 @@ val copyLicences by tasks.registering(Copy::class) {
 
 tasks.named("preBuild") { dependsOn(copyLicences) }
 
+// ForeignWadTest reads a WAD this project cannot ship, named on the command line. Gradle
+// applies -D to its own JVM, not to the forked test one, so it has to be handed across.
+tasks.withType<Test>().configureEach {
+    providers.systemProperty("foreignWad").orNull?.let { systemProperty("foreignWad", it) }
+}
+
 /**
  * Writes the bundled asset WAD, keeping only the lumps this wallpaper reads.
  *

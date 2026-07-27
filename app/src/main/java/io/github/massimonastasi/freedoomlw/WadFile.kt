@@ -149,6 +149,21 @@ class WadFile(private val buf: ByteBuffer) {
         return out
     }
 
+    /**
+     * Decoded size of a patch in bytes, read from its four-byte header without decoding it.
+     *
+     * A sprite cache sized by a fixed constant is a cache sized for the smallest actor: the
+     * Spider Mastermind's frames come to 2542 KB against a flat 1024 KB budget, so it evicted
+     * and re-decoded every frame it drew. This is how an actor is asked what it needs.
+     */
+    fun patchBytes(index: Int): Int {
+        val p = lumpPos[index]
+        if (lumpSize[index] < 4) return 0
+        val w = (buf.get(p).toInt() and 0xFF) or ((buf.get(p + 1).toInt() and 0xFF) shl 8)
+        val h = (buf.get(p + 2).toInt() and 0xFF) or ((buf.get(p + 3).toInt() and 0xFF) shl 8)
+        return w * h * 4
+    }
+
     /** Indices of every lump whose name starts with [prefix]. */
     fun lumpsStartingWith(prefix: String): List<Int> =
         lumpName.indices.filter { lumpName[it].startsWith(prefix) }

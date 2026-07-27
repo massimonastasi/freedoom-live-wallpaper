@@ -40,22 +40,37 @@ class SpriteSet(private val wad: WadFile, prefix: String, private val dim: Int =
     /** Number of consecutive frames present starting from 'A'. */
     val frameCount: Int
 
+    /** What this actor's artwork weighs decoded. Exposed so a test can hold it to it. */
+    var cacheBytes: Int = 0
+        private set
+
     /** A decoded lump, with the anchor point from the patch format. */
     class Sprite(val bitmap: Bitmap, val xOffset: Int, val yOffset: Int)
 
     // The cache is measured in bytes rather than entries: sprites range from a few KB
     // (a blood drop) to several tens (a PainLord), so counting them as equivalent would
     // over- or under-estimate memory by an order of magnitude.
-    private val cache = object : LruCache<Int, Sprite>(CACHE_BYTES) {
-        override fun sizeOf(key: Int, value: Sprite) = value.bitmap.byteCount
-    }
+    //
+    // Its size is this actor's own, not a shared constant. A flat 1024 KB budget was measured
+    // against a Phase 2 IWAD and found to be under half of what the two largest creatures
+    // need - the Spider Mastermind's frames come to 2542 KB and the Cyberdemon's to 1506 -
+    // so those two evicted and re-decoded on every frame they drew, which is exactly the
+    // "the big ones look wrong" that was reported. Asking the artwork what it weighs costs
+    // four bytes per lump and cannot be wrong the next time a WAD is larger still.
+    private val cache: LruCache<Int, Sprite>
 
     init {
+        var needed = 0
         for (i in wad.lumpsStartingWith(prefix)) {
             val n = wad.nameAt(i)
             if (n.length != 6 && n.length != 8) continue
             put(n[4], n[5], i, flip = false)
             if (n.length == 8) put(n[6], n[7], i, flip = true)
+            needed += wad.patchBytes(i)
+        }
+        cacheBytes = needed.coerceAtLeast(MIN_CACHE_BYTES)
+        cache = object : LruCache<Int, Sprite>(cacheBytes) {
+            override fun sizeOf(key: Int, value: Sprite) = value.bitmap.byteCount
         }
         var f = 0
         while (f < 26 && hasFrame(f)) f++
@@ -119,7 +134,10 @@ class SpriteSet(private val wad: WadFile, prefix: String, private val dim: Int =
     }
 
     private companion object {
-        /** Budget per actor. A creature's full sprite set stays comfortably below it. */
-        const val CACHE_BYTES = 1 shl 20
+        /**
+         * Floor, for an actor whose lumps could not be measured - a WAD with a truncated
+         * header, or a prefix that matched nothing. Never the budget for a real one.
+         */
+        const val MIN_CACHE_BYTES = 1 shl 18
     }
 }
