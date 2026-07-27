@@ -4,16 +4,15 @@
     paragraph saying what the section is for, then the controls.
 
     Choices apply as they are made. There is no Save: the wallpaper reads its settings when it
-    next becomes visible, so a staged edit would only be a second state to keep in step with
-    the first.
-
-    Sprites and About are the two sections still to be finished against the design.
+    next becomes visible, so a staged edit would only be a second state to keep in step.
 -->
 <PreferenceScreen
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="@string/settings_visual">
+    <PreferenceCategory
+        android:layout="@layout/preference_section_header"
+        android:title="@string/settings_visual">
 
         <io.github.massimonastasi.freedoomlw.ParagraphPreference
             android:key="visual_note"
@@ -45,8 +44,11 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="@string/settings_background">
+    <PreferenceCategory
+        android:layout="@layout/preference_section_header"
+        android:title="@string/settings_background">
 
+        <!-- The swatches are placed inside the flat-colour row, in code. -->
         <io.github.massimonastasi.freedoomlw.OptionListPreference
             android:defaultValue="dynamic"
             android:entries="@array/background_labels"
@@ -54,12 +56,45 @@
             android:key="background"
             app:captions="@array/background_captions" />
 
-        <!-- Always drawn: the swatches are what "flat colour" means. -->
-        <io.github.massimonastasi.freedoomlw.SwatchListPreference
-            android:defaultValue="0"
-            android:entries="@array/palette_labels"
-            android:entryValues="@array/palette_values"
-            android:key="background_colour" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/preference_section_header"
+        android:title="@string/settings_sprites">
+
+        <io.github.massimonastasi.freedoomlw.ParagraphPreference
+            android:key="sprites_note"
+            app:body="@string/settings_wad_note" />
+
+        <!-- Entries are filled in code: the second row exists only once a WAD is imported. -->
+        <io.github.massimonastasi.freedoomlw.OptionListPreference
+            android:defaultValue="bundled"
+            android:key="sprites" />
+
+        <io.github.massimonastasi.freedoomlw.ButtonPreference
+            android:key="wad"
+            android:title="@string/settings_wad" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout="@layout/preference_section_header"
+        android:title="@string/settings_about">
+
+        <io.github.massimonastasi.freedoomlw.ParagraphPreference
+            android:key="about_note"
+            app:body="@string/settings_about_note" />
+
+        <!-- Hidden until the repository is public; see SettingsActivity. -->
+        <io.github.massimonastasi.freedoomlw.LinkRowPreference
+            android:key="source"
+            android:summary="@string/settings_source_note"
+            android:title="@string/settings_source" />
+
+        <io.github.massimonastasi.freedoomlw.LinkRowPreference
+            android:key="notices"
+            android:summary="@string/settings_licences_note"
+            android:title="@string/settings_licences" />
 
     </PreferenceCategory>
 

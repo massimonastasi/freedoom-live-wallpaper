@@ -89,6 +89,13 @@ class OptionListPreference @JvmOverloads constructor(
     /** Called when a row is chosen, after the value is persisted. */
     var onChosen: (String) -> Unit = {}
 
+    /**
+     * A view to place inside a row, under its label, or null. The flat colours live inside
+     * the row they belong to rather than in a block beneath it, which is what the design
+     * draws and is also the only arrangement where the radio clearly owns them.
+     */
+    var extraFor: (Int) -> View? = { null }
+
     init {
         layoutResource = R.layout.preference_option_list
         isSelectable = false
@@ -145,6 +152,18 @@ class OptionListPreference @JvmOverloads constructor(
             row.findViewById<MaterialRadioButton>(R.id.row_radio).isChecked = i == chosen
             row.isActivated = i == chosen
             row.isEnabled = choosable
+
+            row.findViewById<android.widget.FrameLayout>(R.id.row_extra).apply {
+                removeAllViews()
+                val extra = extraFor(i)
+                if (extra == null) {
+                    visibility = View.GONE
+                } else {
+                    visibility = View.VISIBLE
+                    (extra.parent as? ViewGroup)?.removeView(extra)
+                    addView(extra)
+                }
+            }
 
             val icon = trailingIcon(i)
             row.findViewById<ImageButton>(R.id.row_action).apply {

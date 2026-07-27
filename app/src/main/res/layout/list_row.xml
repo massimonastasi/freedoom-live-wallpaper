@@ -52,6 +52,17 @@
             android:textColor="?attr/colorOnSurfaceVariant"
             android:visibility="gone" />
 
+        <!--
+            Anything the row carries beyond its text: today only the colour swatches, which
+            the design draws inside the "flat colour" row rather than under it.
+        -->
+        <FrameLayout
+            android:id="@+id/row_extra"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
+
     </LinearLayout>
 
     <com.google.android.material.materialswitch.MaterialSwitch

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A section header: titleSmall on colorPrimary, 16dp in, 56dp tall.
+
+    Its own layout rather than the preference library's category row. The library indents the
+    title past where an icon would be and draws it in its own weight, so on the device it came
+    out further in and heavier than the design - which puts it flush with the 16dp column that
+    every row below it uses.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@android:id/title"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:textAppearance="?attr/textAppearanceTitleSmall"
+        android:textColor="?attr/colorPrimary" />
+
+</FrameLayout>

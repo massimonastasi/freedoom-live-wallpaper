@@ -49,7 +49,7 @@
     -->
     <string name="wad_too_few">That WAD carries only %d of the creatures this wallpaper draws. It names its creatures differently, so it cannot be used.</string>
     <string name="settings_about">About</string>
-    <string name="settings_about_note">Free, no adverts, no network access, no data collected. Save applies your choices; nothing on this screen takes effect before you do. Reset puts every setting back and deletes the WAD and photo you imported.</string>
+    <string name="settings_about_note">Made by Massimo Nastasi. Free, no adverts, no network access, no data collected, and no permissions requested.\n\nThe artwork is Freedoom, by the Freedoom project. The movement, timings and creature values are taken from the engine source release by id Software, which is why this app is GPL-2.0 and its source is public. Neither project endorses or is involved in this one.\n\nThanks to everyone who kept both of those alive long enough to build on.</string>
     <string name="settings_licences">Licences and notices</string>
     <string name="settings_set_wallpaper">Set as wallpaper</string>
     <string name="licences_missing">%s could not be read. The licences it carries still apply; they are in the project repository.</string>
@@ -69,5 +69,13 @@
     <string name="settings_god_mode_note">No damage. The marine never dies, so the difficulty only ever climbs.</string>
     <string name="settings_debug">Debug mode</string>
     <string name="settings_debug_note">Top of the screen: floor, skill, wave and what the scene is doing</string>
-    <string name="settings_version">Version %s</string></resources>
+    <string name="settings_version">Version %s</string>    <string name="sprites_bundled_note">Included with the app</string>
+    <string name="sprites_size">%d KB</string>
+    <string name="wad_delete">Delete this WAD</string>
+    <string name="wad_delete_confirm">The file is removed from this app and the bundled sprites come back. Your original is untouched.</string>
+    <string name="settings_source">Source</string>
+    <string name="settings_source_note">GitHub repository</string>
+    <string name="settings_licences_note">What this app is built from, and under what terms</string>    <string name="licences_heading">Third-party notices</string>
+    <string name="licences_gpl">GNU General Public License, version 2</string>
+</resources>
 

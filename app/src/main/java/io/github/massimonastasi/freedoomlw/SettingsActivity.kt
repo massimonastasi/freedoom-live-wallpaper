@@ -21,15 +21,21 @@ package io.github.massimonastasi.freedoomlw
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceFragmentCompat
+import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import java.nio.channels.FileChannel
+import kotlin.math.abs
 
 /**
  * The settings screen, reached from the wallpaper picker's own Settings button and from the
@@ -53,9 +59,20 @@ class SettingsActivity : AppCompatActivity() {
                 .commit()
         }
 
-        findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
-        }
+        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+        toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
+
+        // The title moves into the bar as the header rolls up, rather than the bar leaving
+        // with it. The back arrow has to stay reachable at every scroll position, and once
+        // the large title is gone the bar would otherwise be an unlabelled arrow.
+        val header = findViewById<View>(R.id.header_text)
+        findViewById<AppBarLayout>(R.id.app_bar).addOnOffsetChangedListener(
+            AppBarLayout.OnOffsetChangedListener { bar, offset ->
+                val collapsed = abs(offset) >= bar.totalScrollRange - toolbar.height
+                toolbar.title = if (collapsed) getString(R.string.app_name) else null
+                header.alpha = if (collapsed) 0f else 1f
+            }
+        )
 
         // The version, under the title. Read from the package rather than written down, so it
         // cannot disagree with the build that is running.
@@ -63,6 +80,16 @@ class SettingsActivity : AppCompatActivity() {
             R.string.settings_version,
             packageManager.getPackageInfo(packageName, 0).versionName,
         )
+
+        val buttons = findViewById<ViewGroup>(R.id.button_bar)
+        // The bar sits on the very bottom of the window and keeps its own content clear of
+        // the navigation bar, rather than being pushed up by it and leaving a strip of the
+        // list showing underneath.
+        ViewCompat.setOnApplyWindowInsetsListener(buttons) { view, insets ->
+            val bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+            view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, bottom + view.paddingTop)
+            insets
+        }
 
         findViewById<MaterialButton>(R.id.set_wallpaper).setOnClickListener {
             startActivity(Intent(this, SetupActivity::class.java))
@@ -75,6 +102,8 @@ class SettingsActivity : AppCompatActivity() {
         /** The palette of whichever WAD is active, so the swatches show real colours. */
         private var palette = IntArray(256) { Color.BLACK }
 
+        private var swatches: SwatchGrid? = null
+
         private val choosePhoto = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri ?: return@registerForActivityResult
             val ok = PhotoStore.import(requireContext(), uri)
@@ -85,19 +114,36 @@ class SettingsActivity : AppCompatActivity() {
             ).show()
         }
 
+        private val chooseWad = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri ?: return@registerForActivityResult
+            val problem = WadStore.import(requireContext(), uri)
+            Toast.makeText(
+                requireContext(),
+                problem ?: getString(R.string.wad_imported),
+                Toast.LENGTH_LONG,
+            ).show()
+            if (problem == null) {
+                // A new WAD brings its own palette, so the swatches have to be re-read.
+                loadPalette()
+                Settings.of(requireContext()).edit()
+                    .putString(Settings.KEY_SPRITES, Settings.SPRITES_USER).apply()
+            }
+            showSprites()
+        }
+
         /**
          * Keeps the list clear of the buttons pinned over it.
          *
-         * The two buttons are siblings of the scrolling view, not part of it, so nothing
-         * tells the list they are there: the last section scrolled underneath them and could
-         * not be reached. Padding with clipToPadding off means the content still scrolls
-         * behind them, which is what should happen, but it can also scroll past them.
+         * The two buttons are siblings of the scrolling view, not part of it, so nothing tells
+         * the list they are there: the last section scrolled underneath them and could not be
+         * reached. Padding with clipToPadding off means the content still scrolls behind them,
+         * which is what should happen, but it can also scroll past them.
          */
-        override fun onViewCreated(view: android.view.View, savedInstanceState: Bundle?) {
+        override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             super.onViewCreated(view, savedInstanceState)
             val density = resources.displayMetrics.density
             listView.clipToPadding = false
-            listView.setPadding(0, 0, 0, (160 * density).toInt())
+            listView.setPadding(0, 0, 0, (176 * density).toInt())
         }
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -105,12 +151,10 @@ class SettingsActivity : AppCompatActivity() {
             setPreferencesFromResource(R.xml.settings, rootKey)
             loadPalette()
 
-            findPreference<SwatchListPreference>(Settings.KEY_BACKGROUND_COLOUR)?.colourOf = {
-                palette[it.coerceIn(0, 255)]
-            }
-
             findPreference<OptionListPreference>(Settings.KEY_BACKGROUND)?.apply {
-                // Only the photo row carries a button, and it does the same thing as choosing
+                // The swatches belong inside the flat-colour row, not in a block under it.
+                extraFor = { i -> if (i == COLOUR_ROW) swatchGrid() else null }
+                // Only the photo row carries a chevron, and it does the same thing as choosing
                 // the row: picking "Image" with no image behind it would show nothing.
                 trailingIcon = { i -> if (i == PHOTO_ROW) R.drawable.ic_chevron else 0 }
                 onTrailing = { choosePhoto.launch(arrayOf("image/*")) }
@@ -120,6 +164,89 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 }
             }
+
+            findPreference<ButtonPreference>(Settings.KEY_WAD)?.setOnPreferenceClickListener {
+                chooseWad.launch(arrayOf("*/*")); true
+            }
+
+            findPreference<LinkRowPreference>(Settings.KEY_NOTICES)?.setOnPreferenceClickListener {
+                startActivity(Intent(requireContext(), LicencesActivity::class.java)); true
+            }
+
+            // Hidden rather than pointed at nothing: the repository is not public yet, and a
+            // row that opens a 404 is worse than a row that is not there.
+            findPreference<LinkRowPreference>(Settings.KEY_SOURCE)?.isVisible = false
+
+            showSprites()
+        }
+
+        /** The sprite sets on disk: the bundled one, plus an imported WAD if there is one. */
+        private fun showSprites() {
+            val context = requireContext()
+            val user = WadStore.active(context)
+            findPreference<OptionListPreference>(Settings.KEY_SPRITES)?.apply {
+                if (user == null) {
+                    setOptions(
+                        arrayOf(getString(R.string.sprites_bundled)),
+                        arrayOf(Settings.SPRITES_BUNDLED),
+                        arrayOf(getString(R.string.sprites_bundled_note)),
+                    )
+                    // One option is not a choice: shown, so it is clear what is in use, but
+                    // not offered as if something could be picked.
+                    choosable = false
+                    trailingIcon = { 0 }
+                } else {
+                    // Named, not described: someone who has imported more than one over a week
+                    // needs to see which file is in, and "your own WAD" answers no question.
+                    val label = WadStore.name(context) ?: getString(R.string.wad_unnamed)
+                    setOptions(
+                        arrayOf(getString(R.string.sprites_bundled), label),
+                        arrayOf(Settings.SPRITES_BUNDLED, Settings.SPRITES_USER),
+                        arrayOf(
+                            getString(R.string.sprites_bundled_note),
+                            getString(R.string.sprites_size, user.length() / 1024),
+                        ),
+                    )
+                    choosable = true
+                    // Only the imported row can be deleted. The bundled set came with the app.
+                    trailingIcon = { i -> if (i == 1) R.drawable.ic_delete else 0 }
+                    onTrailing = { confirmDeleteWad() }
+                }
+            }
+        }
+
+        private fun confirmDeleteWad() {
+            AlertDialog.Builder(requireContext())
+                .setTitle(R.string.wad_delete)
+                .setMessage(R.string.wad_delete_confirm)
+                .setPositiveButton(R.string.wad_delete) { _, _ ->
+                    WadStore.clear(requireContext())
+                    Settings.of(requireContext()).edit()
+                        .putString(Settings.KEY_SPRITES, Settings.SPRITES_BUNDLED).apply()
+                    loadPalette()
+                    swatches = null
+                    preferenceScreen = null
+                    onCreatePreferences(null, null)
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+
+        private fun swatchGrid(): SwatchGrid {
+            swatches?.let { return it }
+            val prefs = Settings.of(requireContext())
+            val grid = SwatchGrid(
+                requireContext(),
+                resources.getTextArray(R.array.palette_labels),
+                resources.getTextArray(R.array.palette_values),
+            )
+            grid.colourOf = { palette[it.coerceIn(0, 255)] }
+            grid.onChosen = { value ->
+                prefs.edit().putString(Settings.KEY_BACKGROUND_COLOUR, value).apply()
+            }
+            grid.show(prefs.getString(Settings.KEY_BACKGROUND_COLOUR, "0"))
+            swatches = grid
+            return grid
         }
 
         /**
@@ -137,6 +264,7 @@ class SettingsActivity : AppCompatActivity() {
                     WadStore.clear(requireContext())
                     PhotoStore.clear(requireContext())
                     loadPalette()
+                    swatches = null
                     // Rebuilt rather than refreshed: every row's value has changed underneath
                     // the views, and re-inflating is the honest way to show that.
                     preferenceScreen = null
@@ -168,8 +296,9 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         private companion object {
-            /** Index of "Image" in background_labels. */
+            /** Indices into background_labels. */
             const val PHOTO_ROW = 1
+            const val COLOUR_ROW = 2
         }
     }
 }
