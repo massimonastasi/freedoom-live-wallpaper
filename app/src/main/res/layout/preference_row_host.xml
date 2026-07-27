@@ -8,7 +8,13 @@
     and this - which is why every custom preference layout here wraps its content.
 
     The inset and the 1dp gap live here so a lone switch row lines up with a group of radio
-    rows above it, which get theirs from their own container.
+    rows above it, which get theirs from their own container. It also carries the group's
+    16dp corners, because a row on its own is still a group of one.
+
+    Not the same thing as the design, and worth saying: there the three switches are a single
+    List, one rounded container holding three square rows. Three separate preferences cannot
+    be one container, so they are three containers of one. Matching it needs a preference that
+    holds all three rows itself.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -21,6 +27,8 @@
     <FrameLayout
         android:id="@+id/row_host"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:background="@drawable/list_group_background"
+        android:clipToOutline="true" />
 
 </FrameLayout>

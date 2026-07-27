@@ -24,7 +24,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.ImageButton
+import com.google.android.material.button.MaterialButton
 import android.widget.TextView
 import androidx.preference.Preference
 import androidx.preference.PreferenceViewHolder
@@ -59,9 +59,9 @@ class LinkRowPreference @JvmOverloads constructor(
             text = summary
             visibility = if (summary.isNullOrEmpty()) View.GONE else View.VISIBLE
         }
-        row.findViewById<ImageButton>(R.id.row_action).apply {
+        row.findViewById<MaterialButton>(R.id.row_action).apply {
             visibility = View.VISIBLE
-            setImageResource(R.drawable.ic_chevron)
+            setIconResource(R.drawable.ic_chevron)
             // Not separately clickable: it points, the row acts.
             isClickable = false
             isFocusable = false
