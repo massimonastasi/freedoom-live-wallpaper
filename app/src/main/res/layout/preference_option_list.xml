@@ -2,23 +2,27 @@
 <!--
     The container for a list of option rows.
 
-    The wrapper is not decoration: PreferenceViewHolder looks its ids up beneath the row's
-    view, so a container used as the layout root is not found and the bind crashes - measured
-    once already, on the radio list.
+    The outer wrapper is not decoration: PreferenceViewHolder looks its ids up beneath the
+    row's view, so a container used as the layout root is not found and the bind crashes -
+    measured once already, on the radio list.
 
-    16dp inset on the group and a 2dp gap between rows, which is what makes a "segmented"
-    list read as separate filled shapes rather than one block.
+    16dp inset, a 2dp gap between rows, and the group's own 16dp corners with its children
+    clipped to them. The corners belong to the group, not to each row: the design's List is
+    one rounded container holding square rows, and rounding every row - which is what this
+    did - read as a stack of separate cards rather than a single control.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp">
 
     <LinearLayout
         android:id="@+id/option_rows"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp" />
+        android:background="@drawable/list_group_background"
+        android:clipToOutline="true"
+        android:orientation="vertical" />
 
 </FrameLayout>

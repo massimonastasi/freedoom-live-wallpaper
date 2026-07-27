@@ -24,7 +24,7 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageButton
+import com.google.android.material.button.MaterialButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.preference.Preference
@@ -166,12 +166,12 @@ class OptionListPreference @JvmOverloads constructor(
             }
 
             val icon = trailingIcon(i)
-            row.findViewById<ImageButton>(R.id.row_action).apply {
+            row.findViewById<MaterialButton>(R.id.row_action).apply {
                 if (icon == 0) {
                     visibility = View.GONE
                 } else {
                     visibility = View.VISIBLE
-                    setImageResource(icon)
+                    setIconResource(icon)
                     setOnClickListener { onTrailing(i) }
                 }
             }
