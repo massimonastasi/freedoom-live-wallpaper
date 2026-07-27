@@ -1,24 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    One row of a list. Square, because the corners belong to the group: the design's List is a
-    single container with a 16dp radius that clips its children, and the rows inside it are
-    separated by a 2dp gap rather than each being its own rounded shape. Rounding every row
-    was mine, and it read as a stack of separate cards instead of one control.
-
-    surface for a row at rest and secondaryContainer for the chosen one, which is what the
-    component's tokens say - the rows are darker than the section behind them, not lighter.
+    A row of a "segmented (filled)" list: each row is its own filled shape with a gap to the
+    next, and the selected one is tinted.
 
     state_activated rather than state_selected: selected is a transient touch state on
     Android, activated is the persistent "this is the chosen one" that a radio row needs.
+
+    A uniform corner radius rather than larger corners on the first and last row. The design
+    rounds the ends of the group more than its middle; doing that needs the row to know where
+    it sits in the group, which is state the preference framework does not carry. One radius
+    for every row is the honest simplification - it reads as the same component and cannot go
+    wrong when rows appear and disappear, which they do here.
 -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item android:state_activated="true">
-        <color android:color="?attr/colorSecondaryContainer" />
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorSecondaryContainer" />
+            <corners android:radius="12dp" />
+        </shape>
     </item>
 
     <item>
-        <color android:color="?attr/colorSurface" />
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorSurfaceContainerHighest" />
+            <corners android:radius="12dp" />
+        </shape>
     </item>
 
 </selector>
