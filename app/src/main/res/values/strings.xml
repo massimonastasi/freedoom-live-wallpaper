@@ -3,7 +3,6 @@
     <string name="wallpaper_description">An endless battle on your home screen. Freedoom sprites, original timing, minimal battery use.</string>
     <string name="no_wallpaper_picker">This device has no live wallpaper picker. Set it from Settings, Wallpaper.</string>
 
-    <string name="settings_frame_rate">Frame rate</string>
     <!--
         No %s here. It was added when this was a ListPreference, which substitutes the chosen
         entry into its summary because the row is all the user can see. The radios show the
@@ -11,29 +10,16 @@
         the placeholder was being printed literally, since a plain Preference does not
         substitute anything.
     -->
-    <string name="settings_frame_rate_note">The scene always thinks at the original 35 steps a second. This is only how often it is drawn, and it is the one setting that changes battery use.</string>
     <string name="settings_background">Background</string>
-    <string name="settings_background_photo">Choose the photo</string>
-    <string name="settings_background_colour">Flat colour</string>
-    <string name="settings_background_photo_none">No photo chosen yet.</string>
-    <string name="settings_background_photo_set">A photo is in use. Tap to choose another.</string>
     <string name="photo_unreadable">That image could not be read.</string>
     <string name="wad_undecodable">That WAD names the right sprites but none of them could be read.</string>
-    <string name="settings_scene">Scene</string>
     <string name="settings_readout">Show health and armour</string>
     <string name="settings_sprites">Sprites</string>
     <string name="sprites_bundled">Freedoom (included)</string>
-    <string name="sprites_user">%1$s — %2$d KB</string>
     <string name="wad_unnamed">Imported WAD</string>
-    <string name="settings_save">Save</string>
-    <string name="settings_saved">Saved.</string>
     <string name="settings_reset">Reset everything</string>
     <string name="settings_reset_confirm">This puts every setting back and deletes the WAD and photo you imported. It cannot be undone.</string>
     <string name="settings_reset_done">Everything is back to how it started.</string>
-    <string name="settings_unsaved_title">Unsaved changes</string>
-    <string name="settings_unsaved_message">You have changed settings that have not been saved yet.</string>
-    <string name="settings_discard">Discard</string>
-    <string name="settings_keep_editing">Keep editing</string>
     <string name="photo_imported">Photo loaded.</string>
     <string name="settings_wad">Use your own WAD</string>
     <string name="settings_wad_note">Point this at an IWAD you already own and its sprites, palette, floors and numerals replace the bundled ones. The file is copied into this app and never leaves your device.</string>
@@ -57,10 +43,6 @@
         One label for every accordion header, because the header is not the content: it says
         that there is more, and the section title above it already says what about.
     -->
-    <string name="settings_details">Details</string>
-    <string name="accordion_expand">%s, show</string>
-    <string name="accordion_collapse">%s, hide</string>
-    <string name="settings_background_note">The dynamic background is one of the WAD\'s own floors, chosen per skill level. A photo or a flat colour replaces it entirely, and the palette offered is the active WAD\'s, not a generic one.</string>
     <!-- Section one: everything that changes what you see. -->
     <string name="settings_visual">Visual settings</string>
     <string name="settings_visual_note">The scene always thinks at the original 35 steps a second. The frame rate is only how often it is drawn, and it is the one setting here that changes battery use.</string>
@@ -73,10 +55,18 @@
     <string name="sprites_size">%d KB</string>
     <string name="wad_delete">Delete this WAD</string>
     <string name="wad_delete_confirm">The file is removed from this app and the bundled sprites come back. Your original is untouched.</string>
-    <string name="settings_source">Source</string>
-    <string name="settings_source_note">GitHub repository</string>
     <string name="settings_licences_note">What this app is built from, and under what terms</string>    <string name="licences_heading">Third-party notices</string>
     <string name="licences_gpl">GNU General Public License, version 2</string>
-    <string name="settings_about_note_versioned">%1$s\n\nVersion %2$s</string>
+    <!-- The three the draw loop offers, ascending: left to right means less to more. -->
+    <string name="fps_10">10 fps</string>
+    <string name="fps_15">15 fps</string>
+    <string name="fps_20">20 fps</string>
+
+    <string name="background_floor">Dungeon floor</string>
+    <string name="background_floor_note">Changes with the difficulty</string>
+    <string name="background_colour">Flat colour</string>
+    <string name="background_colour_note">From the palette of the WAD in use</string>
+    <string name="background_photo">Image</string>
+    <string name="background_photo_note">From your device</string>
 </resources>
 

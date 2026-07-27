@@ -1,25 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The settings screen: a fixed header, the list scrolling over it, and two buttons pinned at
-    the bottom.
+    The settings screen, whole, in one layout file.
 
-    The header does not move. It sits at the back and the list slides up over it, so the title
-    stays where it is and is covered rather than carried away. That is why this is a plain
-    layered frame rather than an AppBarLayout: a collapsing header moves its own content,
-    which is the opposite of what is wanted here - and it was also measured, repeatedly,
-    giving the title block less height than it asked for whatever the header was set to.
+    This is the point of it: the page is a layout rather than a res/xml preference screen, so
+    Android Studio draws all of it in Split view and it can be corrected by looking instead of
+    by installing. Every control here is a Material 3 widget - MaterialToolbar, the segmented
+    MaterialButtonToggleGroup, MaterialSwitch, MaterialRadioButton, MaterialButton. The only
+    hand-assembled piece is the list row, because Material 3 for Views has no ListItem.
 
-    The back arrow is drawn above everything, so it is reachable at every scroll position.
-
-    The buttons are outside the scrolling view on purpose. They are the two things that act on
-    everything above them, and a button you have to scroll to find is a button that gets
-    missed.
+    Layers, bottom to top: the header, the scrolling page over it, the toolbar, the buttons.
+    The header does not move - the page slides up over it, so the title stays where it is and
+    is covered rather than carried away.
 -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    tools:context=".SettingsActivity">
 
     <FrameLayout
         android:id="@+id/header"
@@ -55,7 +54,6 @@
             android:paddingBottom="16dp">
 
             <TextView
-                android:id="@+id/header_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/app_name"
@@ -69,16 +67,199 @@
                 android:alpha="0.8"
                 android:maxLines="1"
                 android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                android:textColor="@android:color/white" />
+                android:textColor="@android:color/white"
+                tools:text="Version 0.1" />
 
         </LinearLayout>
 
     </FrameLayout>
 
-    <FrameLayout
-        android:id="@+id/settings_container"
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/page"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingTop="@dimen/header_height">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/colorSurfaceContainer"
+            android:orientation="vertical">
+
+            <!-- ============================================= Visual settings -->
+
+            <TextView
+                style="@style/SectionHeader"
+                android:text="@string/settings_visual" />
+
+            <TextView
+                style="@style/SectionParagraph"
+                android:text="@string/settings_visual_note" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/fps_group"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="16dp"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/fps_10"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="@string/fps_10" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/fps_15"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="@string/fps_15" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/fps_20"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="@string/fps_20" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <!--
+                One List: a rounded container that clips three square rows with a 2dp gap, as
+                the design draws it. The corners belong to the group, not to each row.
+            -->
+            <LinearLayout
+                style="@style/ListGroup"
+                android:id="@+id/switch_group">
+
+                <include
+                    android:id="@+id/row_readout"
+                    layout="@layout/list_row" />
+
+                <include
+                    android:id="@+id/row_god"
+                    layout="@layout/list_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" />
+
+                <include
+                    android:id="@+id/row_debug"
+                    layout="@layout/list_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+            <!-- ================================================== Background -->
+
+            <TextView
+                style="@style/SectionHeader"
+                android:text="@string/settings_background" />
+
+            <LinearLayout style="@style/ListGroup">
+
+                <include
+                    android:id="@+id/row_floor"
+                    layout="@layout/list_row" />
+
+                <include
+                    android:id="@+id/row_colour"
+                    layout="@layout/list_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" />
+
+                <include
+                    android:id="@+id/row_photo"
+                    layout="@layout/list_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+            <!-- ===================================================== Sprites -->
+
+            <TextView
+                style="@style/SectionHeader"
+                android:text="@string/settings_sprites" />
+
+            <TextView
+                style="@style/SectionParagraph"
+                android:text="@string/settings_wad_note" />
+
+            <LinearLayout style="@style/ListGroup">
+
+                <include
+                    android:id="@+id/row_bundled"
+                    layout="@layout/list_row" />
+
+                <!-- Shown only once a WAD has been imported. -->
+                <include
+                    android:id="@+id/row_wad"
+                    layout="@layout/list_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/import_wad"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:layout_gravity="end"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/settings_wad" />
+
+            <!-- ======================================================= About -->
+
+            <TextView
+                style="@style/SectionHeader"
+                android:text="@string/settings_about" />
+
+            <TextView
+                android:id="@+id/about_note"
+                style="@style/SectionParagraph"
+                android:text="@string/settings_about_note" />
+
+            <LinearLayout style="@style/ListGroup">
+
+                <include
+                    android:id="@+id/row_licences"
+                    layout="@layout/list_row" />
+
+            </LinearLayout>
+
+            <!-- Clears the pinned buttons, which are not part of this scrolling page. -->
+            <Space
+                android:id="@+id/bottom_spacer"
+                android:layout_width="match_parent"
+                android:layout_height="176dp" />
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"

@@ -8,42 +8,51 @@
         DayNight because forcing a light screen on someone who chose dark is the one theming
         decision users notice immediately.
 
-        NoActionBar: the bar is a MaterialToolbar inside the layout instead. The window one
-        was drawn over the list rather than above it, which put the first category header
-        underneath the title.
+        NoActionBar: the bar is a MaterialToolbar inside the layout instead.
 
-        preferenceTheme is required: without it androidx.preference falls back to its own
-        pre-Material styling and the rows do not match anything around them.
+        No preference library underneath any more. The screen is a plain layout of Material 3
+        widgets, so there is one styling system rather than two arguing with each other.
     -->
-    <style name="AppTheme" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
-        <item name="preferenceTheme">@style/AppPreferenceTheme</item>
-    </style>
-
+    <style name="AppTheme" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar" />
 
     <!--
-        Section headers to the Material 3 list spec: titleSmall on colorPrimary. The library's
-        own default is a small grey label, which reads as disabled text rather than as a
-        heading. The colour is the dynamic primary, so it still follows the system palette.
+        A section header: titleSmall on colorPrimary, 56dp tall, flush with the 16dp column
+        the rows below it use. Taken from the design's own Section header building block.
     -->
-    <style name="AppPreferenceTheme" parent="@style/PreferenceThemeOverlay">
-        <item name="preferenceCategoryTitleTextAppearance">?attr/textAppearanceTitleSmall</item>
-        <item name="preferenceCategoryTitleTextColor">?attr/colorPrimary</item>
-    </style>
-
-    <!--
-        One radio option, to the Material 3 radio-button spec: a 56dp list item, the label in
-        bodyLarge on onSurface, and a 16dp gap between the control and its label. The 20dp
-        control and its 48dp touch target come from MaterialRadioButton itself, which is the
-        reason the rows are built from that class rather than from android.widget.RadioButton.
-
-        The state list colour is not set here. Material3 already tints the control with
-        colorPrimary when selected and onSurfaceVariant when not, and restating it would be
-        the one place dynamic colour stopped following the system.
-    -->    <style name="RadioRow" parent="Widget.Material3.CompoundButton.RadioButton">
-        <item name="android:minHeight">56dp</item>
+    <style name="SectionHeader">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">56dp</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:paddingStart">16dp</item>
-        <item name="android:textAppearance">?attr/textAppearanceBodyLarge</item>
-        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+    </style>
+
+    <!-- The explanation under a section header. -->
+    <style name="SectionParagraph">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:paddingBottom">16dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceBodyMedium</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+    </style>
+
+    <!--
+        A List: one rounded container that clips its rows. The corners belong to the group,
+        not to each row - the design draws square rows inside a 16dp container, and rounding
+        every row reads as a stack of separate cards instead of a single control.
+    -->
+    <style name="ListGroup">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">16dp</item>
+        <item name="android:layout_marginEnd">16dp</item>
+        <item name="android:layout_marginBottom">16dp</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:background">@drawable/list_group_background</item>
+        <item name="android:clipToOutline">true</item>
     </style>
 </resources>

@@ -52,7 +52,6 @@ android {
 // Canvas are platform classes, and no dependency here is reachable from the draw loop.
 // These serve the settings screen, which needs a preference list and a document picker.
 dependencies {
-    implementation("androidx.preference:preference:1.2.1")
     // Material 3 for the settings screen only. minSdk 31 means dynamic colour is always
     // available, so the screen takes the system's palette rather than carrying its own.
     implementation("com.google.android.material:material:1.12.0")

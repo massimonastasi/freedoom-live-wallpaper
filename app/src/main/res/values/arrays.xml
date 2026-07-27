@@ -1,44 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-        Only rates the draw loop actually offers, in ascending order: they are drawn as a
-        segmented button now, and left-to-right should mean less-to-more. Measured on a
-        Pixel 6a: 20 fps costs 12.0% of one core and 10 fps costs 9.2%, so the saving is real
-        but not proportional - there is a fixed cost per frame that does not scale with rate.
-    -->
-    <string-array name="fps_labels">
-        <item>10 fps</item>
-        <item>15 fps</item>
-        <item>20 fps</item>
-    </string-array>
-
-    <string-array name="fps_values">
-        <item>10</item>
-        <item>15</item>
-        <item>20</item>
-    </string-array>
-
-    <!-- Label and supporting line are separate: a list item draws them differently. -->
-    <string-array name="background_labels">
-        <item>Dungeon floor</item>
-        <item>Flat colour</item>
-        <item>Image</item>
-    </string-array>
-
-    <string-array name="background_captions">
-        <item>Changes with the difficulty</item>
-        <item>From the palette of the WAD in use</item>
-        <item>From your device</item>
-    </string-array>
-
-    <!-- The stored values are unchanged, so a setting made before this reorder still reads. -->
-    <string-array name="background_values">
-        <item>dynamic</item>
-        <item>colour</item>
-        <item>photo</item>
-    </string-array>
-
-    <!--
         Palette indices, not colour values: the colour follows whichever WAD is loaded.
         Ten of them, drawn as two rows of five.
 

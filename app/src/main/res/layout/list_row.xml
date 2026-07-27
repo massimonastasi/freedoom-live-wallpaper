@@ -1,23 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    One row of a Material 3 list: an optional leading control, a label with an optional
-    supporting line, and an optional trailing control.
+    One Material 3 list item.
 
-    Measured off the design''s own list item rather than estimated: on a 340dp row the content
-    starts at 16, is 244 wide, and the trailing element starts at 272 - so the text and the
-    control are 12dp apart, and the text sits 10dp from the top and bottom of a 64dp row.
+    Material 3 has no List or ListItem widget for Views - it is a specification, not a
+    component, unlike Compose where ListItem exists. So this is the one thing on the screen
+    that has to be assembled by hand, and everything inside it is a real M3 widget.
 
-    The 12dp was missing entirely, which is why a two-line supporting text ran into the
-    switch beside it. minHeight rather than a fixed height, because two lines of bodyLarge
-    plus bodyMedium is taller than 64 and a row that clips its own text is worse than a row
-    that grows.
+    Measured off the design's own item rather than estimated: on a 340dp row the content
+    starts at 16 and is 244 wide, and the trailing element starts at 272 - so 12dp between
+    the text and the control, and the text sits 10dp from the top and bottom of a 64dp row.
 
-    Every variant on this screen is this one layout with pieces hidden - a radio row, a switch
-    row, a row that opens something else. Three layouts that differ by which child is visible
-    would be three places to change a padding.
+    minHeight rather than a fixed height, because two lines of bodyLarge plus bodyMedium is
+    taller than 64 and a row that clips its own text is worse than one that grows.
+
+    Pulled in with <include> wherever a row is needed, so there is one row in the project and
+    the sections cannot drift apart.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/list_row_background"
@@ -50,7 +51,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:textColor="?attr/colorOnSurface" />
+            android:textColor="?attr/colorOnSurface"
+            tools:text="Dungeon floor" />
 
         <TextView
             android:id="@+id/row_caption"
@@ -58,12 +60,11 @@
             android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:visibility="gone" />
+            android:visibility="gone"
+            tools:text="Changes with the difficulty"
+            tools:visibility="visible" />
 
-        <!--
-            Anything the row carries beyond its text: today only the colour swatches, which
-            the design draws inside the "flat colour" row rather than under it.
-        -->
+        <!-- Anything the row carries beyond its text: the colour swatches live in theirs. -->
         <FrameLayout
             android:id="@+id/row_extra"
             android:layout_width="wrap_content"
