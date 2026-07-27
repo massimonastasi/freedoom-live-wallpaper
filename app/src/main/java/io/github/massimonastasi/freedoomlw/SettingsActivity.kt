@@ -184,7 +184,16 @@ class SettingsActivity : AppCompatActivity() {
             grid.colourOf = { palette[it.coerceIn(0, 255)] }
             grid.onChosen = { prefs.edit().putString(Settings.KEY_BACKGROUND_COLOUR, it).apply() }
             grid.show(prefs.getString(Settings.KEY_BACKGROUND_COLOUR, "0"))
-            extra.addView(grid)
+            // match_parent, so the grid has a width of its own before it has any children.
+            // Sizing the swatches from the grid's own wrapped width could never settle: the
+            // width came from the children and the children came from the width.
+            extra.addView(
+                grid,
+                android.widget.FrameLayout.LayoutParams(
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                ),
+            )
         }
         extra.visibility = View.VISIBLE
 

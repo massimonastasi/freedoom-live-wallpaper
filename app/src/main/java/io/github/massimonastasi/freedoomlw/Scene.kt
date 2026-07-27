@@ -976,7 +976,7 @@ class Scene(
         }
 
         target.health -= amount
-        spawnBlood(target.x, target.y)
+        spawnBlood(target.x, target.y - MUZZLE_HEIGHT * FRACUNIT)
 
         if (target.health <= 0) {
             target.dead = true
@@ -1260,6 +1260,18 @@ class Scene(
          * and the monsters softened to match. The marine's own 100 is untouched: it is
          * MAXHEALTH, and it is what the readout shows.
          */
+        /**
+         * How far above an actor's feet a shot leaves it, and where blood appears when one
+         * lands. In map units.
+         *
+         * An actor's position is its anchor, which is where it stands: sprites are drawn
+         * upwards from there. Firing from that point put every fireball on the floor. This is
+         * roughly the chest of the marine, whose sprite stands about 100 units tall at the
+         * scale the scene draws - the creatures vary, but they all fire from the same third
+         * of their height, so one number reads correctly for all of them.
+         */
+        const val MUZZLE_HEIGHT = 34
+
         const val MONSTER_HEALTH = 35
 
         /**

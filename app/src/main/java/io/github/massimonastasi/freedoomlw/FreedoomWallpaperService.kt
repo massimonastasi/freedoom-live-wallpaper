@@ -33,9 +33,11 @@ import android.os.Looper
 import android.os.PowerManager
 import android.service.wallpaper.WallpaperService
 import android.util.Log
+import android.view.MotionEvent
 import android.view.Surface
 import android.view.SurfaceHolder
 import java.nio.channels.FileChannel
+import kotlin.math.abs
 
 /** The original engine runs at 35 tics per second. All game logic advances at that rate, always. */
 const val TICRATE = 35
@@ -287,15 +289,25 @@ class FreedoomWallpaperService : WallpaperService() {
         private val prefs = Settings.of(this@FreedoomWallpaperService)
         private var chosenFps = Settings.DEFAULT_FPS
         private var readoutVisible = true
+        private var debugVisible = false
+
+        /** Where the finger went down, and when a launcher command last arrived. */
+        private var downX = 0f
+        private var downY = 0f
+        private var lastCommandAt = 0L
 
         override fun onCreate(holder: SurfaceHolder) {
             super.onCreate(holder)
             setOffsetNotificationsEnabled(true)
-            // Deliberately left off even though the wallpaper now reacts to taps. Raw touch
-            // delivery would wake this process for every finger movement anywhere on the
-            // home screen; the launcher already sends a single WALLPAPER_TAP command for
-            // the gesture we care about, through onCommand, at no cost.
-            setTouchEventsEnabled(false)
+            // On, because the launcher's command cannot be relied on. WALLPAPER_TAP is sent
+            // at the launcher's discretion, and a device whose home screen claims the tap
+            // for itself - a Galaxy with double-tap-to-sleep, for one - never forwards it,
+            // so nothing was ever dropped there.
+            //
+            // The cost this was avoiding is real: raw delivery wakes this process for every
+            // finger movement on the home screen. onTouchEvent therefore does the least it
+            // can - it looks at UP alone and ignores the rest.
+            setTouchEventsEnabled(true)
         }
 
         /**
@@ -312,16 +324,53 @@ class FreedoomWallpaperService : WallpaperService() {
             extras: android.os.Bundle?,
             resultRequested: Boolean,
         ): android.os.Bundle? {
+            lastCommandAt = android.os.SystemClock.uptimeMillis()
+            tapWorld(x, y, action)
+            return super.onCommand(action, x, y, z, extras, resultRequested)
+        }
+
+        /** Screen pixels to map units, then on to whichever of the two gestures it was. */
+        private fun tapWorld(x: Int, y: Int, action: String?) {
             val s = scene
             if (s != null) {
-                val wx = (x / PX_PER_UNIT * GameData.FRACUNIT).toInt()
-                val wy = (y / PX_PER_UNIT * GameData.FRACUNIT).toInt()
+                // pxPerUnit, not PX_PER_UNIT. The world is sized with the density-scaled
+                // factor, so dividing the touch point by the bare constant lands it off by
+                // exactly the density ratio - which on a device whose density differs from
+                // the reference put every dropped item down and to the right of the finger,
+                // by a little on a close density and by a lot on a far one.
+                val wx = (x / pxPerUnit * GameData.FRACUNIT).toInt()
+                val wy = (y / pxPerUnit * GameData.FRACUNIT).toInt()
                 when (action) {
                     WALLPAPER_TAP -> s.tapAt(wx, wy)
                     HOME_DROP -> s.dropAt(wx, wy)
                 }
             }
-            return super.onCommand(action, x, y, z, extras, resultRequested)
+        }
+
+        /**
+         * A tap the launcher did not forward.
+         *
+         * Only ACTION_UP, and only when the finger barely moved: anything else is a scroll or
+         * a long press that belongs to the launcher, not to us.
+         *
+         * A device that does send WALLPAPER_TAP would otherwise drop twice for one tap, so a
+         * command seen recently suppresses the touch that follows it.
+         */
+        override fun onTouchEvent(event: MotionEvent) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.x
+                    downY = event.y
+                }
+                MotionEvent.ACTION_UP -> {
+                    val moved = abs(event.x - downX) + abs(event.y - downY)
+                    val duplicate = event.eventTime - lastCommandAt < COMMAND_WINDOW_MS
+                    if (moved <= TAP_SLOP && !duplicate) {
+                        tapWorld(event.x.toInt(), event.y.toInt(), WALLPAPER_TAP)
+                    }
+                }
+            }
+            super.onTouchEvent(event)
         }
 
         override fun onOffsetsChanged(
@@ -351,6 +400,10 @@ class FreedoomWallpaperService : WallpaperService() {
         private fun applySettings() {
             chosenFps = Settings.fps(prefs)
             readoutVisible = Settings.readout(prefs)
+            debugVisible = Settings.debug(prefs)
+            // The scene owns the flag; this is the only place that tells it. Without this the
+            // setting was stored and never read, so god mode did nothing at all.
+            scene?.invulnerable = Settings.godMode(prefs)
 
             // A different WAD means every sprite, colour and floor is different, so the
             // shader built from the old tiles has to go with them.
@@ -585,8 +638,10 @@ class FreedoomWallpaperService : WallpaperService() {
         /**
          * Debug overlay: the flat in use top left, the skill and wave top right.
          *
-         * Present only in debug builds, gated on BuildConfig.DEBUG rather than on a constant
-         * someone has to remember to flip, so it cannot reach a release APK. It draws with
+         * Shown when the Debug mode setting is on. It used to be gated on BuildConfig.DEBUG,
+         * which meant the switch existed in the release build and could never do anything -
+         * the overlay was compiled out of the very build people were toggling it in. It draws
+         * with
          * the platform font instead of the WAD numerals: those cover the ten digits and
          * nothing else, and this needs letters.
          */
@@ -602,7 +657,7 @@ class FreedoomWallpaperService : WallpaperService() {
         private var debugWave = -1
 
         private fun drawDebug(canvas: Canvas, s: Scene) {
-            if (!BuildConfig.DEBUG) return
+            if (!debugVisible) return
 
             if (s.skill != debugSkill || s.wave != debugWave) {
                 debugSkill = s.skill
@@ -834,5 +889,11 @@ class FreedoomWallpaperService : WallpaperService() {
         /** Commands the launcher sends to the wallpaper. */
         const val WALLPAPER_TAP = "android.wallpaper.tap"
         const val HOME_DROP = "android.home.drop"
+
+        /** How far a finger may travel and still count as a tap, in pixels. */
+        const val TAP_SLOP = 24f
+
+        /** A touch this soon after a launcher command is the same gesture arriving twice. */
+        const val COMMAND_WINDOW_MS = 400L
     }
 }

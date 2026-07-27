@@ -47,16 +47,38 @@ class SwatchGrid(
 
     private var current: String? = null
 
+    /** The swatch size the rows were last built at, so a relayout only rebuilds on a change. */
+    private var builtAt = 0
+
     init {
         columnCount = COLUMNS
+        // The size of a swatch is a share of the width the row leaves, which is not known
+        // until the row has been measured - and measuring it depends on the children, so
+        // asking for it before building them can never settle. The rows are therefore built
+        // straight away at the largest size, and rebuilt if the width turns out to be smaller.
+        //
+        // That is what fixes the fifth swatch of each line falling off the right edge of the
+        // card on a screen narrower than the one the fixed 40dp was chosen on.
+        addOnLayoutChangeListener { _, left, _, right, _, _, _, _, _ ->
+            if (right - left > 0 && sizeFor(right - left) != builtAt) show(current)
+        }
+    }
+
+    /** A share of the available width, never bigger than the design's swatch. */
+    private fun sizeFor(available: Int): Int {
+        val dp = resources.displayMetrics.density
+        val gap = (8 * dp).toInt()
+        return ((available - gap * (COLUMNS - 1)) / COLUMNS)
+            .coerceIn((20 * dp).toInt(), (40 * dp).toInt())
     }
 
     fun show(chosen: String?) {
         current = chosen
         removeAllViews()
         val dp = resources.displayMetrics.density
-        val size = (40 * dp).toInt()
         val gap = (8 * dp).toInt()
+        val size = sizeFor(if (width > 0) width else Int.MAX_VALUE)
+        builtAt = size
 
         labels.forEachIndexed { i, label ->
             val value = values.getOrNull(i)?.toString() ?: return@forEachIndexed
@@ -83,10 +105,12 @@ class SwatchGrid(
                     }
                 }
             }
+            // No trailing margin on the last of a row, which is what pushed the group past
+            // the width it was given.
             addView(swatch, LayoutParams().apply {
                 width = size
                 height = size
-                setMargins(0, 0, gap, gap)
+                setMargins(0, 0, if (i % COLUMNS == COLUMNS - 1) 0 else gap, gap)
             })
         }
     }

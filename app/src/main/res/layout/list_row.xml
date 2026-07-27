@@ -102,6 +102,7 @@
         <ImageView
             android:id="@+id/row_icon"
             style="@style/Widget.Material3.ImageView.ListItem.TrailingIcon"
+            android:contentDescription="@null"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:duplicateParentState="true"

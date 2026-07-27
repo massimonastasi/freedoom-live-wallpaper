@@ -4,8 +4,23 @@ An Android live wallpaper: an endless battle on your home screen, with movement 
 animation timings taken from the original engine source. Free, no ads, no permissions, no
 network access.
 
-**Status**: phases 1-4 of 11 complete, plus waves, weapons, armour and pickups.
-Details and next steps in [docs/STATUS.md](docs/STATUS.md).
+## Where it comes from
+
+The idea comes from **a live wallpaper**, made by **James Gittins** in 2011, which can no
+longer be installed on a modern Android: it targets an API level the system now refuses. No
+code and no asset is shared with it - this was written from nothing - but the thing it did is
+the thing this does.
+
+Particular thanks to **John Carmack**, for releasing the engine source. The movement, the
+timings and the creature values here are read from it, and are the reason the scene feels
+like the original rather than like an imitation of it.
+
+And to the **Freedoom team**, whose artwork this draws. Without their twenty years of work
+there would be nothing to show, because the alternative was shipping game data that is not
+ours to give. Neither project endorses or is involved in this one.
+
+**Status**: the scene, the settings and the licences screen are done; the wallpaper runs from
+a signed release build. Details and next steps in [docs/STATUS.md](docs/STATUS.md).
 
 ## Setup
 
