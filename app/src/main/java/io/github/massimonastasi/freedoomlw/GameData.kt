@@ -167,7 +167,12 @@ object GameData {
     val ballAnim = Anim(intArrayOf(0, 1), intArrayOf(4, 4))
 
     /**
-     * The bestiary, ordered by spawn health.
+     * The bestiary, ordered by escalation.
+     *
+     * Spawn health orders all of it but the last two, which are in the order the original
+     * puts them in: the Cyberdemon is met first and the Spider Mastermind closes, even
+     * though it has a thousand health less. That order is canonical and is not to be
+     * rearranged - the arithmetic serves the sequence here, not the other way round.
      *
      * Health is not lethality - that was measured, and is why the weapons rank themselves by
      * damage per tic rather than by position. But the order still has to mean something,
@@ -287,6 +292,16 @@ object GameData {
             death = Anim(intArrayOf(8, 9, 10, 11, 12, 13, 14), intArrayOf(8, 8, 8, 8, 8, 8, -1)),
             painChance = 50, meleeMod = 8, meleeMul = 10, projectile = 1,
         ),
+        // mobjinfo[MT_CYBORG]; fires MT_ROCKET. Present in every IWAD this loader accepts.
+        // At 30% of the screen width it is barely larger than the PainLord already drawn
+        // at 23%.
+        Creature(
+            "Cyberlord", "CYBR", speed = 16, health = 4000, radius = 40, walkFrames = 4, walkTics = 3,
+            attack = Anim(intArrayOf(4, 5, 4), intArrayOf(6, 12, 12)),
+            pain = Anim(intArrayOf(6, 6), intArrayOf(10, 10)),
+            death = Anim(intArrayOf(7, 8, 9, 10, 11, 12, 13, 14), intArrayOf(10, 10, 10, 10, 10, 10, 10, -1)),
+            painChance = 20, projectile = PROJECTILE_ROCKET,
+        ),
         // mobjinfo[MT_SPIDER]; A_SPosAttack with A_SpidRefire, so a hitscan burst. Present
         // in every IWAD this loader accepts. It is the largest thing drawn by a distance -
         // 71% of the screen width against the PainLord's 23% - and is here because that was
@@ -297,16 +312,6 @@ object GameData {
             pain = Anim(intArrayOf(8, 8), intArrayOf(3, 3)),
             death = Anim(intArrayOf(9, 10, 11, 12, 13, 14, 15, 16, 17, 18), intArrayOf(20, 10, 10, 10, 10, 10, 10, 10, 10, -1)),
             painChance = 40, hitscanShots = 3,
-        ),
-        // mobjinfo[MT_CYBORG]; fires MT_ROCKET. Present in every IWAD this loader accepts.
-        // At 30% of the screen width it is barely larger than the PainLord already drawn
-        // at 23%.
-        Creature(
-            "Cyberlord", "CYBR", speed = 16, health = 4000, radius = 40, walkFrames = 4, walkTics = 3,
-            attack = Anim(intArrayOf(4, 5, 4), intArrayOf(6, 12, 12)),
-            pain = Anim(intArrayOf(6, 6), intArrayOf(10, 10)),
-            death = Anim(intArrayOf(7, 8, 9, 10, 11, 12, 13, 14), intArrayOf(10, 10, 10, 10, 10, 10, 10, -1)),
-            painChance = 20, projectile = PROJECTILE_ROCKET,
         ),
     )
     /** The one creature the fast skills touch: g_game.c only rewrites the SARG states. */

@@ -168,30 +168,23 @@ class SceneTest {
             "${GameData.skills[it].name} (${GameData.skills[it].waveCount}w) ${odds[it] / 10}.${odds[it] % 10}%"
         })
 
-        // Every skill runs the full 26 waves, which was asked for after this curve was, and
-        // the two cannot both hold: over a table ending at a 4000-health Cyberlord the
-        // easiest skill finishes 29% of the time, not 95%, and every level above it lands
-        // under 4%. The asked-for 95/75/35/5/0.5 is not reachable at this depth by any lever
-        // short of the drop rate, so it is not asserted - asserting a number nothing can
-        // produce only means the suite is red for a decision that was made deliberately.
-        //
-        // What is still worth holding is the shape: the easiest level must remain clearly
-        // the easiest, and nothing may be flatly impossible.
-        val target = intArrayOf(290, 20, 32, 0, 2)
+        // The curve that was asked for, in tenths of a percent: 95, 75, 35, 5, 0.5. It was
+        // briefly unreachable - every skill runs all 26 waves, and over a table ending at a
+        // Cyberdemon the easiest level finished 29% of the time. It is reachable again
+        // because the lever moved to where the difficulty actually lives: monsters spawn at
+        // 18% of their original health rather than 40%, so the marine can work through a
+        // boss instead of being walled by one. The wave count is untouched at 26 for every
+        // skill, and so is the drop rate.
+        val target = intArrayOf(950, 750, 350, 50, 5)
+        val tolerance = intArrayOf(60, 60, 60, 40, 20)
         for (i in odds.indices) {
             assertTrue(
-                odds[i] in (target[i] - 60).coerceAtLeast(0)..(target[i] + 60),
-                "${GameData.skills[i].name}: ${odds[i]} is outside ${target[i]} +/- 60",
+                odds[i] in (target[i] - tolerance[i])..(target[i] + tolerance[i]),
+                "${GameData.skills[i].name}: ${odds[i]} is outside ${target[i]} +/- ${tolerance[i]}",
             )
         }
-        assertTrue(odds[0] > odds.drop(1).max(), "the easiest skill is no longer the easiest: $odds")
-        // Below five percent the ordering is sampling noise, not difficulty: 2.0% and 3.2%
-        // are eight wins and thirteen out of four hundred, and raising toughen from 105 to
-        // 160 moved that pair by less than the gap between them. Only the levels that clear
-        // that floor are ordered against each other.
-        val meaningful = odds.filter { it >= 50 }
-        for (i in 1 until meaningful.size) {
-            assertTrue(meaningful[i] <= meaningful[i - 1], "the odds rise with the skill: $odds")
+        for (i in 1 until odds.size) {
+            assertTrue(odds[i] <= odds[i - 1], "the odds must never rise with the skill: $odds")
         }
     }
 
