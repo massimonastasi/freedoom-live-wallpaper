@@ -20,7 +20,6 @@ package io.github.massimonastasi.freedoomlw
 
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
-import android.util.TypedValue
 import android.view.View
 import android.widget.GridLayout
 
@@ -93,13 +92,10 @@ class SwatchGrid(
     }
 
     /** The theme's own primary, so the chosen ring follows the system palette. */
-    private fun primaryColour(): Int {
-        val out = TypedValue()
-        context.theme.resolveAttribute(
-            com.google.android.material.R.attr.colorPrimary, out, true,
+    private fun primaryColour(): Int =
+        com.google.android.material.color.MaterialColors.getColor(
+            this, androidx.appcompat.R.attr.colorPrimary,
         )
-        return out.data
-    }
 
     private companion object {
         const val COLUMNS = 5

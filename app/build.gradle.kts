@@ -54,7 +54,7 @@ android {
 dependencies {
     // Material 3 for the settings screen only. minSdk 31 means dynamic colour is always
     // available, so the screen takes the system's palette rather than carrying its own.
-    implementation("com.google.android.material:material:1.12.0")
+    implementation("com.google.android.material:material:1.14.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation(kotlin("test"))
 }
