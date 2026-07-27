@@ -568,11 +568,28 @@ class Scene(
         a.respawned = respawned
         // Only the FleshWorm: g_game.c touches S_SARG_RUN1..S_SARG_PAIN2 and nothing else.
         a.fast = rules.fast && c === GameData.fleshWorm
-        // Enters from a side edge, but a whole sprite width inside it: arriving exactly on
-        // the boundary left half the creature off screen, and a quick kill could then remove
-        // it before it had ever been properly seen.
-        a.x = (if (pRandom() and 1 == 0) marginX else worldWidth - marginX) * FRACUNIT
-        a.y = randomIn(marginTop, worldHeight - spawnMarginBottom) * FRACUNIT
+        // Anywhere across the width, and in the half of the screen the marine is not in.
+        //
+        // Arrivals used to come from one of the two side edges, which made every wave enter
+        // the same way and left the middle of the screen a place nothing ever appeared. This
+        // spreads them: horizontally free, vertically on the far side of the marine, so a
+        // creature has ground to cross before it reaches him and does not materialise on top
+        // of him.
+        //
+        // The margins still hold. A sprite is anchored at its feet and drawn upwards, so
+        // spawning flush against an edge puts half the creature off screen - and a quick kill
+        // could then remove it before it had ever properly been seen.
+        val top = marginTop
+        val bottom = worldHeight - spawnMarginBottom
+        val middle = (top + bottom) / 2
+        val marineY = player?.let { it.y / FRACUNIT } ?: middle
+
+        a.x = randomIn(marginX, worldWidth - marginX) * FRACUNIT
+        a.y = if (marineY < middle) {
+            randomIn(middle, bottom)
+        } else {
+            randomIn(top, middle)
+        } * FRACUNIT
         materialise(a)
     }
 

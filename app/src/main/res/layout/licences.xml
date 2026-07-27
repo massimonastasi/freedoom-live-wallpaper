@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     The licences page: an app bar with a back arrow and a title, then the notices.
-    A plain scrolling column rather than a list: it is a document, not a set of choices.
+
+    A back arrow belongs here, unlike on the settings screen: this is a sub-page, so back
+    means returning to where you came from rather than leaving the app. It is a real app bar
+    inside an AppBarLayout, which is what keeps it clear of the status bar - the arrow on the
+    settings screen collided with the status icons precisely because it had no bar around it.
+
+    A plain scrolling column rather than a list: this is a document, not a set of choices.
 -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -13,10 +19,12 @@
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        app:liftOnScroll="true">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
+            style="@style/Widget.Material3.Toolbar.OnSurface"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="?attr/homeAsUpIndicator"
