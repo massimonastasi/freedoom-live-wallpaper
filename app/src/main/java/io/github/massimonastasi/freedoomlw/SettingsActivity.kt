@@ -190,9 +190,9 @@ class SettingsActivity : AppCompatActivity() {
             grid.colourOf = { palette[it.coerceIn(0, 255)] }
             grid.onChosen = { prefs.edit().putString(Settings.KEY_BACKGROUND_COLOUR, it).apply() }
             grid.show(prefs.getString(Settings.KEY_BACKGROUND_COLOUR, "0"))
-            // match_parent, both here and on the frame in list_row.xml: the swatches are a
-            // share of the width the row gives them, so that width has to be a real number
-            // by the time the grid is measured, not something wrapped around the children.
+            // match_parent, so the grid is measured against the width the row has left rather
+            // than against its own children. The frame around it stays wrap_content: it is
+            // shared with every other row and its width is not this one's business.
             extra.addView(
                 grid,
                 android.widget.FrameLayout.LayoutParams(
