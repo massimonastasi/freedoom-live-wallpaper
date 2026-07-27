@@ -112,7 +112,8 @@
                 android:layout_marginEnd="16dp"
                 android:layout_marginBottom="16dp"
                 app:selectionRequired="true"
-                app:singleSelection="true">
+                app:singleSelection="true"
+                tools:shapeAppearance="@style/ShapeAppearance.Material3.MediumComponent">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/fps_10"

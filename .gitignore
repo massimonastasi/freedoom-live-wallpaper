@@ -18,3 +18,6 @@ build/
 # The repository copies at the root are the source of truth.
 /app/src/main/assets/LICENSE
 /app/src/main/assets/NOTICE.md
+
+# Built APKs staged for hand-installing on other devices.
+/dist/

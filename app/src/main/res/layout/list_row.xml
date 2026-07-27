@@ -29,7 +29,8 @@
     style="@style/Widget.Material3.ListItemCardView.Segmented"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:swipeEnabled="false">
+    app:swipeEnabled="false"
+    tools:shapeAppearance="@style/ShapeAppearance.Material3.MediumComponent">
 
     <LinearLayout
         android:layout_width="match_parent"
