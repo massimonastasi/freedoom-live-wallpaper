@@ -1,24 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The settings screen, whole, in one layout file.
+    The settings screen, whole, in one layout file - which is the point of it: Android Studio
+    draws all of this in Split view, so it is corrected by looking rather than by installing.
 
-    This is the point of it: the page is a layout rather than a res/xml preference screen, so
-    Android Studio draws all of it in Split view and it can be corrected by looking instead of
-    by installing. Every control here is a Material 3 widget - the segmented
-    MaterialButtonToggleGroup, MaterialSwitch, MaterialRadioButton, MaterialButton, and the
-    tonal icon button on rows that carry an action. The only hand-assembled piece is the list
-    row: Material 3 for Views ships no ListItem - checked against the artefact, there is no
-    such class in com.google.android.material 1.12.0 - it exists only as a composable, in
-    androidx.compose.material3 and in the TV variant.
+    Every control is the Material component for the job, taken from the library rather than
+    reproduced. What each one brings, checked against material 1.14.0 rather than assumed:
 
-    Layers, bottom to top: the header, the scrolling page over it, the buttons. The header
-    does not move - the page slides up over it, so the title stays where it is and is covered
-    rather than carried away.
+      ListItemCardView.Segmented        rows: background selector, shape state list,
+                                        16/10 content padding, list-item ripple
+      MaterialButtonGroup.Connected     the segmented frame-rate control: 8dp inner corners
+                                        and the connected container shape
+      Button / Button.OutlinedButton    the two actions at the bottom
+      RadioButton.ListItem, Switch.ListItem, IconButton.Filled.Tonal   inside the rows
 
-    There is no app bar. It carried nothing but a back arrow, which sat underneath the status
-    bar icons, and this is the launcher activity: back means leaving the app, which the system
-    gesture already does. A control that duplicates a gesture and collides with the status bar
-    is not worth positioning.
+    Two things have no Material component for Views and are styles of ours, marked as such in
+    themes.xml: the section header and the paragraph under it. Everything else is the library's.
+
+    Layers, bottom to top: the header, the page over it, the buttons. The header does not
+    move - the page slides up over it, so the title stays where it is and is covered rather
+    than carried away. There is no app bar: it held only a back arrow, which sat under the
+    status bar icons, and this is the launcher activity, where back means leaving the app.
 -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -29,13 +30,11 @@
     tools:context=".SettingsActivity">
 
     <FrameLayout
-        android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="@dimen/header_height"
         android:layout_gravity="top">
 
         <ImageView
-            android:id="@+id/header_image"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:contentDescription="@null"
@@ -43,9 +42,9 @@
             android:src="@mipmap/ic_launcher_foreground" />
 
         <!--
-            A scrim under the text: the title is white over artwork whose brightness is not
-            ours to control. It darkens the image rather than saying anything about the
-            palette, so it is the one colour here that is not a theme role.
+            The title is white over artwork whose brightness is not ours to control, so it
+            needs something to sit on. This darkens the image rather than saying anything
+            about the palette: the one colour on this screen that is not a theme role.
         -->
         <View
             android:layout_width="match_parent"
@@ -83,7 +82,6 @@
     </FrameLayout>
 
     <androidx.core.widget.NestedScrollView
-        android:id="@+id/page"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
@@ -107,8 +105,9 @@
 
             <com.google.android.material.button.MaterialButtonToggleGroup
                 android:id="@+id/fps_group"
+                style="@style/Widget.Material3.MaterialButtonGroup.Connected"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
                 android:layout_marginBottom="16dp"
@@ -117,61 +116,49 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/fps_10"
-                    style="?attr/materialButtonOutlinedStyle"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="0dp"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
                     android:text="@string/fps_10" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/fps_15"
-                    style="?attr/materialButtonOutlinedStyle"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="0dp"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
                     android:text="@string/fps_15" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/fps_20"
-                    style="?attr/materialButtonOutlinedStyle"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="0dp"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
                     android:text="@string/fps_20" />
 
             </com.google.android.material.button.MaterialButtonToggleGroup>
 
-            <!--
-                One List: a rounded container that clips three square rows with a 2dp gap, as
-                the design draws it. The corners belong to the group, not to each row.
-            -->
             <LinearLayout
-                style="@style/ListGroup"
-                android:id="@+id/switch_group">
+                android:id="@+id/switch_group"
+                style="@style/ListGroup">
 
-                <include
-                    android:id="@+id/row_readout"
-                    layout="@layout/list_row" />
+                <include android:id="@+id/row_readout" layout="@layout/list_row" />
 
                 <include
                     android:id="@+id/row_god"
                     layout="@layout/list_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" />
+                    android:layout_marginTop="@dimen/list_row_gap" />
 
                 <include
                     android:id="@+id/row_debug"
                     layout="@layout/list_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" />
+                    android:layout_marginTop="@dimen/list_row_gap" />
 
             </LinearLayout>
 
@@ -185,23 +172,21 @@
                 android:id="@+id/background_group"
                 style="@style/ListGroup">
 
-                <include
-                    android:id="@+id/row_floor"
-                    layout="@layout/list_row" />
+                <include android:id="@+id/row_floor" layout="@layout/list_row" />
 
                 <include
                     android:id="@+id/row_colour"
                     layout="@layout/list_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" />
+                    android:layout_marginTop="@dimen/list_row_gap" />
 
                 <include
                     android:id="@+id/row_photo"
                     layout="@layout/list_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" />
+                    android:layout_marginTop="@dimen/list_row_gap" />
 
             </LinearLayout>
 
@@ -219,17 +204,15 @@
                 android:id="@+id/sprites_group"
                 style="@style/ListGroup">
 
-                <include
-                    android:id="@+id/row_bundled"
-                    layout="@layout/list_row" />
+                <include android:id="@+id/row_bundled" layout="@layout/list_row" />
 
-                <!-- Shown only once a WAD has been imported. -->
+                <!-- Present only once a WAD has been imported; the group closes up around it. -->
                 <include
                     android:id="@+id/row_wad"
                     layout="@layout/list_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" />
+                    android:layout_marginTop="@dimen/list_row_gap" />
 
             </LinearLayout>
 
@@ -237,11 +220,10 @@
                 android:id="@+id/import_wad"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
-                android:layout_height="48dp"
+                android:layout_height="wrap_content"
                 android:layout_gravity="end"
-                android:layout_marginTop="16dp"
                 android:layout_marginEnd="16dp"
-                android:layout_marginBottom="8dp"
+                android:layout_marginBottom="16dp"
                 android:text="@string/settings_wad" />
 
             <!-- ======================================================= About -->
@@ -251,7 +233,6 @@
                 android:text="@string/settings_about" />
 
             <TextView
-                android:id="@+id/about_note"
                 style="@style/SectionParagraph"
                 android:text="@string/settings_about_note" />
 
@@ -260,20 +241,18 @@
                 style="@style/ListGroup">
 
                 <!--
-                    Present and disabled: the repository is not public yet, so the row says
-                    that the source exists and will be reachable, rather than disappearing and
-                    reappearing between versions.
+                    Source is shown and disabled: the repository is not public yet, so the row
+                    says the source exists and will be reachable, rather than appearing and
+                    disappearing between versions.
                 -->
-                <include
-                    android:id="@+id/row_source"
-                    layout="@layout/list_row" />
+                <include android:id="@+id/row_source" layout="@layout/list_row" />
 
                 <include
                     android:id="@+id/row_licences"
                     layout="@layout/list_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" />
+                    android:layout_marginTop="@dimen/list_row_gap" />
 
             </LinearLayout>
 
@@ -300,13 +279,14 @@
             android:id="@+id/reset"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="wrap_content"
             android:text="@string/settings_reset" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/set_wallpaper"
+            style="@style/Widget.Material3.Button"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/settings_set_wallpaper" />
 

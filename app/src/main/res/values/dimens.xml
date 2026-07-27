@@ -6,4 +6,9 @@
         over it from there.
     -->
     <dimen name="header_height">220dp</dimen>
+    <!--
+        The gap between rows of a segmented list. The library gives the rows their shapes and
+        their padding but not the space between them, because that belongs to the group.
+    -->
+    <dimen name="list_row_gap">2dp</dimen>
 </resources>
