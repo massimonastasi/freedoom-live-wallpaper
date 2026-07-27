@@ -38,10 +38,13 @@ object Settings {
     const val KEY_BACKGROUND = "background"
     const val KEY_BACKGROUND_PHOTO = "background_photo"
     const val KEY_BACKGROUND_COLOUR = "background_colour"
+    const val KEY_GOD_MODE = "god_mode"
+    const val KEY_DEBUG = "debug"
     const val KEY_SPRITES = "sprites"
     const val KEY_WAD = "wad"
-    const val KEY_SAVE = "save"
+    const val KEY_WAD_DELETE = "wad_delete"
     const val KEY_RESET = "reset"
+    const val KEY_SOURCE = "source"
     const val KEY_SET_WALLPAPER = "set_wallpaper"
     const val KEY_NOTICES = "notices"
 
@@ -67,7 +70,20 @@ object Settings {
     fun fps(p: SharedPreferences): Int =
         p.getString(KEY_FPS, null)?.toIntOrNull()?.takeIf { it in 5..60 } ?: DEFAULT_FPS
 
+    /** Health and armour, drawn at the bottom of the screen. */
     fun readout(p: SharedPreferences): Boolean = p.getBoolean(KEY_READOUT, true)
+
+    /**
+     * The marine cannot be hurt.
+     *
+     * It defeats the rule that a death restarts at wave 1 on the lowest skill - with this on,
+     * that rule simply never fires and the ladder only ever climbs. That is the point of it,
+     * not an oversight.
+     */
+    fun godMode(p: SharedPreferences): Boolean = p.getBoolean(KEY_GOD_MODE, false)
+
+    /** The readout at the top: floor, skill, wave and what the scene is actually doing. */
+    fun debug(p: SharedPreferences): Boolean = p.getBoolean(KEY_DEBUG, false)
 
 
     /** What is drawn behind the fight. */

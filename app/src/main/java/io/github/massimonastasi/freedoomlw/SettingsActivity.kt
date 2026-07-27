@@ -21,23 +21,24 @@ package io.github.massimonastasi.freedoomlw
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.button.MaterialButton
 import java.nio.channels.FileChannel
 
 /**
  * The settings screen, reached from the wallpaper picker's own Settings button and from the
  * launcher icon.
  *
- * Choices are held until Save rather than applied as they are made, which is not the Android
- * convention and is a deliberate choice: see StagedStore. Importing a file is the exception —
- * that is an action rather than a setting, and staging a copy of tens of megabytes to apply
- * later would be a strange thing to do. What is staged is which of them is used.
+ * Choices apply as they are made. They were briefly staged behind a Save button, which is not
+ * the Android convention and turned out to buy nothing: the wallpaper reads its settings when
+ * it next becomes visible, so a staged copy was only a second state to keep in step with the
+ * first. What is left at the bottom is the two things that act on everything above them.
  */
 class SettingsActivity : AppCompatActivity() {
 
@@ -52,57 +53,27 @@ class SettingsActivity : AppCompatActivity() {
                 .commit()
         }
 
-        // Leaving with unsaved choices silently would lose them without saying so. Registered
-        // as a callback rather than by overriding onBackPressed, which predictive back under
-        // targetSdk 36 no longer routes through.
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (!fragment.hasUnsaved()) {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                    return
-                }
-                AlertDialog.Builder(this@SettingsActivity)
-                    .setTitle(R.string.settings_unsaved_title)
-                    .setMessage(R.string.settings_unsaved_message)
-                    .setPositiveButton(R.string.settings_save) { _, _ ->
-                        fragment.save()
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
-                    }
-                    .setNegativeButton(R.string.settings_discard) { _, _ ->
-                        fragment.discard()
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
-                    }
-                    .setNeutralButton(R.string.settings_keep_editing, null)
-                    .show()
-            }
-        })
+        findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
+        }
+
+        // The version, under the title. Read from the package rather than written down, so it
+        // cannot disagree with the build that is running.
+        findViewById<TextView>(R.id.header_caption).text = getString(
+            R.string.settings_version,
+            packageManager.getPackageInfo(packageName, 0).versionName,
+        )
+
+        findViewById<MaterialButton>(R.id.set_wallpaper).setOnClickListener {
+            startActivity(Intent(this, SetupActivity::class.java))
+        }
+        findViewById<MaterialButton>(R.id.reset).setOnClickListener { fragment.confirmReset() }
     }
 
     class SettingsFragment : PreferenceFragmentCompat() {
 
-        private lateinit var staged: StagedStore
-
         /** The palette of whichever WAD is active, so the swatches show real colours. */
         private var palette = IntArray(256) { Color.BLACK }
-
-        private val chooseWad = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            uri ?: return@registerForActivityResult
-            val problem = WadStore.import(requireContext(), uri)
-            Toast.makeText(
-                requireContext(),
-                problem ?: getString(R.string.wad_imported),
-                Toast.LENGTH_LONG,
-            ).show()
-            if (problem == null) {
-                // A new WAD brings its own palette, so the swatches have to be re-read.
-                loadPalette()
-                staged.putString(Settings.KEY_SPRITES, Settings.SPRITES_USER)
-            }
-            refresh()
-        }
 
         private val choosePhoto = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri ?: return@registerForActivityResult
@@ -112,12 +83,25 @@ class SettingsActivity : AppCompatActivity() {
                 if (ok) R.string.photo_imported else R.string.photo_unreadable,
                 Toast.LENGTH_LONG,
             ).show()
-            refresh()
+        }
+
+        /**
+         * Keeps the list clear of the buttons pinned over it.
+         *
+         * The two buttons are siblings of the scrolling view, not part of it, so nothing
+         * tells the list they are there: the last section scrolled underneath them and could
+         * not be reached. Padding with clipToPadding off means the content still scrolls
+         * behind them, which is what should happen, but it can also scroll past them.
+         */
+        override fun onViewCreated(view: android.view.View, savedInstanceState: Bundle?) {
+            super.onViewCreated(view, savedInstanceState)
+            val density = resources.displayMetrics.density
+            listView.clipToPadding = false
+            listView.setPadding(0, 0, 0, (160 * density).toInt())
         }
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            staged = StagedStore(Settings.of(requireContext()))
-            preferenceManager.preferenceDataStore = staged
+            preferenceManager.sharedPreferencesName = Settings.FILE
             setPreferencesFromResource(R.xml.settings, rootKey)
             loadPalette()
 
@@ -125,30 +109,18 @@ class SettingsActivity : AppCompatActivity() {
                 palette[it.coerceIn(0, 255)]
             }
 
-            // The two conditional rows follow the background choice as it is made, not only
-            // when the screen is reopened.
-            findPreference<Preference>(Settings.KEY_BACKGROUND)?.setOnPreferenceChangeListener { _, v ->
-                showBackgroundExtras(v as String); true
+            findPreference<OptionListPreference>(Settings.KEY_BACKGROUND)?.apply {
+                // Only the photo row carries a button, and it does the same thing as choosing
+                // the row: picking "Image" with no image behind it would show nothing.
+                trailingIcon = { i -> if (i == PHOTO_ROW) R.drawable.ic_chevron else 0 }
+                onTrailing = { choosePhoto.launch(arrayOf("image/*")) }
+                onChosen = { value ->
+                    if (value == "photo" && PhotoStore.file(requireContext()) == null) {
+                        choosePhoto.launch(arrayOf("image/*"))
+                    }
+                }
             }
-
-            click(Settings.KEY_BACKGROUND_PHOTO) { choosePhoto.launch(arrayOf("image/*")) }
-            click(Settings.KEY_WAD) { chooseWad.launch(arrayOf("*/*")) }
-            click(Settings.KEY_SAVE) { save(); Toast.makeText(requireContext(), R.string.settings_saved, Toast.LENGTH_SHORT).show() }
-            click(Settings.KEY_SET_WALLPAPER) {
-                save()
-                startActivity(Intent(requireContext(), SetupActivity::class.java))
-            }
-            click(Settings.KEY_RESET) { confirmReset() }
-
-            findPreference<AccordionPreference>(Settings.KEY_NOTICES)?.body = notices()
-            refresh()
         }
-
-        fun hasUnsaved(): Boolean = staged.dirty
-
-        fun save() = staged.commit()
-
-        fun discard() = staged.discard()
 
         /**
          * Puts everything back as it was installed, files included.
@@ -156,12 +128,11 @@ class SettingsActivity : AppCompatActivity() {
          * The imported WAD and photo go too: they are the only things here that occupy real
          * storage, and a reset that left tens of megabytes behind would not be one.
          */
-        private fun confirmReset() {
+        fun confirmReset() {
             AlertDialog.Builder(requireContext())
                 .setTitle(R.string.settings_reset)
                 .setMessage(R.string.settings_reset_confirm)
                 .setPositiveButton(R.string.settings_reset) { _, _ ->
-                    staged.discard()
                     Settings.of(requireContext()).edit().clear().apply()
                     WadStore.clear(requireContext())
                     PhotoStore.clear(requireContext())
@@ -174,50 +145,6 @@ class SettingsActivity : AppCompatActivity() {
                 }
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
-        }
-
-        private fun click(key: String, action: () -> Unit) {
-            findPreference<Preference>(key)?.setOnPreferenceClickListener { action(); true }
-        }
-
-        /** Reflects what is on disk: which sprite sets exist, and whether a photo is set. */
-        private fun refresh() {
-            val context = requireContext()
-            val user = WadStore.active(context)
-
-            findPreference<RadioListPreference>(Settings.KEY_SPRITES)?.apply {
-                if (user == null) {
-                    setOptions(arrayOf(getString(R.string.sprites_bundled)), arrayOf(Settings.SPRITES_BUNDLED))
-                    // One option is not a choice: shown, so it is clear what is in use, but
-                    // not offered as if something could be picked.
-                    choosable = false
-                } else {
-                    // Named, not described: someone who has imported more than one over a
-                    // week needs to see which file is in, and "your own WAD" answers a
-                    // question nobody asked.
-                    val label = WadStore.name(context) ?: getString(R.string.wad_unnamed)
-                    setOptions(
-                        arrayOf(
-                            getString(R.string.sprites_bundled),
-                            getString(R.string.sprites_user, label, user.length() / 1024),
-                        ),
-                        arrayOf(Settings.SPRITES_BUNDLED, Settings.SPRITES_USER),
-                    )
-                    choosable = true
-                }
-            }
-
-            findPreference<Preference>(Settings.KEY_BACKGROUND_PHOTO)?.setSummary(
-                if (PhotoStore.file(context) == null) R.string.settings_background_photo_none
-                else R.string.settings_background_photo_set
-            )
-
-            showBackgroundExtras(staged.getString(Settings.KEY_BACKGROUND, "dynamic") ?: "dynamic")
-        }
-
-        private fun showBackgroundExtras(mode: String) {
-            findPreference<Preference>(Settings.KEY_BACKGROUND_PHOTO)?.isVisible = mode == "photo"
-            findPreference<Preference>(Settings.KEY_BACKGROUND_COLOUR)?.isVisible = mode == "colour"
         }
 
         /** Reads the active WAD's palette, so the swatches are the wallpaper's own colours. */
@@ -240,13 +167,9 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
-        private fun notices(): CharSequence = try {
-            val assets = requireContext().assets
-            listOf("NOTICE.md", "LICENSE").joinToString("\n\n\n") { name ->
-                assets.open(name).bufferedReader().use { it.readText() }
-            }
-        } catch (e: Exception) {
-            getString(R.string.licences_missing, "NOTICE.md")
+        private companion object {
+            /** Index of "Image" in background_labels. */
+            const val PHOTO_ROW = 1
         }
     }
 }

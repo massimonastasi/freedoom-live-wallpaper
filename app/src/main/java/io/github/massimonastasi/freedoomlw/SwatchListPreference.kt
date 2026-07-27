@@ -22,10 +22,8 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
-import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.RadioButton
-import android.widget.RadioGroup
+import android.view.View
+import android.widget.GridLayout
 import androidx.preference.Preference
 import androidx.preference.PreferenceViewHolder
 
@@ -53,9 +51,9 @@ class SwatchListPreference @JvmOverloads constructor(
     init {
         layoutResource = R.layout.preference_swatches
         isSelectable = false
-        context.styled(attrs, R.styleable.RadioListPreference) { a ->
-            labels = a.getTextArray(R.styleable.RadioListPreference_android_entries) ?: emptyArray()
-            indices = a.getTextArray(R.styleable.RadioListPreference_android_entryValues) ?: emptyArray()
+        context.styled(attrs, R.styleable.SwatchListPreference) { a ->
+            labels = a.getTextArray(R.styleable.SwatchListPreference_android_entries) ?: emptyArray()
+            indices = a.getTextArray(R.styleable.SwatchListPreference_android_entryValues) ?: emptyArray()
         }
     }
 
@@ -68,42 +66,54 @@ class SwatchListPreference @JvmOverloads constructor(
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
         super.onBindViewHolder(holder)
-        val group = holder.findViewById(R.id.radio_group) as RadioGroup
-        group.setOnCheckedChangeListener(null)
-        group.removeAllViews()
+        val grid = holder.findViewById(R.id.swatch_grid) as GridLayout
+        grid.removeAllViews()
 
         val dp = context.resources.displayMetrics.density
+        val size = (44 * dp).toInt()
+        val gap = (8 * dp).toInt()
+
         labels.forEachIndexed { i, label ->
             val palette = indices.getOrNull(i)?.toString()?.toIntOrNull() ?: 0
-            group.addView(RadioButton(context).apply {
-                id = i
-                text = label
-                isChecked = indices.getOrNull(i)?.toString() == current
-                // The sample sits after the label, drawn at the real colour with a faint
-                // outline so black and the background do not merge into one another.
-                val box = GradientDrawable().apply {
+            val chosen = indices.getOrNull(i)?.toString() == current
+            val swatch = View(context).apply {
+                // The colour itself, with a ring that thickens when chosen. A tick drawn
+                // over the sample would be invisible on half of these - white on cream,
+                // black on black - and the ring never collides with what it marks.
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
                     setColor(colourOf(palette))
-                    setStroke((1 * dp).toInt(), 0x66888888)
-                    setSize((28 * dp).toInt(), (18 * dp).toInt())
+                    setStroke(
+                        ((if (chosen) 3 else 1) * dp).toInt(),
+                        if (chosen) primaryColour() else 0x66888888,
+                    )
                 }
-                setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, box, null)
-                compoundDrawablePadding = (12 * dp).toInt()
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
+                contentDescription = label
+                setOnClickListener { choose(i) }
+            }
+            grid.addView(swatch, GridLayout.LayoutParams().apply {
+                width = size
+                height = size
+                setMargins(0, 0, gap, gap)
             })
         }
-        if (group.checkedRadioButtonId == -1 && labels.isNotEmpty()) {
-            (group.getChildAt(0) as? RadioButton)?.isChecked = true
-        }
+    }
 
-        group.setOnCheckedChangeListener { _, id ->
-            val chosen = indices.getOrNull(id)?.toString() ?: return@setOnCheckedChangeListener
-            if (chosen == current) return@setOnCheckedChangeListener
-            if (!callChangeListener(chosen)) return@setOnCheckedChangeListener
-            current = chosen
-            persistString(chosen)
-        }
+    /** The theme's own primary, so the chosen ring follows the system palette. */
+    private fun primaryColour(): Int {
+        val out = android.util.TypedValue()
+        context.theme.resolveAttribute(
+            com.google.android.material.R.attr.colorPrimary, out, true,
+        )
+        return out.data
+    }
+
+    private fun choose(index: Int) {
+        val chosen = indices.getOrNull(index)?.toString() ?: return
+        if (chosen == current) return
+        if (!callChangeListener(chosen)) return
+        current = chosen
+        persistString(chosen)
+        notifyChanged()
     }
 }

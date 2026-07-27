@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The trailing chevron on a row that opens something else.
+
+    Authored rather than exported: this is a Material Symbol, one of the handful the system
+    would ship if it shipped icons to apps, and the alternative is fetching an asset over the
+    network into a project that makes no network calls at all.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorOnSurfaceVariant">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M9.4,18L8,16.6l4.6,-4.6L8,7.4L9.4,6l6,6z" />
+</vector>

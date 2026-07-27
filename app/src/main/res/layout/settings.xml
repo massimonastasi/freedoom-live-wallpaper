@@ -1,9 +1,23 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <!--
-    An app bar above the list rather than a window ActionBar over it. With the theme's own
-    ActionBar the first category header was laid out underneath it: measured, the header sat
-    at y 231-289 and the bar at 174-257. A bar that is part of the layout cannot overlap the
-    content, because the content starts where the bar ends.
+    The settings screen: a collapsing header, the scrolling list, and two buttons pinned at
+    the bottom.
+
+    The header collapses onto the app bar as the list scrolls - the title is displayMedium,
+    far too large to keep on screen, and the app bar is where it ends up. The title block is
+    a child of the collapsing layout rather than its own title property, because the design
+    puts a caption under the title and the built-in title is a single line.
+
+    That block fills the header and aligns its own content to the bottom, rather than wrapping
+    its height and being gravity-bottom inside it. Measured on the device, the wrapping form
+    was clipped: two lines of displayMedium plus a caption came to more than the space left
+    under the toolbar, and the overflow was cut rather than pushed. Filling the parent cannot
+    overflow it. 220dp rather than the design''s 188 for the same reason - this screen is wider
+    than the 372dp frame the design was drawn on, and the title still wraps to two lines.
+
+    The buttons are outside the scrolling view on purpose. They are the two things that act
+    on everything above them, and a button you have to scroll to find is a button that gets
+    missed.
 -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -13,15 +27,79 @@
     android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="220dp"
         android:fitsSystemWindows="true">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
+        <com.google.android.material.appbar.CollapsingToolbarLayout
+            android:id="@+id/collapsing"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:title="@string/app_name" />
+            android:layout_height="match_parent"
+            app:contentScrim="?attr/colorSurface"
+            app:layout_scrollFlags="scroll|exitUntilCollapsed|snap"
+            app:titleEnabled="false">
+
+            <ImageView
+                android:id="@+id/header_image"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:scaleType="centerInside"
+                android:src="@mipmap/ic_launcher_foreground"
+                app:layout_collapseMode="parallax" />
+
+            <!--
+                A scrim under the text rather than over the whole image: the title is white on
+                artwork whose brightness is not ours to control, and in the light theme the
+                image sits on a pale surface. Without this the title is unreadable on both.
+            -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/header_scrim"
+                app:layout_collapseMode="parallax" />
+
+            <LinearLayout
+                android:id="@+id/header_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:layout_marginBottom="16dp"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <TextView
+                    android:id="@+id/header_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="@string/app_name"
+                    android:textAppearance="?attr/textAppearanceDisplayMedium"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/header_caption"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:alpha="0.8"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="@android:color/white" />
+
+            </LinearLayout>
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                app:layout_collapseMode="pin"
+                app:navigationIcon="?attr/homeAsUpIndicator" />
+
+        </com.google.android.material.appbar.CollapsingToolbarLayout>
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -30,5 +108,29 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="?attr/colorSurface"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/reset"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/settings_reset" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/set_wallpaper"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="16dp"
+            android:text="@string/settings_set_wallpaper" />
+
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

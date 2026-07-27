@@ -1,16 +1,26 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Reuses the framework entries/entryValues so the XML reads like a ListPreference. -->
-    <declare-styleable name="RadioListPreference">
+    <!--
+        Reuses the framework entries/entryValues so the XML reads like a ListPreference, plus
+        the supporting line each row carries under its label.
+    -->
+    <declare-styleable name="OptionListPreference">
+        <attr name="android:entries" />
+        <attr name="android:entryValues" />
+        <attr name="captions" format="reference" />
+    </declare-styleable>
+
+    <!-- The swatches read the same arrays, so they share the attribute set. -->
+    <declare-styleable name="SwatchListPreference">
         <attr name="android:entries" />
         <attr name="android:entryValues" />
     </declare-styleable>
 
     <!--
-        Not android:summary. The framework attribute is drawn by the base class as well, so
-        the same paragraph would appear both folded and unfolded.
+        Not android:summary. The base class draws that itself, so the text would appear twice
+        - once in the paragraph and once in the row the paragraph replaces.
     -->
-    <declare-styleable name="AccordionPreference">
+    <declare-styleable name="ParagraphPreference">
         <attr name="body" format="string" />
     </declare-styleable>
 </resources>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A row of a "segmented (filled)" list: each row is its own filled shape with a gap to the
+    next, and the selected one is tinted.
+
+    state_activated rather than state_selected: selected is a transient touch state on
+    Android, activated is the persistent "this is the chosen one" that a radio row needs.
+
+    A uniform corner radius rather than larger corners on the first and last row. The design
+    rounds the ends of the group more than its middle; doing that needs the row to know where
+    it sits in the group, which is state the preference framework does not carry. One radius
+    for every row is the honest simplification - it reads as the same component and cannot go
+    wrong when rows appear and disappear, which they do here.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:state_activated="true">
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorSecondaryContainer" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorSurfaceContainerHighest" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+
+</selector>

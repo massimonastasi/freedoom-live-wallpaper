@@ -1,26 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-        Only rates the draw loop actually offers. Measured on a Pixel 6a: 20 fps costs 12.0%
-        of one core and 10 fps costs 9.2%, so the saving is real but not proportional - there
-        is a fixed cost per frame delivered that does not scale with the rate.
+        Only rates the draw loop actually offers, in ascending order: they are drawn as a
+        segmented button now, and left-to-right should mean less-to-more. Measured on a
+        Pixel 6a: 20 fps costs 12.0% of one core and 10 fps costs 9.2%, so the saving is real
+        but not proportional - there is a fixed cost per frame that does not scale with rate.
     -->
     <string-array name="fps_labels">
-        <item>20 fps</item>
-        <item>15 fps</item>
         <item>10 fps</item>
+        <item>15 fps</item>
+        <item>20 fps</item>
     </string-array>
 
     <string-array name="fps_values">
-        <item>20</item>
-        <item>15</item>
         <item>10</item>
+        <item>15</item>
+        <item>20</item>
     </string-array>
 
+    <!-- Label and supporting line are separate: a list item draws them differently. -->
     <string-array name="background_labels">
-        <item>Dungeon floor, changes with the difficulty</item>
-        <item>A photo of your own</item>
-        <item>A flat colour</item>
+        <item>Dungeon floor</item>
+        <item>Image</item>
+        <item>Flat colour</item>
+    </string-array>
+
+    <string-array name="background_captions">
+        <item>Changes with the difficulty</item>
+        <item>From your device</item>
+        <item>From the palette of the WAD in use</item>
     </string-array>
 
     <string-array name="background_values">
@@ -30,29 +38,38 @@
     </string-array>
 
     <!--
-        Palette indices, not colour values: the colour follows whichever WAD is loaded. Each
-        was found by searching PLAYPAL for the entry nearest the named hue, so these are the
-        active palette's own colours rather than approximations laid over it.
+        Palette indices, not colour values: the colour follows whichever WAD is loaded.
+        Ten of them, drawn as two rows of five.
+
+        Each was found by searching the bundled PLAYPAL for the entry nearest a target hue,
+        so these are the palette's own colours rather than approximations laid over it. That
+        search is also why there is no teal here: the nearest entry to one came back a plain
+        grey, #6F6F6F, so the slot went to a cream the palette does have. Picking by
+        measurement rather than by name is what stops a swatch from lying about its colour.
     -->
     <string-array name="palette_labels">
         <item>Black</item>
         <item>Grey</item>
         <item>White</item>
+        <item>Cream</item>
+        <item>Brown</item>
         <item>Red</item>
+        <item>Orange</item>
+        <item>Yellow</item>
         <item>Green</item>
         <item>Blue</item>
-        <item>Brown</item>
-        <item>Yellow</item>
     </string-array>
 
     <string-array name="palette_values">
         <item>0</item>
-        <item>99</item>
+        <item>97</item>
         <item>4</item>
-        <item>184</item>
-        <item>122</item>
-        <item>204</item>
-        <item>73</item>
-        <item>164</item>
+        <item>210</item>
+        <item>72</item>
+        <item>182</item>
+        <item>218</item>
+        <item>162</item>
+        <item>119</item>
+        <item>198</item>
     </string-array>
 </resources>

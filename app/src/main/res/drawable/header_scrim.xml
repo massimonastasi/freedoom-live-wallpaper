@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Clear at the top, dark at the bottom, so the title has something to sit on.
+
+    The design draws this as a multiply blend over the artwork. A gradient drawable is the
+    same result without a blend mode on a view that is composited every frame the header
+    moves, and it is the only colour on this screen that is not a theme role: it darkens the
+    artwork rather than expressing anything about the palette, so it stays literal.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:centerColor="#40000000"
+        android:endColor="#99000000"
+        android:startColor="#00000000"
+        android:type="linear" />
+</shape>

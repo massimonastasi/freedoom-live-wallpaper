@@ -1,25 +1,25 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The flat colours, as two rows of five.
+
+    Always visible, whether or not "Flat colour" is the chosen background: they are what that
+    option means, and hiding them until it is picked asks the user to choose blind.
+
+    Five columns rather than a horizontally scrolling row, so every colour is on screen at
+    once and none can hide past the edge.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
     android:paddingStart="16dp"
-    android:paddingTop="12dp"
+    android:paddingTop="8dp"
     android:paddingEnd="16dp"
     android:paddingBottom="8dp">
 
-    <TextView
-        android:id="@android:id/title"
-        android:layout_width="match_parent"
+    <GridLayout
+        android:id="@+id/swatch_grid"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingBottom="8dp"
-        android:textAppearance="?android:attr/textAppearanceMedium" />
+        android:columnCount="5" />
 
-    <!-- Filled in code: one row per colour, each a swatch beside its name. -->
-    <RadioGroup
-        android:id="@+id/radio_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical" />
-
-</LinearLayout>
+</FrameLayout>

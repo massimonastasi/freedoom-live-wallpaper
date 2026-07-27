@@ -61,5 +61,13 @@
     <string name="accordion_expand">%s, show</string>
     <string name="accordion_collapse">%s, hide</string>
     <string name="settings_background_note">The dynamic background is one of the WAD\'s own floors, chosen per skill level. A photo or a flat colour replaces it entirely, and the palette offered is the active WAD\'s, not a generic one.</string>
-</resources>
+    <!-- Section one: everything that changes what you see. -->
+    <string name="settings_visual">Visual settings</string>
+    <string name="settings_visual_note">The scene always thinks at the original 35 steps a second. The frame rate is only how often it is drawn, and it is the one setting here that changes battery use.</string>
+    <string name="settings_readout_note">Bottom of the screen</string>
+    <string name="settings_god_mode">God mode</string>
+    <string name="settings_god_mode_note">No damage. The marine never dies, so the difficulty only ever climbs.</string>
+    <string name="settings_debug">Debug mode</string>
+    <string name="settings_debug_note">Top of the screen: floor, skill, wave and what the scene is doing</string>
+    <string name="settings_version">Version %s</string></resources>
 

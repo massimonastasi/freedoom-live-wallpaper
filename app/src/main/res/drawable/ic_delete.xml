@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Removes an imported WAD. Only ever drawn on a row that exists because the user put it
+    there, so it can never offer to delete something that came with the app.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorOnSurfaceVariant">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M7,21q-0.825,0 -1.412,-0.587Q5,19.825 5,19L5,6L4,6L4,4h5L9,3h6v1h5v2h-1v13q0,0.825 -0.587,1.413Q17.825,21 17,21zM17,6L7,6v13h10zM9,17h2L11,8L9,8zM13,17h2L15,8h-2zM7,6v13z" />
+</vector>
