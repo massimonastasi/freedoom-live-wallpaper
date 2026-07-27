@@ -68,5 +68,7 @@
     <string name="background_colour_note">From the palette of the WAD in use</string>
     <string name="background_photo">Image</string>
     <string name="background_photo_note">From your device</string>
+    <string name="settings_source">Source</string>
+    <string name="settings_source_note">GitHub repository, once it is public</string>
 </resources>
 

@@ -31,7 +31,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
-import com.google.android.material.appbar.MaterialToolbar
 import java.nio.channels.FileChannel
 
 /**
@@ -80,9 +79,6 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.settings)
         loadPalette()
 
-        findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
-        }
 
         // Read from the package rather than written down, so it cannot disagree with the
         // build that is running.
@@ -246,6 +242,17 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showAbout() {
+        // Source is shown and disabled: the repository is not public yet, so the row says the
+        // source exists and will be reachable rather than appearing and disappearing between
+        // versions. Disabling the whole row rather than only its click means it also reads as
+        // unavailable instead of looking broken when tapped.
+        row(R.id.row_source, R.string.settings_source, getString(R.string.settings_source_note))
+        findViewById<View>(R.id.row_source).apply {
+            findViewById<View>(R.id.row_radio).visibility = View.GONE
+            isEnabled = false
+            alpha = DISABLED_ALPHA
+        }
+
         row(R.id.row_licences, R.string.settings_licences, getString(R.string.settings_licences_note))
         findViewById<View>(R.id.row_licences).findViewById<View>(R.id.row_radio).visibility = View.GONE
         action(R.id.row_licences, R.drawable.ic_chevron) { openLicences() }
@@ -364,4 +371,9 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
+
+    private companion object {
+        /** Material 3 draws a disabled control at 38% opacity. */
+        const val DISABLED_ALPHA = 0.38f
+    }
 }

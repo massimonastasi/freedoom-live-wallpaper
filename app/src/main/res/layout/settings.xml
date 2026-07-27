@@ -4,13 +4,21 @@
 
     This is the point of it: the page is a layout rather than a res/xml preference screen, so
     Android Studio draws all of it in Split view and it can be corrected by looking instead of
-    by installing. Every control here is a Material 3 widget - MaterialToolbar, the segmented
-    MaterialButtonToggleGroup, MaterialSwitch, MaterialRadioButton, MaterialButton. The only
-    hand-assembled piece is the list row, because Material 3 for Views has no ListItem.
+    by installing. Every control here is a Material 3 widget - the segmented
+    MaterialButtonToggleGroup, MaterialSwitch, MaterialRadioButton, MaterialButton, and the
+    tonal icon button on rows that carry an action. The only hand-assembled piece is the list
+    row: Material 3 for Views ships no ListItem - checked against the artefact, there is no
+    such class in com.google.android.material 1.12.0 - it exists only as a composable, in
+    androidx.compose.material3 and in the TV variant.
 
-    Layers, bottom to top: the header, the scrolling page over it, the toolbar, the buttons.
-    The header does not move - the page slides up over it, so the title stays where it is and
-    is covered rather than carried away.
+    Layers, bottom to top: the header, the scrolling page over it, the buttons. The header
+    does not move - the page slides up over it, so the title stays where it is and is covered
+    rather than carried away.
+
+    There is no app bar. It carried nothing but a back arrow, which sat underneath the status
+    bar icons, and this is the launcher activity: back means leaving the app, which the system
+    gesture already does. A control that duplicates a gesture and collides with the status bar
+    is not worth positioning.
 -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -245,9 +253,21 @@
 
             <LinearLayout style="@style/ListGroup">
 
+                <!--
+                    Present and disabled: the repository is not public yet, so the row says
+                    that the source exists and will be reachable, rather than disappearing and
+                    reappearing between versions.
+                -->
+                <include
+                    android:id="@+id/row_source"
+                    layout="@layout/list_row" />
+
                 <include
                     android:id="@+id/row_licences"
-                    layout="@layout/list_row" />
+                    layout="@layout/list_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" />
 
             </LinearLayout>
 
@@ -260,14 +280,6 @@
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
-
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:layout_gravity="top"
-        android:background="@android:color/transparent"
-        app:navigationIcon="?attr/homeAsUpIndicator" />
 
     <LinearLayout
         android:id="@+id/button_bar"
