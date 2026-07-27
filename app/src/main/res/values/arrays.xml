@@ -21,20 +21,21 @@
     <!-- Label and supporting line are separate: a list item draws them differently. -->
     <string-array name="background_labels">
         <item>Dungeon floor</item>
-        <item>Image</item>
         <item>Flat colour</item>
+        <item>Image</item>
     </string-array>
 
     <string-array name="background_captions">
         <item>Changes with the difficulty</item>
-        <item>From your device</item>
         <item>From the palette of the WAD in use</item>
+        <item>From your device</item>
     </string-array>
 
+    <!-- The stored values are unchanged, so a setting made before this reorder still reads. -->
     <string-array name="background_values">
         <item>dynamic</item>
-        <item>photo</item>
         <item>colour</item>
+        <item>photo</item>
     </string-array>
 
     <!--

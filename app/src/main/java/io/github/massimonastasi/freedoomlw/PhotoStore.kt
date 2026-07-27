@@ -33,13 +33,28 @@ import java.io.File
  */
 object PhotoStore {
 
+    private const val KEY_NAME = "photo_name"
+
     private const val NAME = "background.jpg"
     private const val TAG = "FreedoomLW"
 
     fun file(context: Context): File? =
         File(context.filesDir, NAME).takeIf { it.isFile && it.length() > 0 }
 
+    /**
+     * The name of the file the user chose, or null.
+     *
+     * Kept beside the copy for the same reason the WAD's is: a row that says "from your
+     * device" tells someone nothing about which image is in use, and they cannot open the
+     * copy to look.
+     */
+    fun name(context: Context): String? =
+        context.getSharedPreferences(Settings.FILE, Context.MODE_PRIVATE)
+            .getString(KEY_NAME, null)
+
     fun clear(context: Context) {
+        context.getSharedPreferences(Settings.FILE, Context.MODE_PRIVATE)
+            .edit().remove(KEY_NAME).apply()
         file(context)?.delete()
     }
 
@@ -50,11 +65,25 @@ object PhotoStore {
         }
         // Decoded once here so an unreadable image is refused now rather than leaving the
         // wallpaper with a backdrop it cannot draw.
-        load(context, 1080, 2400) != null
+        val ok = load(context, 1080, 2400) != null
+        if (ok) {
+            context.getSharedPreferences(Settings.FILE, Context.MODE_PRIVATE)
+                .edit().putString(KEY_NAME, displayName(context, uri)).apply()
+        }
+        ok
     } catch (e: Exception) {
         Log.w(TAG, "photo import failed", e)
         clear(context)
         false
+    }
+
+    /** The name the provider gives the file, falling back to the last path segment. */
+    private fun displayName(context: Context, uri: Uri): String {
+        context.contentResolver.query(uri, null, null, null, null)?.use { c ->
+            val column = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (column >= 0 && c.moveToFirst()) return c.getString(column)
+        }
+        return uri.lastPathSegment ?: NAME
     }
 
     /**

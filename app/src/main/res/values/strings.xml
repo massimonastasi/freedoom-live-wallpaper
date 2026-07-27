@@ -77,5 +77,6 @@
     <string name="settings_source_note">GitHub repository</string>
     <string name="settings_licences_note">What this app is built from, and under what terms</string>    <string name="licences_heading">Third-party notices</string>
     <string name="licences_gpl">GNU General Public License, version 2</string>
+    <string name="settings_about_note_versioned">%1$s\n\nVersion %2$s</string>
 </resources>
 

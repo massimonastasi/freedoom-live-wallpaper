@@ -23,7 +23,6 @@ import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -61,25 +60,6 @@ class SettingsActivity : AppCompatActivity() {
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
-
-        // The title moves into the bar as the header rolls up, rather than the bar leaving
-        // with it. The back arrow has to stay reachable at every scroll position, and once
-        // the large title is gone the bar would otherwise be an unlabelled arrow.
-        val header = findViewById<View>(R.id.header_text)
-        findViewById<AppBarLayout>(R.id.app_bar).addOnOffsetChangedListener(
-            AppBarLayout.OnOffsetChangedListener { bar, offset ->
-                val collapsed = abs(offset) >= bar.totalScrollRange - toolbar.height
-                toolbar.title = if (collapsed) getString(R.string.app_name) else null
-                header.alpha = if (collapsed) 0f else 1f
-            }
-        )
-
-        // The version, under the title. Read from the package rather than written down, so it
-        // cannot disagree with the build that is running.
-        findViewById<TextView>(R.id.header_caption).text = getString(
-            R.string.settings_version,
-            packageManager.getPackageInfo(packageName, 0).versionName,
-        )
 
         val buttons = findViewById<ViewGroup>(R.id.button_bar)
         // The bar sits on the very bottom of the window and keeps its own content clear of
@@ -141,6 +121,10 @@ class SettingsActivity : AppCompatActivity() {
          */
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             super.onViewCreated(view, savedInstanceState)
+            // No dividers. The design separates sections with their headers and the gap
+            // around them; the library draws a hairline between every row on top of that.
+            setDivider(null)
+            setDividerHeight(0)
             listView.clipToPadding = false
             val bar = requireActivity().findViewById<View>(R.id.button_bar)
             // Its real height, taken once it has been laid out, rather than a constant that
@@ -186,7 +170,64 @@ class SettingsActivity : AppCompatActivity() {
             // row that opens a 404 is worse than a row that is not there.
             findPreference<LinkRowPreference>(Settings.KEY_SOURCE)?.isVisible = false
 
+            // The version, at the end of About. It was under the header title until that
+            // title became the collapsing layout's own, which carries one line and no
+            // caption. Read from the package rather than written down, so it cannot disagree
+            // with the build that is running.
+            findPreference<ParagraphPreference>("about_note")?.let {
+                it.body = getString(
+                    R.string.settings_about_note_versioned,
+                    it.body,
+                    requireContext().packageManager
+                        .getPackageInfo(requireContext().packageName, 0).versionName,
+                )
+            }
+
             showSprites()
+        }
+
+        /**
+         * The background rows, and what the photo row says about itself.
+         *
+         * Once an image is chosen the row shows its file name rather than "from your device",
+         * which tells nobody which image is in use, and the chevron becomes a bin - the same
+         * gesture as the imported WAD, because it is the same kind of thing: a file the user
+         * put there and is the only one who can take away.
+         */
+        private fun showBackground() {
+            val photo = PhotoStore.name(requireContext())
+            findPreference<OptionListPreference>(Settings.KEY_BACKGROUND)?.apply {
+                val captions = resources.getTextArray(R.array.background_captions)
+                if (photo != null) captions[PHOTO_ROW] = photo
+                setOptions(
+                    resources.getTextArray(R.array.background_labels),
+                    resources.getTextArray(R.array.background_values),
+                    captions,
+                )
+                // The swatches belong inside the flat-colour row, not in a block under it.
+                extraFor = { i -> if (i == COLOUR_ROW) swatchGrid() else null }
+                trailingIcon = { i ->
+                    when {
+                        i != PHOTO_ROW -> 0
+                        photo != null -> R.drawable.ic_delete
+                        else -> R.drawable.ic_chevron
+                    }
+                }
+                onTrailing = {
+                    if (photo != null) {
+                        PhotoStore.clear(requireContext())
+                        showBackground()
+                    } else {
+                        choosePhoto.launch(arrayOf("image/*"))
+                    }
+                }
+                // Choosing "Image" with nothing behind it would show nothing, so it asks.
+                onChosen = { value ->
+                    if (value == "photo" && PhotoStore.file(requireContext()) == null) {
+                        choosePhoto.launch(arrayOf("image/*"))
+                    }
+                }
+            }
         }
 
         /** The sprite sets on disk: the bundled one, plus an imported WAD if there is one. */
