@@ -98,12 +98,6 @@ class SpriteSet(private val wad: WadFile, prefix: String, private val dim: Int =
     }
 
     /**
-     * The decoded sprite for the lump index returned by [resolve].
-     *
-     * ponytail: resolve() + sprite() instead of a single get() returning a pair — the
-     * draw loop allocates nothing.
-     */
-    /**
      * Lumps that could not be decoded, so a broken one is attempted once and not again.
      *
      * Without this a malformed lump would be re-decoded and re-fail on every frame it is
@@ -111,6 +105,12 @@ class SpriteSet(private val wad: WadFile, prefix: String, private val dim: Int =
      */
     private val broken = HashSet<Int>()
 
+    /**
+     * The decoded sprite for the lump index returned by [resolve].
+     *
+     * ponytail: resolve() + sprite() instead of a single get() returning a pair — the
+     * draw loop allocates nothing.
+     */
     fun sprite(lump: Int): Sprite? {
         cache.get(lump)?.let { return it }
         if (lump in broken) return null

@@ -40,13 +40,6 @@ import java.nio.channels.FileChannel
 /** The original engine runs at 35 tics per second. All game logic advances at that rate, always. */
 const val TICRATE = 35
 
-/** Frames drawn per second. Independent of TICRATE: we draw less often than we simulate. */
-// Measured on a Pixel 6a, scene with 8 actors, wallpaper visible:
-//   20 fps -> 12.0% of one core   (gfxinfo: 5 ms/frame, 0 janky frames)
-//   10 fps -> 9.2% of one core
-// Not linear: there is a fixed ~6.4% cost independent of the frame rate, still
-// unidentified. Perfetto profiling belongs to phase 7, where the plan puts it.
-private const val DRAW_FPS = 20
 
 private const val TAG = "FreedoomLW"
 
@@ -54,10 +47,6 @@ class FreedoomWallpaperService : WallpaperService() {
 
     /** One SpriteSet per prefix, indexed like GameData.spritePrefixes. */
     private var sprites: List<SpriteSet> = emptyList()
-
-    /** Red damage flash colour, read from PLAYPAL. */
-    private var damageTint = 0xFFAA1400.toInt()
-
     /** Colour of the death wash, straight from the active WAD's palette. */
     private var deathTint = 0xFFB30000.toInt()
 
@@ -456,6 +445,12 @@ class FreedoomWallpaperService : WallpaperService() {
                 powerSaveCheckedAt = now
                 powerSave = powerManager.isPowerSaveMode
             }
+            // Drawing is decoupled from TICRATE: the scene always thinks 35 times a second,
+            // this is only how often it is painted. Measured on a Pixel 6a, 8 actors, visible:
+            //   20 fps -> 12.0% of one core (gfxinfo: 5 ms/frame, 0 janky frames)
+            //   10 fps ->  9.2% of one core
+            // Not linear - about 6.4% is fixed and independent of the rate, still
+            // unidentified. Perfetto profiling belongs to phase 7, where the plan puts it.
             val fps = if (powerSave) chosenFps / 2 else chosenFps
             declareFrameRate(fps.toFloat())
             handler.postDelayed(drawRunnable, 1000L / fps)

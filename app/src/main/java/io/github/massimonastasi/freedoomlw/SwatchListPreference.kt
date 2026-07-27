@@ -53,12 +53,9 @@ class SwatchListPreference @JvmOverloads constructor(
     init {
         layoutResource = R.layout.preference_swatches
         isSelectable = false
-        val a = context.obtainStyledAttributes(attrs, R.styleable.RadioListPreference)
-        try {
+        context.styled(attrs, R.styleable.RadioListPreference) { a ->
             labels = a.getTextArray(R.styleable.RadioListPreference_android_entries) ?: emptyArray()
             indices = a.getTextArray(R.styleable.RadioListPreference_android_entryValues) ?: emptyArray()
-        } finally {
-            a.recycle()
         }
     }
 

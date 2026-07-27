@@ -37,10 +37,7 @@
     <string name="photo_imported">Photo loaded.</string>
     <string name="settings_wad">Use your own WAD</string>
     <string name="settings_wad_note">Point this at an IWAD you already own and its sprites, palette, floors and numerals replace the bundled ones. The file is copied into this app and never leaves your device.</string>
-    <string name="settings_wad_active">In use, %d MB. Tap to choose a different one.</string>
-    <string name="settings_wad_reset">Go back to the bundled sprites</string>
     <string name="wad_imported">WAD loaded. The wallpaper will use it the next time it is shown.</string>
-    <string name="wad_reset_done">Back to the bundled sprites.</string>
     <string name="wad_unreadable">That file could not be read.</string>
     <string name="wad_not_a_wad">Not a WAD file: %s</string>
     <string name="wad_no_sprites">That WAD has none of the sprites this wallpaper draws.</string>

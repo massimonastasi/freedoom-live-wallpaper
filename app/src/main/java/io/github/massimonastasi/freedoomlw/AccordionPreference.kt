@@ -55,10 +55,9 @@ class AccordionPreference @JvmOverloads constructor(
         // The whole row handles its own tap, so the preference framework must not also treat
         // it as clickable: two ripples on one row, and the outer one wins the touch.
         isSelectable = false
-        body = attrs?.let {
-            val a = context.obtainStyledAttributes(it, R.styleable.AccordionPreference)
-            try { a.getText(R.styleable.AccordionPreference_body) ?: "" } finally { a.recycle() }
-        } ?: ""
+        body = context.styled(attrs, R.styleable.AccordionPreference) {
+            it.getText(R.styleable.AccordionPreference_body) ?: ""
+        }
     }
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {

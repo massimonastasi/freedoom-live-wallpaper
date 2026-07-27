@@ -19,12 +19,29 @@
 package io.github.massimonastasi.freedoomlw
 
 import android.content.Context
+import android.content.res.TypedArray
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import androidx.preference.Preference
 import androidx.preference.PreferenceViewHolder
+
+/**
+ * Reads styled attributes and always recycles them.
+ *
+ * The three custom preferences here each wrote this out differently - one extension, two
+ * hand-rolled try/finally blocks - which is three chances to forget the recycle. androidx.core
+ * ships the same thing, but only as a reason to add a dependency for four lines.
+ */
+internal inline fun <R> Context.styled(
+    attrs: AttributeSet?,
+    styleable: IntArray,
+    block: (TypedArray) -> R,
+): R {
+    val a = obtainStyledAttributes(attrs, styleable)
+    return try { block(a) } finally { a.recycle() }
+}
 
 /**
  * A list of radio buttons shown in place, rather than behind a dialog.
@@ -45,7 +62,6 @@ class RadioListPreference @JvmOverloads constructor(
     private var entries: Array<CharSequence> = emptyArray()
     private var values: Array<CharSequence> = emptyArray()
     private var current: String? = null
-    private var group: RadioGroup? = null
 
     /** Locked when there is only one thing to choose, so the row reads as fixed, not broken. */
     var choosable: Boolean = true
@@ -54,14 +70,11 @@ class RadioListPreference @JvmOverloads constructor(
     init {
         layoutResource = R.layout.preference_radio_list
         isSelectable = false
-        context.obtainStyledAttributes(attrs, R.styleable.RadioListPreference).use {
+        context.styled(attrs, R.styleable.RadioListPreference) {
             entries = it.getTextArray(R.styleable.RadioListPreference_android_entries) ?: emptyArray()
             values = it.getTextArray(R.styleable.RadioListPreference_android_entryValues) ?: emptyArray()
         }
     }
-
-    private inline fun <T : android.content.res.TypedArray, R> T.use(block: (T) -> R): R =
-        try { block(this) } finally { recycle() }
 
     /** Replaces the options at runtime: the sprite list grows when a WAD is imported. */
     fun setOptions(labels: Array<CharSequence>, ids: Array<CharSequence>) {
@@ -69,8 +82,6 @@ class RadioListPreference @JvmOverloads constructor(
         values = ids
         notifyChanged()
     }
-
-    fun value(): String = current ?: values.firstOrNull()?.toString().orEmpty()
 
     override fun onGetDefaultValue(a: android.content.res.TypedArray, index: Int): Any? =
         a.getString(index)
@@ -83,7 +94,6 @@ class RadioListPreference @JvmOverloads constructor(
         super.onBindViewHolder(holder)
 
         val container = holder.findViewById(R.id.radio_group) as RadioGroup
-        group = container
         container.setOnCheckedChangeListener(null)
         container.removeAllViews()
 
