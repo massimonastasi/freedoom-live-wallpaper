@@ -140,6 +140,10 @@ class SettingsActivity : AppCompatActivity() {
         shapeGroup(R.id.overlay_group)
         shapeGroup(R.id.background_group)
         shapeGroup(R.id.about_group)
+
+        // After showSprites, which is the call that notices: the file is discarded the first
+        // time anybody asks for it, and this is where the user finds out why it is gone.
+        if (WadStore.takeStaleNotice(this)) toast(getString(R.string.wad_stale))
     }
 
     // ------------------------------------------------------------------ sections

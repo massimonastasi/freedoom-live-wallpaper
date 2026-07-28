@@ -43,10 +43,57 @@ object WadStore {
     private const val TAG = "FreedoomLW"
 
     private const val KEY_NAME = "wad_name"
+    private const val KEY_FORMAT = "wad_format"
+    private const val KEY_STALE = "wad_stale"
 
-    /** The one imported WAD, or null when the bundled assets are in use. */
-    fun active(context: Context): File? =
-        File(File(context.filesDir, DIR), "active.wad").takeIf { it.isFile && it.length() > 0 }
+    /**
+     * Which set of reduction rules the stored copy was built by. **Raise this whenever those
+     * rules change**, and see WadStoreTest, which fails when they change without it.
+     *
+     * The copy in files/wads is not the user's file, it is what [WadReducer] made of it: the
+     * lumps this wallpaper reads, chosen by rules that live in the app. Those rules move -
+     * FloorPicker went from picking five flats by chroma to picking nine by colour family -
+     * and the copy does not move with them. Measured on a real device: a your.wad reduced by
+     * the old rules kept nine flats, and two of the nine the current rules want were simply
+     * not in the file. The floors were being chosen from a pool that no longer matched, and
+     * nothing about it looked broken.
+     *
+     * 1: the original, flats chosen by chroma for five skill levels.
+     * 2: flats filtered by band, channel ceiling and relative contrast, all of them kept.
+     */
+    const val REDUCTION_FORMAT = 2
+
+    /**
+     * The one imported WAD, or null when the bundled assets are in use.
+     *
+     * A copy built by older rules is deleted here rather than reported, because there is
+     * nothing useful to do with it: the original file is the user's and its permission may be
+     * long gone, so it cannot be reduced again. Deleting inside the accessor is deliberate -
+     * it is the single door every caller comes through, and a check placed beside it instead
+     * would be one more thing to remember at each call site.
+     */
+    fun active(context: Context): File? {
+        val file = File(File(context.filesDir, DIR), "active.wad")
+        if (!file.isFile || file.length() <= 0) return null
+
+        val prefs = Settings.of(context)
+        if (prefs.getInt(KEY_FORMAT, 1) == REDUCTION_FORMAT) return file
+
+        Log.i(TAG, "discarding a WAD reduced by format ${prefs.getInt(KEY_FORMAT, 1)}")
+        file.delete()
+        // Remembered so the settings screen can say what happened. Silently losing a file the
+        // user imported is worse than the stale floors it was causing.
+        prefs.edit().remove(KEY_NAME).remove(KEY_FORMAT).putBoolean(KEY_STALE, true).apply()
+        return null
+    }
+
+    /** True once, after a stale copy was discarded, so the screen can explain it. */
+    fun takeStaleNotice(context: Context): Boolean {
+        val prefs = Settings.of(context)
+        if (!prefs.getBoolean(KEY_STALE, false)) return false
+        prefs.edit().remove(KEY_STALE).apply()
+        return true
+    }
 
     /**
      * What the user called it, so the settings can name the file rather than describe it.
@@ -73,7 +120,7 @@ object WadStore {
 
     fun clear(context: Context) {
         active(context)?.delete()
-        Settings.of(context).edit().remove(KEY_NAME).apply()
+        Settings.of(context).edit().remove(KEY_NAME).remove(KEY_FORMAT).remove(KEY_STALE).apply()
     }
 
     /**
@@ -125,8 +172,12 @@ object WadStore {
             target.delete()
             return context.getString(R.string.wad_unreadable)
         }
+        // Stamped with the rules that produced it, so a later version can tell whether what
+        // is on disk is still what it would build today.
         Settings.of(context).edit()
             .putString(KEY_NAME, displayName(context, uri) ?: context.getString(R.string.wad_unnamed))
+            .putInt(KEY_FORMAT, REDUCTION_FORMAT)
+            .remove(KEY_STALE)
             .apply()
         Log.i(TAG, "WAD imported: $reduced lumps, ${full / 1024} KB -> ${target.length() / 1024} KB")
         return null
