@@ -97,6 +97,12 @@ class SpriteSet(private val wad: WadFile, prefix: String) {
         return if (slot[f][0] >= 0) slot[f][0] else slot[f][rot.coerceIn(1, 8)]
     }
 
+    /** Height in pixels of one frame, read from the lump header without decoding it. */
+    fun frameHeight(f: Int, rot: Int): Int {
+        val packed = resolve(f, rot)
+        return if (packed < 0) 0 else wad.patchHeight(packed shr 1)
+    }
+
     /**
      * Lumps that could not be decoded, so a broken one is attempted once and not again.
      *

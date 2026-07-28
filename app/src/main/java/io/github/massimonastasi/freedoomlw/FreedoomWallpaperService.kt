@@ -158,6 +158,30 @@ class FreedoomWallpaperService : WallpaperService() {
         set != null && set.frameCount > 0
     }
 
+    /**
+     * Which creatures rest tall enough to be drawn under the fight, by sprite index.
+     *
+     * The yardstick is the standing marine of the same file, so the rule carries to a WAD
+     * nobody has seen: the same creature is not the same size twice. Measured across the two
+     * files here, the Overlord rests 100 pixels tall in Freedoom and 38 in Phase 2, and the
+     * Cyberdemon 80 and 134 - opposite ways round.
+     *
+     * The frame measured is the one the death animation ends on, which is the body that
+     * stays. Read from the lump header, so nothing is decoded to answer this.
+     */
+    private fun tallCorpses(): BooleanArray {
+        val out = BooleanArray(GameData.spritePrefixes.size)
+        val marine = sprites.getOrNull(GameData.player.spriteIndex)?.frameHeight(0, 1) ?: 0
+        if (marine <= 0) return out                 // no yardstick: nobody moves
+        for (c in GameData.creatures) {
+            val set = sprites.getOrNull(c.spriteIndex) ?: continue
+            val resting = c.death.frames.last()
+            val h = set.frameHeight(resting, 1)
+            out[c.spriteIndex] = h >= marine * Scene.TALL_CORPSE
+        }
+        return out
+    }
+
     /** Reloads if the active WAD has changed since the sprites were built. */
     private fun reloadWadIfChanged() {
         val wanted = activeWad()?.absolutePath ?: BUNDLED
@@ -515,6 +539,7 @@ class FreedoomWallpaperService : WallpaperService() {
                 val set = sprites.getOrNull(GameData.items[i].spriteIndex)
                 set != null && set.frameCount > 0
             }
+            s.tallCorpses = tallCorpses()
         }
 
         override fun onSurfaceRedrawNeeded(holder: SurfaceHolder) {
@@ -612,34 +637,15 @@ class FreedoomWallpaperService : WallpaperService() {
                 return
             }
 
-            // Already depth-sorted by Scene.tick: whoever is in front covers those behind.
-            for (i in s.actors.indices) {
-                val a = s.actors[i]
-                val set = sprites[a.spriteIndex]
-                val packed = set.resolve(a.frame(tic), a.spriteRotation())
-                if (packed < 0) continue
-                // Null when the lump refused to decode, which only a user-supplied WAD can
-                // cause. One actor goes undrawn rather than the wallpaper going down.
-                val sprite = set.sprite(packed shr 1) ?: continue
-                val flip = packed and 1 == 1
-
-                // Oblique projection: x horizontal, y into the depth. The sprite anchor
-                // point (the feet) lands on the actor position.
-                //
-                // drawHeight lifts it off that point without moving it: the projection has no
-                // third axis, so height can only exist here, in the drawing. It is why a
-                // fireball leaves the chest and still flies the trajectory it was given, and
-                // why it still sorts and collides at the position it really occupies.
-                val ax = (a.x.toFloat() / GameData.FRACUNIT) * pxPerUnit
-                val ay = (a.y.toFloat() / GameData.FRACUNIT - a.drawHeight) * pxPerUnit
-
-                matrix.setScale(if (flip) -spriteScale else spriteScale, spriteScale)
-                matrix.postTranslate(
-                    if (flip) ax + sprite.xOffset * spriteScale else ax - sprite.xOffset * spriteScale,
-                    ay - sprite.yOffset * spriteScale,
-                )
-                canvas.drawBitmap(sprite.bitmap, matrix, paint)
-            }
+            // Two passes over the same list, both already depth-sorted by Scene.tick: the big
+            // bodies first, then everything that is still standing. Within each pass whoever
+            // is in front covers those behind, as before.
+            //
+            // A pass rather than a different sort order, because the order of that list is
+            // the simulation's - the tick walks it and removes by index - and depth is what
+            // it means. Which layer a body belongs in is a question about the picture.
+            for (i in s.actors.indices) if (s.restsBelow(s.actors[i])) drawActor(canvas, s.actors[i])
+            for (i in s.actors.indices) if (!s.restsBelow(s.actors[i])) drawActor(canvas, s.actors[i])
 
             drawReadout(canvas, s)
             drawDebug(canvas, s)
@@ -654,6 +660,33 @@ class FreedoomWallpaperService : WallpaperService() {
                 overlay.alpha = (fade * DEATH_MAX_ALPHA).toInt().coerceIn(0, 255)
                 canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
             }
+        }
+
+        private fun drawActor(canvas: Canvas, a: Actor) {
+            val set = sprites[a.spriteIndex]
+            val packed = set.resolve(a.frame(tic), a.spriteRotation())
+            if (packed < 0) return
+            // Null when the lump refused to decode, which only a user-supplied WAD can
+            // cause. One actor goes undrawn rather than the wallpaper going down.
+            val sprite = set.sprite(packed shr 1) ?: return
+            val flip = packed and 1 == 1
+
+            // Oblique projection: x horizontal, y into the depth. The sprite anchor
+            // point (the feet) lands on the actor position.
+            //
+            // drawHeight lifts it off that point without moving it: the projection has no
+            // third axis, so height can only exist here, in the drawing. It is why a
+            // fireball leaves the chest and still flies the trajectory it was given, and
+            // why it still sorts and collides at the position it really occupies.
+            val ax = (a.x.toFloat() / GameData.FRACUNIT) * pxPerUnit
+            val ay = (a.y.toFloat() / GameData.FRACUNIT - a.drawHeight) * pxPerUnit
+
+            matrix.setScale(if (flip) -spriteScale else spriteScale, spriteScale)
+            matrix.postTranslate(
+                if (flip) ax + sprite.xOffset * spriteScale else ax - sprite.xOffset * spriteScale,
+                ay - sprite.yOffset * spriteScale,
+            )
+            canvas.drawBitmap(sprite.bitmap, matrix, paint)
         }
 
         /**

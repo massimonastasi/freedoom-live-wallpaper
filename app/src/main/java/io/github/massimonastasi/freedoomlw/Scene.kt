@@ -229,6 +229,38 @@ class Scene(
      */
     var drawableItems: BooleanArray? = null
 
+    /**
+     * Which creatures leave a body big enough to be drawn under everything else.
+     *
+     * Measured from the loaded WAD rather than named here, because it is a fact about the
+     * artwork and the artwork is swappable: the Overlord rests 100 pixels tall in Freedoom
+     * and 38 in Phase 2, and the Cyberdemon the other way round. See the wallpaper service,
+     * which owns the sprites and therefore the measurement.
+     *
+     * Indexed by sprite, not by creature, because that is the index an actor already carries:
+     * this is read for every body on every frame, and a lookup by identity would be a scan of
+     * the bestiary each time.
+     *
+     * Null when nothing has been measured, which is what keeps Scene testable with no WAD.
+     */
+    var tallCorpses: BooleanArray? = null
+
+    /**
+     * True when this actor's body should be drawn beneath the fight rather than in it.
+     *
+     * Two ways in. A body that has settled on its resting frame is furniture and belongs
+     * under the things that move. And a creature that never settles - the Charger, which
+     * detonates and is removed - goes under for the whole of its death, because that
+     * explosion is the widest thing on the screen and it would otherwise cover the pickups
+     * it happens to land on.
+     */
+    fun restsBelow(a: Actor): Boolean {
+        if (a.mode != Mode.DEATH) return false
+        if (tallCorpses?.getOrNull(a.spriteIndex) != true) return false
+        val c = a.creature ?: return false
+        return a.animTics == -1 || c.death.tics.last() != -1
+    }
+
     /** Current wave, zero-based. */
     var wave = 0
         private set
@@ -812,30 +844,13 @@ class Scene(
      */
     private fun advanceCorpse(a: Actor): Boolean {
         val anim = a.anim ?: return false
-        if (a.animTics == -1) return tic - a.spawnTic < corpseLifetime(a)
+        if (a.animTics == -1) return tic - a.spawnTic < CORPSE_LIFETIME
         if (--a.animTics > 0) return true
         a.animStep++
         if (a.animStep >= anim.length) return false
         a.animTics = anim.tics[a.animStep]
         if (a.animTics == -1) a.spawnTic = tic          // the corpse countdown starts here
         return true
-    }
-
-    /**
-     * How long this particular body stays.
-     *
-     * A corpse is drawn at the same scale as the thing that made it, so the big ones cover
-     * ground the small ones do not: an Overlord lying where an item drops hides the item, and
-     * hides the marine walking over to fetch it. The body of something that wide has to go
-     * sooner, and that is what the radius is for - it is the creature's own footprint from
-     * mobjinfo, not a size invented here.
-     *
-     * Two tiers rather than a curve: the bestiary splits cleanly around 30 map units, and a
-     * ramp would be a formula nobody could check against the screen.
-     */
-    private fun corpseLifetime(a: Actor): Int {
-        val c = a.creature ?: return CORPSE_LIFETIME
-        return if (c.radius > CORPSE_WIDE_RADIUS) CORPSE_LIFETIME_WIDE else CORPSE_LIFETIME
     }
 
     /** The attack lands on the last frame, as in the engine (the action sits in S_*_ATK3). */
@@ -1239,15 +1254,21 @@ class Scene(
         const val CORPSE_LIFETIME = TICRATE * 30
 
         /**
-         * Above this footprint a body is wide enough to sit on top of what the scene is
-         * about. From mobjinfo: zombies and imps are 20, the FleshWorm and the Trilobite 30
-         * and 31, and everything above - Cyberlord 40, Mancubus 48, Arachnotron 64, Overlord
-         * 128 - is on the other side of the line.
+         * How tall a resting body has to be, against the standing marine of the same WAD, to
+         * be drawn beneath the fight instead of in it.
+         *
+         * One means "as tall lying down as the marine is standing up", which is a strange
+         * thing for a corpse to be and exactly what makes these worth moving. Measured on the
+         * two files: it takes the Overlord (1.79) and the Cyberlord (1.43) out of Freedoom,
+         * the Cyberdemon (2.39) out of Phase 2, and the Charger from both - its detonation
+         * measures 1.14 and 1.61, and it is the widest thing on the screen.
+         *
+         * Big bodies used to be handled by removing them sooner, ten seconds against thirty.
+         * That traded one problem for another: they still covered what they landed on, and
+         * they vanished while the fight around them was still going. Everything lasts thirty
+         * seconds again.
          */
-        const val CORPSE_WIDE_RADIUS = 31
-
-        /** Ten seconds for those, against thirty for the rest. */
-        const val CORPSE_LIFETIME_WIDE = TICRATE * 10
+        const val TALL_CORPSE = 1.0
 
         /**
          * How long the red screen lasts before restarting from the first wave.

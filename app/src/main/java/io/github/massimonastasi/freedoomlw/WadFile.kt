@@ -134,6 +134,19 @@ class WadFile(private val buf: ByteBuffer) {
      * Spider Mastermind's frames come to 2542 KB against a flat 1024 KB budget, so it evicted
      * and re-decoded every frame it drew. This is how an actor is asked what it needs.
      */
+    /**
+     * Height of a patch in pixels, from its header, without decoding it.
+     *
+     * Used to judge how much room a corpse takes before anything has died: decoding the
+     * Overlord's resting frame to measure it would cost two and a half megabytes at load, to
+     * read a number that sits in the first four bytes.
+     */
+    fun patchHeight(index: Int): Int {
+        if (lumpSize[index] < 4) return 0
+        val p = lumpPos[index]
+        return (buf.get(p + 2).toInt() and 0xFF) or ((buf.get(p + 3).toInt() and 0xFF) shl 8)
+    }
+
     fun patchBytes(index: Int): Int {
         val p = lumpPos[index]
         if (lumpSize[index] < 4) return 0
