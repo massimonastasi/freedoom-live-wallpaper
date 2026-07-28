@@ -94,6 +94,22 @@ class Actor(val spriteIndex: Int) {
     var targetY = 0
     var dead = false
 
+    /**
+     * How far above its own position this is drawn, in map units. Rendering only.
+     *
+     * The world here has no third dimension: x is across and y is depth, and an actor's
+     * position is where it stands. A shot leaving the marine's chest is therefore not
+     * expressible as a position at all - it is the same spot on the floor, drawn higher.
+     *
+     * Writing the height into y instead was tried and is wrong in a way that does not show
+     * up as a wrong picture: y is depth, so it decides the drawing order, the distance to a
+     * target and whether a projectile has reached one. A fireball raised that way flies at a
+     * depth thirty-four units behind where it appears to be, sorts against the wrong actors,
+     * and can pass through something narrow enough that the radius test misses. This field
+     * keeps the simulation reading the position the actor actually occupies.
+     */
+    var drawHeight = 0
+
     /** Tics of stillness after appearing: info.c mobjinfo.reactiontime. */
     var reactionTime = 0
 
@@ -593,18 +609,28 @@ class Scene(
         materialise(a)
     }
 
-    private fun spawnEffect(spriteIndex: Int, anim: GameData.Anim, x: Int, y: Int) {
+    private fun spawnEffect(
+        spriteIndex: Int,
+        anim: GameData.Anim,
+        x: Int,
+        y: Int,
+        drawHeight: Int = 0,
+    ) {
         val a = Actor(spriteIndex)
         begin(a, Mode.EFFECT, anim)
         a.x = x
         a.y = y
+        a.drawHeight = drawHeight
         a.spawnTic = tic
         actors.add(a)
     }
 
+    /** Teleport fog is on the ground, because that is where somebody arrives. */
     private fun spawnFog(x: Int, y: Int) = spawnEffect(GameData.fogSpriteIndex, GameData.fogAnim, x, y)
 
-    private fun spawnBlood(x: Int, y: Int) = spawnEffect(GameData.bloodSpriteIndex, GameData.bloodAnim, x, y)
+    /** Blood is where the shot landed, which is the height the shot was fired at. */
+    private fun spawnBlood(x: Int, y: Int) =
+        spawnEffect(GameData.bloodSpriteIndex, GameData.bloodAnim, x, y, MUZZLE_HEIGHT)
 
     /** Drops a pickup somewhere on the map, or at a chosen spot. */
     private fun spawnItem(
@@ -929,6 +955,9 @@ class Scene(
         m.animTics = GameData.ballAnim.tics[0]
         m.x = from.x
         m.y = from.y
+        // Leaves the chest and stays there for the whole flight: the height is drawn, not
+        // travelled, so the trajectory and everything it collides with are unchanged.
+        m.drawHeight = MUZZLE_HEIGHT
         m.spawnTic = tic
         m.damage = p.damage
         m.firedByPlayer = from.isPlayer
@@ -993,7 +1022,7 @@ class Scene(
         }
 
         target.health -= amount
-        spawnBlood(target.x, target.y - MUZZLE_HEIGHT * FRACUNIT)
+        spawnBlood(target.x, target.y)
 
         if (target.health <= 0) {
             target.dead = true

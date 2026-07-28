@@ -625,8 +625,13 @@ class FreedoomWallpaperService : WallpaperService() {
 
                 // Oblique projection: x horizontal, y into the depth. The sprite anchor
                 // point (the feet) lands on the actor position.
+                //
+                // drawHeight lifts it off that point without moving it: the projection has no
+                // third axis, so height can only exist here, in the drawing. It is why a
+                // fireball leaves the chest and still flies the trajectory it was given, and
+                // why it still sorts and collides at the position it really occupies.
                 val ax = (a.x.toFloat() / GameData.FRACUNIT) * pxPerUnit
-                val ay = (a.y.toFloat() / GameData.FRACUNIT) * pxPerUnit
+                val ay = (a.y.toFloat() / GameData.FRACUNIT - a.drawHeight) * pxPerUnit
 
                 matrix.setScale(if (flip) -spriteScale else spriteScale, spriteScale)
                 matrix.postTranslate(

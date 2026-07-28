@@ -778,4 +778,45 @@ class SceneTest {
         assertTrue(sawProjectile, "no fireball was thrown")
         assertTrue(sawDeath, "nobody died")
     }
+
+    /**
+     * Shots leave and land at chest height, and that height lives in the drawing only.
+     *
+     * The distinction is the whole point. y is depth in this projection, so raising a
+     * fireball by writing into y moves it thirty-four units back in the world: it sorts
+     * against the wrong actors, its distance to the target is wrong, and it can pass through
+     * something narrow enough for the radius test to miss. Drawn higher, it flies exactly the
+     * trajectory it was given.
+     *
+     * So the assertion is not "it looks right" but "nothing in the world was moved to make it
+     * look right": everything that fights or stands has no draw height at all, and only the
+     * things that leave a barrel have one.
+     */
+    @Test
+    fun `height is drawn, never simulated`() {
+        GameData.clearRandom()
+        val scene = Scene(worldWidth, worldHeight)
+        var sawRaised = false
+
+        for (t in 1..TICRATE * 600) {
+            scene.tick(t)
+            for (a in scene.actors) {
+                val raised = a.drawHeight != 0
+                if (raised) sawRaised = true
+                when {
+                    a.mode == Mode.PROJECTILE || a.spriteIndex == GameData.bloodSpriteIndex ->
+                        assertEquals(
+                            Scene.MUZZLE_HEIGHT, a.drawHeight,
+                            "a shot or its blood is not at chest height at tic $t",
+                        )
+                    // Creatures, corpses, pickups and the teleport fog all stand on the floor.
+                    else -> assertEquals(
+                        0, a.drawHeight,
+                        "something that belongs on the ground is raised at tic $t",
+                    )
+                }
+            }
+        }
+        assertTrue(sawRaised, "nothing was ever drawn above the floor in ten minutes")
+    }
 }
