@@ -35,10 +35,10 @@ import kotlin.test.assertTrue
  */
 class WadFileTest {
 
-    private val wadFile = File("src/main/assets/freedoom1.wad")
+    private val wadFile = File("src/main/assets/freedoom2.wad")
 
     private fun openWad(): WadFile {
-        assumeTrue("freedoom1.wad missing: test skipped", wadFile.exists())
+        assumeTrue("freedoom2.wad missing: test skipped", wadFile.exists())
         val ch = RandomAccessFile(wadFile, "r").channel
         return WadFile(ch.map(FileChannel.MapMode.READ_ONLY, 0, ch.size()))
     }

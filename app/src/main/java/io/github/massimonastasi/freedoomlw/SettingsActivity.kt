@@ -460,7 +460,7 @@ class SettingsActivity : AppCompatActivity() {
             val buf = if (user != null) {
                 user.inputStream().use { it.channel.map(FileChannel.MapMode.READ_ONLY, 0, user.length()) }
             } else {
-                val afd = assets.openFd("freedoom1.wad")
+                val afd = assets.openFd("freedoom2.wad")
                 afd.createInputStream().use { s ->
                     s.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.length)
                 }

@@ -122,7 +122,7 @@ tasks.withType<Test>().configureEach {
  *
  * Run with: gradlew reduceWad
  * Input:  app/wad/freedoom-full.wad          (downloaded, not in the repo)
- * Output: app/src/main/assets/freedoom1.wad  (what ships)
+ * Output: app/src/main/assets/freedoom2.wad  (what ships)
  *
  * The input deliberately sits outside assets. Left in there it would be packaged as well,
  * and the APK would carry both copies.
@@ -132,7 +132,7 @@ tasks.withType<Test>().configureEach {
  */
 tasks.register("reduceWad") {
     val source = layout.projectDirectory.file("wad/freedoom-full.wad").asFile
-    val target = layout.projectDirectory.file("src/main/assets/freedoom1.wad").asFile
+    val target = layout.projectDirectory.file("src/main/assets/freedoom2.wad").asFile
 
     doLast {
         require(source.exists()) { "missing ${source.name}: download Freedoom and rename the IWAD to it" }

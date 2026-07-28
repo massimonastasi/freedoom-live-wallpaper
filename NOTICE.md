@@ -46,7 +46,7 @@ files, and were written from those descriptions rather than copied.
 
 ## The Freedoom project — game assets
 
-The application bundles a **reduced subset** of `freedoom1.wad`: 291 of its 3163 lumps,
+The application bundles a **reduced subset** of `freedoom2.wad`: 639 of its 3610 lumps,
 being the sprites, palette, floor texture and numerals actually drawn. Nothing is added
 and nothing is altered; lumps that are never used are omitted. The subset retains
 Freedoom's own `FREEDOOM` identifying lump.

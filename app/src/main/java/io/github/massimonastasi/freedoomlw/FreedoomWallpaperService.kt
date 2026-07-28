@@ -946,7 +946,7 @@ class FreedoomWallpaperService : WallpaperService() {
         const val SCRIM_ALPHA = 255 * (100 - FLOOR_DIM_PERCENT) / 100
 
         /** The IWAD shipped in assets, used until the user supplies one of their own. */
-        const val BUNDLED = "freedoom1.wad"
+        const val BUNDLED = "freedoom2.wad"
 
         /** Room left above the debug overlay for the status bar, in dp. */
         const val STATUS_BAR_CLEARANCE = 34f

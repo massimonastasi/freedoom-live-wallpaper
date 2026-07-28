@@ -36,14 +36,21 @@ a signed release build. Details and next steps in [docs/STATUS.md](docs/STATUS.m
    winget install --id Google.PlatformTools -e
    ```
 
-3. Download Freedoom from <https://freedoom.github.io>, put its `freedoom1.wad` at
+3. Download Freedoom from <https://freedoom.github.io>, put its `freedoom2.wad` at
    `app/wad/freedoom-full.wad`, and run:
    ```
    gradlew reduceWad
    ```
-   That writes `app/src/main/assets/freedoom1.wad` containing only the lumps the wallpaper
-   reads — 293 of 3163, 549 KB instead of 27.5 MB. Neither file is in the repo (see
+   That writes `app/src/main/assets/freedoom2.wad` containing only the lumps the wallpaper
+   reads — 639 of 3610, 1.9 MB instead of 27.5 MB. Neither file is in the repo (see
    `.gitignore`), and the input stays outside `assets` so it is never packaged.
+
+   **Phase 2, not Phase 1.** Freedoom Phase 1 is Phase 1 compatible and carries nine of the
+   fourteen creatures this bestiary names; the five it lacks — the ChaingunZombie,
+   BoneStalker, LesserLord, Spiderling and Bloater — were being substituted away at runtime,
+   so the shipped wallpaper never showed a third of its own table. The balance measurements
+   were taken with every creature present, which meant they described a file nobody had.
+   Phase 2 has all fourteen. It costs 496 KB more in the APK.
 
 4. Open the folder in Android Studio and run it on a physical phone, then go to
    *Settings → Wallpaper → Live wallpapers* and pick Freedoom Live Wallpaper.

@@ -45,11 +45,11 @@ import kotlin.test.assertEquals
  */
 class WadStoreTest {
 
-    private val wadFile = File("src/main/assets/freedoom1.wad")
+    private val wadFile = File("src/main/assets/freedoom2.wad")
 
     @Test
     fun `the reduction rules have not moved without the format number moving`() {
-        assumeTrue("freedoom1.wad missing: test skipped", wadFile.exists())
+        assumeTrue("freedoom2.wad missing: test skipped", wadFile.exists())
         val ch = RandomAccessFile(wadFile, "r").channel
         val wad = WadFile(ch.map(FileChannel.MapMode.READ_ONLY, 0, ch.size()))
 
