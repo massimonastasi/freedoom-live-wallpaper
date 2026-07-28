@@ -21,6 +21,16 @@
 
     The Segmented style is the one the design uses - a group of rows that share a container.
     Which corner each row gets is set from code, by position; see SettingsActivity.shapeGroup.
+
+    The radio and the switch have saveEnabled="false", and that is load-bearing rather than
+    tidy. Every row on the screen is an <include> of this file, so every radio on it carries
+    the id row_radio and every switch carries row_switch. View state is saved and restored by
+    id, so the ids collide: one value is written for all of them, and on restore it lands on
+    all of them. Resetting the settings calls recreate(), which carries that state across, and
+    the restored copy arrived after onCreate had set each row from the preferences - so a reset
+    left every group with nothing selected at all, including groups the reset had not touched.
+    The value's home is SharedPreferences and the screen reads it on every start; there is
+    nothing here worth restoring.
 -->
 <com.google.android.material.listitem.ListItemCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -45,7 +55,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
-            android:duplicateParentState="true" />
+            android:duplicateParentState="true"
+            android:saveEnabled="false" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -88,6 +99,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:duplicateParentState="true"
+            android:saveEnabled="false"
             android:visibility="gone" />
 
         <!--
