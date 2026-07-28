@@ -169,6 +169,20 @@
                 style="@style/SectionHeader"
                 android:text="@string/settings_background" />
 
+            <!--
+                The overlay is its own list of one, above the three backgrounds and not among
+                them. It is not a fourth choice: it sits over whichever of the three is
+                chosen, so putting it in the same group would make the radio buttons look as
+                though they included it.
+            -->
+            <LinearLayout
+                android:id="@+id/overlay_group"
+                style="@style/ListGroup">
+
+                <include android:id="@+id/row_overlay" layout="@layout/list_row" />
+
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/background_group"
                 style="@style/ListGroup">
@@ -276,9 +290,14 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!--
+            Text rather than outlined: it sits under the filled primary action, and M3 pairs a
+            filled button with a text one so the two do not compete. An outline gave this the
+            same visual weight as "Set as wallpaper", which is not what it is.
+        -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/reset"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/settings_reset" />

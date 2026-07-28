@@ -41,26 +41,37 @@ class SetupActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        open(this) { startActivity(it) }
+        finish()
+    }
 
-        val targeted = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-            .putExtra(
-                WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                ComponentName(this, FreedoomWallpaperService::class.java),
-            )
+    companion object {
 
-        try {
-            startActivity(targeted)
-        } catch (e: ActivityNotFoundException) {
-            // Not every launcher ships the targeted picker. The generic chooser is part of
-            // the framework, so it is a fallback that cannot itself be missing — the user
-            // just has to find this wallpaper in the list.
+        /**
+         * Opens the wallpaper picker on this wallpaper, however the device can manage it.
+         *
+         * Shared with the settings screen, which needs the same two attempts but starts them
+         * for a result so it can close itself once the wallpaper has actually been set.
+         * [start] is what to do with each candidate intent, and it may throw.
+         */
+        fun open(context: android.content.Context, start: (Intent) -> Unit) {
+            val targeted = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+                .putExtra(
+                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                    ComponentName(context, FreedoomWallpaperService::class.java),
+                )
             try {
-                startActivity(Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER))
-            } catch (e2: ActivityNotFoundException) {
-                Toast.makeText(this, R.string.no_wallpaper_picker, Toast.LENGTH_LONG).show()
+                start(targeted)
+            } catch (e: ActivityNotFoundException) {
+                // Not every launcher ships the targeted picker. The generic chooser is part of
+                // the framework, so it is a fallback that cannot itself be missing — the user
+                // just has to find this wallpaper in the list.
+                try {
+                    start(Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER))
+                } catch (e2: ActivityNotFoundException) {
+                    Toast.makeText(context, R.string.no_wallpaper_picker, Toast.LENGTH_LONG).show()
+                }
             }
         }
-
-        finish()
     }
 }

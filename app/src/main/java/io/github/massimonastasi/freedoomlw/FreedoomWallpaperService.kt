@@ -196,9 +196,10 @@ class FreedoomWallpaperService : WallpaperService() {
                 "(luminance ${"%.1f".format(flat.luminance)}, chroma ${"%.1f".format(flat.chroma)})")
 
             val f = w.decodeFlat(flat.index)
-            // Dimmed once, here, instead of by a colour filter on a full-screen fill every
-            // frame. The floor is dimmed harder than the sprites: see FLOOR_DIM_PERCENT.
-            f.pixels.dimInPlace(FLOOR_DIM_PERCENT)
+            // Kept at full strength. The dimming used to be baked in here, which was cheaper
+            // but made it a property of this one background: the flat colour and the
+            // photograph never received it, and it could not be switched off. It is a layer
+            // of its own now, drawn over whichever background is chosen - see SCRIM_ALPHA.
             Bitmap.createBitmap(f.pixels, f.width, f.height, Bitmap.Config.ARGB_8888)
         }
     }
@@ -290,6 +291,7 @@ class FreedoomWallpaperService : WallpaperService() {
         private var chosenFps = Settings.DEFAULT_FPS
         private var readoutVisible = true
         private var debugVisible = false
+        private var overlayVisible = true
 
         /** Where the finger went down, and when a tap was last acted on, from either source. */
         private var downX = 0f
@@ -414,6 +416,7 @@ class FreedoomWallpaperService : WallpaperService() {
             chosenFps = Settings.fps(prefs)
             readoutVisible = Settings.readout(prefs)
             debugVisible = Settings.debug(prefs)
+            overlayVisible = Settings.overlay(prefs)
             // The scene owns the flag; this is the only place that tells it. Without this the
             // setting was stored and never read, so god mode did nothing at all.
             scene?.invulnerable = Settings.godMode(prefs)
@@ -562,6 +565,14 @@ class FreedoomWallpaperService : WallpaperService() {
 
         private fun drawScene(canvas: Canvas) {
             drawFloor(canvas)
+
+            // The wash goes here: over every background, under everything that fights. The
+            // sprites carry their own SCENE_DIM_PERCENT and are not touched by it.
+            if (overlayVisible) {
+                overlay.color = Color.BLACK
+                overlay.alpha = SCRIM_ALPHA
+                canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
+            }
 
             val s = scene
             if (s == null || sprites.isEmpty()) {
@@ -863,6 +874,18 @@ class FreedoomWallpaperService : WallpaperService() {
          * seventh, which is what the progression needed.
          */
         const val FLOOR_DIM_PERCENT = 40
+
+        /**
+         * Opacity of the wash over the background, chosen to reproduce exactly what the floor
+         * looked like when the dimming was baked into its tiles.
+         *
+         * Baked in, a pixel came out at [FLOOR_DIM_PERCENT] of its brightness. Black at alpha
+         * a over a pixel leaves it at (255 - a)/255 of itself, so the same result is
+         * 255 * (100 - 40) / 100 = 153. The dungeon floor is therefore unchanged; the flat
+         * colour and the photograph are darker than before, because they are receiving this
+         * for the first time.
+         */
+        const val SCRIM_ALPHA = 255 * (100 - FLOOR_DIM_PERCENT) / 100
 
         /** The IWAD shipped in assets, used until the user supplies one of their own. */
         const val BUNDLED = "freedoom1.wad"

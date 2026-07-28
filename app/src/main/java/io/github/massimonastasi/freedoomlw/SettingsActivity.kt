@@ -64,6 +64,20 @@ class SettingsActivity : AppCompatActivity() {
         showBackground()
     }
 
+    /**
+     * The wallpaper picker, started for a result so this screen can get out of the way.
+     *
+     * Setting the wallpaper used to take four steps: the button, the system preview, choosing
+     * where to apply it, and then closing this screen by hand - because the picker returned to
+     * the settings it had been opened from, which is not where anyone wants to end up after
+     * setting a wallpaper. The picker reports RESULT_OK only when the wallpaper was actually
+     * applied, so finishing on that is the whole fix, and cancelling still comes back here.
+     */
+    private val setWallpaper =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) finish()
+        }
+
     private val chooseWad = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@registerForActivityResult
         val problem = WadStore.import(this, uri)
@@ -109,7 +123,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         findViewById<MaterialButton>(R.id.set_wallpaper).setOnClickListener {
-            startActivity(Intent(this, SetupActivity::class.java))
+            SetupActivity.open(this) { setWallpaper.launch(it) }
         }
         findViewById<MaterialButton>(R.id.reset).setOnClickListener { confirmReset() }
         findViewById<MaterialButton>(R.id.import_wad).setOnClickListener {
@@ -123,6 +137,7 @@ class SettingsActivity : AppCompatActivity() {
         showAbout()
 
         shapeGroup(R.id.switch_group)
+        shapeGroup(R.id.overlay_group)
         shapeGroup(R.id.background_group)
         shapeGroup(R.id.about_group)
     }
@@ -165,6 +180,13 @@ class SettingsActivity : AppCompatActivity() {
      * there and is the only one who can take away.
      */
     private fun showBackground() {
+        // Its own group of one, above the three: it is not a fourth background, it goes over
+        // whichever of them is chosen, and a radio group is a promise that they are exclusive.
+        switchRow(
+            R.id.row_overlay, R.string.background_overlay, R.string.background_overlay_note,
+            Settings.KEY_OVERLAY, default = true,
+        )
+
         val rows = intArrayOf(R.id.row_floor, R.id.row_colour, R.id.row_photo)
         val values = arrayOf("dynamic", "colour", "photo")
         val photo = PhotoStore.name(this)
