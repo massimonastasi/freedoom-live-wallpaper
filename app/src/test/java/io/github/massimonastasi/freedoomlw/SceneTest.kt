@@ -209,13 +209,12 @@ class SceneTest {
             "${GameData.skills[it].name} ${odds[it] / 10}.${odds[it] % 10}%"
         })
 
-        // 99% was the target and 94% is where this lever tops out. Measured: raising the
-        // marine's multiplier past 3300% buys nothing at all - 3300, 5000 and 8000 all give
-        // 94.0 - because past the point where one shot kills anything, more damage is spent
-        // on corpses. What is left is not about how fast he kills, it is about what reaches
-        // him, and that got heavier when the missile multiplier was put back: a Serpentipede
-        // fireball went from 3 to 13 and a PainLord's from 8 to 36.
-        assertTrue(odds.first() >= 930, "the easiest level reaches the first boss ${odds.first()}/1000")
+        // 99% is the target and 99.0% is what it measures, with two levers rather than one.
+        // Raising the marine's damage alone tops out at 94: 3300, 5000 and 8000 percent all
+        // give 94.0, because past the point where one shot kills anything the rest is spent
+        // on corpses. The remaining deaths are about what lands on him, so the second lever
+        // is what he takes - and that one moves it, 94.0 to 99.0 at 80 percent.
+        assertTrue(odds.first() >= 980, "the easiest level reaches the first boss ${odds.first()}/1000")
         assertTrue(odds.last() <= 200, "the hardest level is meant to be a wall: ${odds.last()}/1000")
         for (i in 1 until odds.size) {
             assertTrue(odds[i] <= odds[i - 1] + 20, "reaching the first boss must not get easier: $odds")

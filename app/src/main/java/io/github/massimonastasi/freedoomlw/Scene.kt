@@ -1038,8 +1038,12 @@ class Scene(
 
         // p_inter.c: armour absorbs a third of the damage when green, half when blue, and
         // is consumed by the same amount. Once it runs out, the type is cleared too.
-        // p_inter.c:799 — half damage to the player in trainer mode, before the armour.
+        // p_inter.c:799 — half damage to the player in trainer mode, before the armour. That
+        // is the engine's own rule and belongs to the first level alone; the graded one below
+        // is ours and covers the rest of the ladder. They compound on the first rung, which
+        // is intended: that level is meant to be the gentlest thing this scene can be.
         var amount = if (target.isPlayer && rules.halfDamage) amount shr 1 else amount
+        if (target.isPlayer) amount = amount * damageTakenScale(skill) / 100
         val kit = target.loadout
         if (kit != null && kit.armorType > 0) {
             var saved = GameData.armorSaved(amount, kit.armorType)
@@ -1416,6 +1420,27 @@ class Scene(
 
         /** How much of a skill's bonus is already in force at the first wave, percent. */
         const val EARLY_SHARE = 94
+
+        /**
+         * How much of a hit the marine actually takes, as a percentage, by skill.
+         *
+         * The other half of the ladder, and it exists because the first half ran out. Raising
+         * what he deals stops helping once one shot kills anything: 3300, 5000 and 8000
+         * percent all measured 94.0% at reaching the first boss, and the flatness says the
+         * remaining deaths are not about how fast he kills. They are about what lands on him,
+         * which is the thing this scales.
+         *
+         * A hundred at the hardest skill, so that level takes what the engine throws, and it
+         * pairs with p_inter.c's own halfDamage rather than replacing it: that rule is the
+         * engine's and belongs to the first level, this one is ours and grades the rest.
+         */
+        internal fun damageTakenScale(skill: Int): Int {
+            val lastSkill = (GameData.skills.size - 1).coerceAtLeast(1)
+            return MIN_TAKEN + (100 - MIN_TAKEN) * skill.coerceIn(0, lastSkill) / lastSkill
+        }
+
+        /** What the easiest level takes, before p_inter.c halves it again. */
+        const val MIN_TAKEN = 80
 
         /** How long the marine stands still after materialising. */
         const val PLAYER_REACTION = TICRATE / 2
