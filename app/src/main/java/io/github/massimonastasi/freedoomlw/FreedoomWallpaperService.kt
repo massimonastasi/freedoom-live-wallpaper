@@ -52,6 +52,9 @@ class FreedoomWallpaperService : WallpaperService() {
     /** Colour of the death wash, straight from the active WAD's palette. */
     private var deathTint = 0xFFB30000.toInt()
 
+    /** The winning wash: the palette's own green, the one the armour readout uses. */
+    private var winTint = 0xFF77FF6F.toInt()
+
     /** Floor texture per skill level, tiled behind the scene. Null entries when absent. */
     private var floorTiles: Array<Bitmap?> = arrayOfNulls(GameData.skills.size)
 
@@ -125,6 +128,7 @@ class FreedoomWallpaperService : WallpaperService() {
             val w = WadFile(buf)
             palette = IntArray(256) { w.paletteColor(it) }
             deathTint = w.paletteColor(GameData.PALETTE_DEATH)
+            winTint = w.paletteColor(GameData.PALETTE_ARMOR)
             floorTiles = loadFloors(w)
             loadDigits(w)
             sprites = GameData.spritePrefixes.map { SpriteSet(w, it) }
@@ -322,6 +326,9 @@ class FreedoomWallpaperService : WallpaperService() {
          * surface change and a value that lives only there does not survive it.
          */
         private var godMode = false
+
+        /** Completions already written to the preferences, so each one is counted once. */
+        private var seenCompletions = 0
 
         /** Where the finger went down, and when a tap was last acted on, from either source. */
         private var downX = 0f
@@ -660,6 +667,23 @@ class FreedoomWallpaperService : WallpaperService() {
                 overlay.alpha = (fade * DEATH_MAX_ALPHA).toInt().coerceIn(0, 255)
                 canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
             }
+
+            // The same wash for the opposite outcome, in the palette's green rather than its
+            // damage red: the table finished at the hardest skill, which is the only thing
+            // here that can be called winning. It fades out rather than in, because the fight
+            // underneath has already started again.
+            val won = s.winFade
+            if (won > 0f) {
+                overlay.color = winTint
+                overlay.alpha = (won * DEATH_MAX_ALPHA).toInt().coerceIn(0, 255)
+                canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
+            }
+            // Counted here rather than in the scene: the scene is rebuilt on every surface
+            // change and would forget, and this is the side that owns the preferences.
+            if (s.completions != seenCompletions) {
+                seenCompletions = s.completions
+                Settings.addCompletion(prefs)
+            }
         }
 
         private fun drawActor(canvas: Canvas, a: Actor) {
@@ -714,6 +738,24 @@ class FreedoomWallpaperService : WallpaperService() {
             val pad = READOUT_PADDING * scale
             val baseline = frame.height() - gh - pad
 
+            // With god mode on the two numbers say nothing: armour is untouched and health
+            // never moves off a hundred. They say what is going on instead, one word each, in
+            // the corners the numbers were already using and in their colours.
+            //
+            // Drawn with the platform font rather than the WAD's, for the same reason the
+            // debug overlay is: STTNUM covers the ten digits and nothing else, and this needs
+            // letters. Freedoom does carry a full font in STCFN, but pulling it in would put a
+            // second glyph loader and 94 more lumps in the asset to write two words.
+            if (godMode) {
+                wordPaint.textSize = gh
+                wordPaint.color = armorColor
+                canvas.drawText("GOD", pad, baseline + gh, wordPaint)
+                wordPaint.color = healthColor
+                val w = wordPaint.measureText("MODE")
+                canvas.drawText("MODE", frame.width() - w - pad, baseline + gh, wordPaint)
+                return
+            }
+
             val health = s.playerHealth
             val armor = s.playerArmor
 
@@ -739,6 +781,12 @@ class FreedoomWallpaperService : WallpaperService() {
          * the platform font instead of the WAD numerals: those cover the ten digits and
          * nothing else, and this needs letters.
          */
+        /** GOD and MODE, in the corners the readout numbers otherwise occupy. */
+        private val wordPaint = Paint().apply {
+            isAntiAlias = true
+            isFakeBoldText = true
+        }
+
         private val debugPaint = Paint().apply {
             color = 0x99FFFFFF.toInt()
             textSize = 13f * resources.displayMetrics.density

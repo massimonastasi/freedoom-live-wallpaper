@@ -42,6 +42,7 @@ object Settings {
     const val KEY_BACKGROUND = "background"
     const val KEY_BACKGROUND_COLOUR = "background_colour"
     const val KEY_OVERLAY = "overlay"
+    const val KEY_COMPLETIONS = "completions"
     const val KEY_GOD_MODE = "god_mode"
     const val KEY_DEBUG = "debug"
     const val KEY_SPRITES = "sprites"
@@ -95,6 +96,19 @@ object Settings {
      * and that is the state every other measurement in this app was taken in.
      */
     fun overlay(p: SharedPreferences): Boolean = p.getBoolean(KEY_OVERLAY, true)
+
+    /**
+     * How many times the table has been finished at the hardest skill.
+     *
+     * Kept here rather than in the scene because the scene is rebuilt on every surface change
+     * and would forget: this is the one thing in the wallpaper worth remembering between
+     * runs, and it is the only number the settings screen reports back rather than sets.
+     */
+    fun completions(p: SharedPreferences): Int = p.getInt(KEY_COMPLETIONS, 0)
+
+    fun addCompletion(p: SharedPreferences) {
+        p.edit().putInt(KEY_COMPLETIONS, completions(p) + 1).apply()
+    }
 
     /** What is drawn behind the fight. */
     enum class Background { DYNAMIC, PHOTO, COLOUR }

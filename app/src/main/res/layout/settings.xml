@@ -260,7 +260,15 @@
                     says the source exists and will be reachable, rather than appearing and
                     disappearing between versions.
                 -->
-                <include android:id="@+id/row_source" layout="@layout/list_row" />
+                <!-- The one row that reports rather than sets. -->
+                <include android:id="@+id/row_runs" layout="@layout/list_row" />
+
+                <include
+                    android:id="@+id/row_source"
+                    layout="@layout/list_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/list_row_gap" />
 
                 <include
                     android:id="@+id/row_licences"

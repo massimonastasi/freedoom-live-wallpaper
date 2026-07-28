@@ -294,6 +294,17 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showAbout() {
+        // Reports rather than sets: how often the table has been finished at the hardest
+        // skill, which is the only thing here that can be called finishing the game. Not
+        // clickable and with no radio, because there is nothing to choose.
+        val runs = Settings.completions(prefs)
+        row(
+            R.id.row_runs, R.string.settings_runs,
+            if (runs == 0) getString(R.string.settings_runs_none)
+            else resources.getQuantityString(R.plurals.settings_runs_count, runs, runs),
+        )
+        findViewById<View>(R.id.row_runs).findViewById<View>(R.id.row_radio).visibility = View.GONE
+
         // Source is shown and disabled: the repository is not public yet, so the row says the
         // source exists and will be reachable rather than appearing and disappearing between
         // versions. Disabling the whole row rather than only its click means it also reads as

@@ -319,6 +319,30 @@ class Scene(
             return 1f - left.toFloat() / DEATH_DELAY
         }
 
+    /**
+     * The same wash, for the opposite outcome: the table finished at the hardest skill.
+     *
+     * Deliberately the same shape and the same length as the death fade, because it is the
+     * same punctuation mark - the run has ended and another is starting. Only the colour
+     * differs, and the renderer picks that from the palette.
+     */
+    val winFade: Float
+        get() {
+            if (wonUntil == 0) return 0f
+            val left = wonUntil - tic
+            if (left <= 0) return 0f
+            // Full at the moment it is won and fading out, the reverse of the death wash,
+            // which sinks in. A death interrupts the scene and a win crowns it, and the
+            // fight underneath is already starting again.
+            return left.toFloat() / DEATH_DELAY
+        }
+
+    /** Tables finished at the hardest skill since this scene was built. */
+    var completions = 0
+        private set
+
+    private var wonUntil = 0
+
     fun tick(now: Int) {
         tic = now
 
@@ -422,7 +446,18 @@ class Scene(
             // place the moment the ladder moved.
             if (cleared >= rules.waveCount) {
                 cleared = 0
-                if (skill < GameData.skills.size - 1) skill++
+                if (skill < GameData.skills.size - 1) {
+                    skill++
+                } else {
+                    // The table finished at the top of the ladder, which is the only thing
+                    // here that can be called finishing the game: there is no harder level to
+                    // be promoted to. The scene marks it and restarts from the bottom, the
+                    // same way a death does, so it keeps running afterwards.
+                    completions++
+                    wonUntil = tic + DEATH_DELAY
+                    restart()
+                    return
+                }
             }
             startWave()
         }
