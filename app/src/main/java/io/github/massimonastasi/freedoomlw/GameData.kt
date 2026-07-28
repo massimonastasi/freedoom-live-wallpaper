@@ -341,6 +341,25 @@ object GameData {
     /** p_pspr.c P_GunShot: `5*(P_Random()%3+1)`. One pellet from the marine's gun. */
     fun gunShotDamage(): Int = 5 * (pRandom() % 3 + 1)
 
+    /**
+     * What a missile actually deals when it lands.
+     *
+     * p_map.c PIT_CheckThing: `damage = ((P_Random()%8)+1) * tmthing->info->damage`. The
+     * figure in mobjinfo is a multiplicand, not the damage - a plasma bolt deals 5 to 40 and
+     * a rocket 20 to 160 on a direct hit.
+     *
+     * That multiplier was missing here, so every missile in the scene dealt its mobjinfo
+     * figure flat: the plasma rifle was worth a quarter of what it should be and the rocket
+     * launcher less than a fifth, which made it the second weakest thing in the arsenal
+     * behind the pistol - and [Weapon.damagePerTic], which is how the marine decides what to
+     * hold, was ranking on those wrong numbers. The monsters' fireballs were understated by
+     * exactly as much.
+     *
+     * Taken at the mean rather than rolled, which is the same simplification the weapon
+     * table now reads at: one to eight averages four and a half.
+     */
+    fun missileDamage(base: Int): Int = base * 9 / 2
+
     /** p_pspr.c A_FireShotgun: seven pellets per shot. */
     const val SHOTGUN_PELLETS = 7
 
@@ -419,7 +438,7 @@ object GameData {
          */
         val damagePerTic: Double by lazy {
             val perShot = pellets * 10.0 +
-                if (projectile >= 0) projectiles[projectile].damage.toDouble() else 0.0
+                if (projectile >= 0) missileDamage(projectiles[projectile].damage).toDouble() else 0.0
             perShot / attack.tics.sum().coerceAtLeast(1)
         }
     }

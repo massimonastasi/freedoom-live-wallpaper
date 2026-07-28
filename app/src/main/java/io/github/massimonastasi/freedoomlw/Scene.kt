@@ -598,13 +598,30 @@ class Scene(
         a.creature = c
         // Softer than the originals, by an amount that depends on where in the ladder and
         // where in the table this is happening. The marine is never scaled. See healthScale.
-        a.health =
-            if (c === GameData.player) c.health
-            else (c.health * healthScale(skill, wave) / 100).coerceAtLeast(1)
+        // Exactly what info.c prints, at every level. The difficulty is carried by what the
+        // marine does to them, not by what they are; see marineDamage.
+        a.health = c.health
         a.spawnTic = tic
         a.reactionTime = GameData.REACTION_TIME
         return a
     }
+
+    /**
+     * The marine's damage, scaled by where he is on the ladder and in the table.
+     *
+     * This is the whole difficulty lever, and it sits on his side of the fight rather than on
+     * the monsters'. Health used to be the lever - every creature spawned with a fraction of
+     * the figure info.c gives it - and moving it here buys two things. The arithmetic happens
+     * once per shot instead of once per creature per spawn, and, more usefully, the bestiary
+     * reads as itself: a Cyberdemon has 4000 health on every skill, so the table of what
+     * things are is one column rather than nine.
+     *
+     * The shape is the one that was fitted when this was health, mirrored: none of it at the
+     * hardest skill, where the marine deals exactly what p_pspr.c says and nothing is bent in
+     * his favour, and most of it already in force at the first wave, because a level that has
+     * to be gentle has to be gentle from the start. The wave decides only the last stretch.
+     */
+    internal fun marineDamage(base: Int): Int = base * damageScale(skill, wave) / 100
 
     private fun spawnDemon(c: GameData.Creature, respawned: Boolean) {
         val a = newCreature(c)
@@ -944,7 +961,7 @@ class Scene(
                 // super shotgun.
                 var total = 0
                 repeat(w.pellets) { total += GameData.gunShotDamage() }
-                damageActor(target, total)
+                damageActor(target, marineDamage(total))
             }
             return
         }
@@ -969,7 +986,10 @@ class Scene(
         // travelled, so the trajectory and everything it collides with are unchanged.
         m.drawHeight = MUZZLE_HEIGHT
         m.spawnTic = tic
-        m.damage = p.damage
+        // The engine multiplies at impact; this is the same number, worked out once at
+        // launch, because it no longer depends on a roll. See GameData.missileDamage.
+        m.damage = GameData.missileDamage(p.damage)
+            .let { if (from.isPlayer) marineDamage(it) else it }
         m.firedByPlayer = from.isPlayer
 
         val dx = target.x - from.x
@@ -1369,31 +1389,32 @@ class Scene(
          * got easier exactly where it was meant to peak. Scaling by position instead of by
          * size keeps every creature in the order `info.c` puts it in.
          */
-        internal fun healthScale(skill: Int, wave: Int): Int {
+        internal fun damageScale(skill: Int, wave: Int): Int {
             val lastSkill = (GameData.skills.size - 1).coerceAtLeast(1)
             val lastWave = (GameData.waves.size - 1).coerceAtLeast(1)
-            // The whole reduction this skill is entitled to. Zero at the top of the ladder,
-            // which is what anchors the hardest level to the printed numbers.
-            val full = (100 - MIN_HEALTH) * (lastSkill - skill.coerceIn(0, lastSkill)) / lastSkill
-            // How much of it is already in force. Anchoring wave one at full health was tried
-            // and is the wrong shape: it made the easiest level reach the first boss 43% of
-            // the time against a target of 99, because a level that has to be gentle has to
-            // be gentle from the beginning. The wave only decides the last stretch of it.
+            // The whole bonus this skill is entitled to. Zero at the top of the ladder, which
+            // is what anchors the hardest level to the printed numbers.
+            val full = (MAX_DAMAGE - 100) * (lastSkill - skill.coerceIn(0, lastSkill)) / lastSkill
+            // How much of it is already in force. Anchoring wave one at no bonus at all was
+            // tried, when this lever was on the monsters' health, and is the wrong shape: a
+            // level that has to be gentle has to be gentle from the beginning. The wave
+            // decides the last stretch of it, not the bulk.
             val progress = wave.coerceIn(0, lastWave) * 100 / lastWave
             val applied = EARLY_SHARE + (100 - EARLY_SHARE) * progress / 100
-            return 100 - full * applied / 100
+            return 100 + full * applied / 100
         }
 
         /**
-         * What the last wave of the easiest level is scaled to.
+         * What the marine's damage is multiplied by, as a percentage, at the deepest wave of
+         * the easiest level.
          *
          * Fitted rather than chosen: the target is that the easiest level reaches the
          * PainLord - the first creature the original prices at a thousand health, opening
-         * wave 23 of 26 - in 99 lives out of 100.
+         * wave 23 of 26 - as near to every life as this lever can manage.
          */
-        const val MIN_HEALTH = 3
+        const val MAX_DAMAGE = 3300
 
-        /** How much of a skill's reduction is already in force at the first wave, percent. */
+        /** How much of a skill's bonus is already in force at the first wave, percent. */
         const val EARLY_SHARE = 94
 
         /** How long the marine stands still after materialising. */
