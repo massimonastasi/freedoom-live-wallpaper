@@ -291,10 +291,10 @@ class FreedoomWallpaperService : WallpaperService() {
         private var readoutVisible = true
         private var debugVisible = false
 
-        /** Where the finger went down, and when a launcher command last arrived. */
+        /** Where the finger went down, and when a tap was last acted on, from either source. */
         private var downX = 0f
         private var downY = 0f
-        private var lastCommandAt = 0L
+        private var lastTapAt = 0L
 
         override fun onCreate(holder: SurfaceHolder) {
             super.onCreate(holder)
@@ -324,7 +324,6 @@ class FreedoomWallpaperService : WallpaperService() {
             extras: android.os.Bundle?,
             resultRequested: Boolean,
         ): android.os.Bundle? {
-            lastCommandAt = android.os.SystemClock.uptimeMillis()
             tapWorld(x, y, action)
             return super.onCommand(action, x, y, z, extras, resultRequested)
         }
@@ -341,7 +340,23 @@ class FreedoomWallpaperService : WallpaperService() {
                 val wx = (x / pxPerUnit * GameData.FRACUNIT).toInt()
                 val wy = (y / pxPerUnit * GameData.FRACUNIT).toInt()
                 when (action) {
-                    WALLPAPER_TAP -> s.tapAt(wx, wy)
+                    WALLPAPER_TAP -> {
+                        // One tap, one drop, whichever channel reports it.
+                        //
+                        // Both do, on a launcher that forwards WALLPAPER_TAP, and the order
+                        // is not fixed: the raw ACTION_UP usually arrives first and the
+                        // command follows once the launcher has decided it was a tap. The
+                        // earlier guard only suppressed a touch that came *after* a command,
+                        // so in the ordinary order nothing was suppressed and every tap
+                        // dropped twice. One timestamp, written and checked here, covers both
+                        // orders because it does not care which side it came from.
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (now - lastTapAt < COMMAND_WINDOW_MS) return
+                        lastTapAt = now
+                        s.tapAt(wx, wy)
+                    }
+                    // Not deduplicated: a drop has no touch-event counterpart, and two icons
+                    // dropped in quick succession are two events that both happened.
                     HOME_DROP -> s.dropAt(wx, wy)
                 }
             }
@@ -363,11 +378,9 @@ class FreedoomWallpaperService : WallpaperService() {
                     downY = event.y
                 }
                 MotionEvent.ACTION_UP -> {
+                    // The de-duplication lives in tapWorld, so both channels go through it.
                     val moved = abs(event.x - downX) + abs(event.y - downY)
-                    val duplicate = event.eventTime - lastCommandAt < COMMAND_WINDOW_MS
-                    if (moved <= TAP_SLOP && !duplicate) {
-                        tapWorld(event.x.toInt(), event.y.toInt(), WALLPAPER_TAP)
-                    }
+                    if (moved <= TAP_SLOP) tapWorld(event.x.toInt(), event.y.toInt(), WALLPAPER_TAP)
                 }
             }
             super.onTouchEvent(event)
@@ -843,8 +856,13 @@ class FreedoomWallpaperService : WallpaperService() {
          *
          * Both are percentages rather than multipliers because they are now applied to
          * integer pixel channels at load, not to a float colour matrix per frame.
+         *
+         * Raised from 35 to 40: five points, asked for after seeing the ladder at true size.
+         * The chosen flats measure 26 to 44, so the ground moves from about 12 to about 14 -
+         * still well under the icons, and the step between two flats grows by the same
+         * seventh, which is what the progression needed.
          */
-        const val FLOOR_DIM_PERCENT = 35
+        const val FLOOR_DIM_PERCENT = 40
 
         /** The IWAD shipped in assets, used until the user supplies one of their own. */
         const val BUNDLED = "freedoom1.wad"

@@ -786,13 +786,30 @@ class Scene(
      */
     private fun advanceCorpse(a: Actor): Boolean {
         val anim = a.anim ?: return false
-        if (a.animTics == -1) return tic - a.spawnTic < CORPSE_LIFETIME
+        if (a.animTics == -1) return tic - a.spawnTic < corpseLifetime(a)
         if (--a.animTics > 0) return true
         a.animStep++
         if (a.animStep >= anim.length) return false
         a.animTics = anim.tics[a.animStep]
         if (a.animTics == -1) a.spawnTic = tic          // the corpse countdown starts here
         return true
+    }
+
+    /**
+     * How long this particular body stays.
+     *
+     * A corpse is drawn at the same scale as the thing that made it, so the big ones cover
+     * ground the small ones do not: an Overlord lying where an item drops hides the item, and
+     * hides the marine walking over to fetch it. The body of something that wide has to go
+     * sooner, and that is what the radius is for - it is the creature's own footprint from
+     * mobjinfo, not a size invented here.
+     *
+     * Two tiers rather than a curve: the bestiary splits cleanly around 30 map units, and a
+     * ramp would be a formula nobody could check against the screen.
+     */
+    private fun corpseLifetime(a: Actor): Int {
+        val c = a.creature ?: return CORPSE_LIFETIME
+        return if (c.radius > CORPSE_WIDE_RADIUS) CORPSE_LIFETIME_WIDE else CORPSE_LIFETIME
     }
 
     /** The attack lands on the last frame, as in the engine (the action sits in S_*_ATK3). */
@@ -1191,6 +1208,17 @@ class Scene(
          * what keeps the ground from looking empty between waves.
          */
         const val CORPSE_LIFETIME = TICRATE * 30
+
+        /**
+         * Above this footprint a body is wide enough to sit on top of what the scene is
+         * about. From mobjinfo: zombies and imps are 20, the FleshWorm and the Trilobite 30
+         * and 31, and everything above - Cyberlord 40, Mancubus 48, Arachnotron 64, Overlord
+         * 128 - is on the other side of the line.
+         */
+        const val CORPSE_WIDE_RADIUS = 31
+
+        /** Ten seconds for those, against thirty for the rest. */
+        const val CORPSE_LIFETIME_WIDE = TICRATE * 10
 
         /**
          * How long the red screen lasts before restarting from the first wave.
