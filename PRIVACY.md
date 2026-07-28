@@ -7,10 +7,20 @@ follows is how you can check it.
 
 ## No data leaves the device
 
-The application requests **no permissions at all**. Its manifest declares none — not
-internet, not storage, not location, not anything. Android would refuse a network connection
-it never asked for, so there is no analytics, no crash reporting service, no advertising
-identifier and no telemetry, because there is no channel any of those could use.
+The application requests **no permission that grants access to anything** — not internet,
+not storage, not location, not the camera, not identifiers. Android would refuse a network
+connection it never asked for, so there is no analytics, no crash reporting service, no
+advertising identifier and no telemetry: there is no channel any of those could use.
+
+The manifest in this repository declares no permissions whatsoever. The built package
+contains exactly one entry, `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, which is not a system
+permission and is not a request for anything: it is defined by the AndroidX libraries inside
+this application's own namespace, and its only effect is that a broadcast receiver registered
+at runtime is not left open to other applications. It is a lock, not a key.
+
+That distinction is written down because it is the sort of thing a policy should not gloss
+over: the claim here is checkable with `aapt2 dump permissions` on the APK, and this is what
+that command reports.
 
 There is no account, no sign-in and no server. Nothing is uploaded, and nothing is
 downloaded after installation.
