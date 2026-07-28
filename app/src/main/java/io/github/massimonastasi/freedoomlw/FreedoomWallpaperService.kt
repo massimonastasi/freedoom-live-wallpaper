@@ -127,7 +127,7 @@ class FreedoomWallpaperService : WallpaperService() {
             deathTint = w.paletteColor(GameData.PALETTE_DEATH)
             floorTiles = loadFloors(w)
             loadDigits(w)
-            sprites = GameData.spritePrefixes.map { SpriteSet(w, it, SCENE_DIM_PERCENT) }
+            sprites = GameData.spritePrefixes.map { SpriteSet(w, it) }
             val missing = GameData.spritePrefixes.filterIndexed { i, _ -> sprites[i].frameCount == 0 }
             loadedWad = source
             Log.i(TAG, "WAD loaded from $source: ${w.lumpCount} lumps, " +
@@ -566,8 +566,9 @@ class FreedoomWallpaperService : WallpaperService() {
         private fun drawScene(canvas: Canvas) {
             drawFloor(canvas)
 
-            // The wash goes here: over every background, under everything that fights. The
-            // sprites carry their own SCENE_DIM_PERCENT and are not touched by it.
+            // The wash goes here: over every background - the floor tiles, the flat colour,
+            // the imported image - and under everything that fights. The sprites are drawn
+            // exactly as the WAD stores them and nothing dims them.
             if (overlayVisible) {
                 overlay.color = Color.BLACK
                 overlay.alpha = SCRIM_ALPHA
@@ -850,28 +851,16 @@ class FreedoomWallpaperService : WallpaperService() {
         const val SPRITE_SCALE = 3f
 
         /**
-         * Brightness multiplier for the whole scene. The wallpaper has to stay behind the
-         * launcher icons, and floor texture plus lit sprites together were bright enough to
-         * fight them for attention.
-         */
-        const val SCENE_DIM_PERCENT = 62
-
-        /**
-         * Brightness for the floor alone, well below the sprites'.
+         * How much of the background survives the wash, as a percentage.
          *
-         * One shared value could not serve both. The backdrop covers the whole screen and
-         * only has to hint that there is ground; the sprites are the thing being watched and
-         * have to stay legible. The chosen flats measure around 30 to 38 mean luminance, so
-         * at 35 percent the ground lands near 12 — barely there, but with a structure that
-         * keeps it from reading as a black screen.
+         * The backdrop covers the whole screen and only has to hint that there is ground; it
+         * is the one thing here that has to lose the contest with the launcher icons. The
+         * chosen flats measure 26 to 44 mean luminance, so at forty percent the ground lands
+         * near fourteen - barely there, but with a structure that keeps it from reading as a
+         * black screen.
          *
-         * Both are percentages rather than multipliers because they are now applied to
-         * integer pixel channels at load, not to a float colour matrix per frame.
-         *
-         * Raised from 35 to 40: five points, asked for after seeing the ladder at true size.
-         * The chosen flats measure 26 to 44, so the ground moves from about 12 to about 14 -
-         * still well under the icons, and the step between two flats grows by the same
-         * seventh, which is what the progression needed.
+         * It applies to the sprites in no way at all. They are drawn exactly as the WAD
+         * stores them.
          */
         const val FLOOR_DIM_PERCENT = 40
 

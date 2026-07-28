@@ -33,21 +33,18 @@ object Settings {
     /** Shared with the preference screen, which is told to use this file rather than the default. */
     const val FILE = "settings"
 
+    // Only the keys that store something. There used to be one per row, including rows that
+    // store nothing at all - reset, set_wallpaper, source, notices, wad_delete - because the
+    // preference library addressed every row by key. Nothing has addressed a row by key since
+    // that library was dropped, and seven of these had no reader left anywhere.
     const val KEY_FPS = "fps"
     const val KEY_READOUT = "readout"
     const val KEY_BACKGROUND = "background"
-    const val KEY_BACKGROUND_PHOTO = "background_photo"
     const val KEY_BACKGROUND_COLOUR = "background_colour"
     const val KEY_OVERLAY = "overlay"
     const val KEY_GOD_MODE = "god_mode"
     const val KEY_DEBUG = "debug"
     const val KEY_SPRITES = "sprites"
-    const val KEY_WAD = "wad"
-    const val KEY_WAD_DELETE = "wad_delete"
-    const val KEY_RESET = "reset"
-    const val KEY_SOURCE = "source"
-    const val KEY_SET_WALLPAPER = "set_wallpaper"
-    const val KEY_NOTICES = "notices"
 
     const val SPRITES_BUNDLED = "bundled"
     const val SPRITES_USER = "user"

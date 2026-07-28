@@ -36,28 +36,6 @@ class Patch(
     val pixels: IntArray,
 )
 
-/**
- * Scales RGB in place by [percent], leaving alpha untouched.
- *
- * The scene is drawn dimmed so it does not fight the launcher icons, and that used to be a
- * ColorMatrixColorFilter on the paints. A colour filter is a per-pixel cost paid on every
- * frame forever: it puts a colour-matrix fragment shader in front of every sprite and in
- * front of a full-screen fill, which at 1080x2400 and twenty frames a second is fifty
- * million matrix multiplies per second to apply a constant.
- *
- * Baking it into the decoded pixels pays it once, per lump, at load. Alpha is left alone so
- * the patch format's transparency survives.
- */
-internal fun IntArray.dimInPlace(percent: Int) {
-    if (percent >= 100) return
-    for (i in indices) {
-        val c = this[i]
-        this[i] = (c and 0xFF000000.toInt()) or
-            ((((c shr 16) and 0xFF) * percent / 100) shl 16) or
-            ((((c shr 8) and 0xFF) * percent / 100) shl 8) or
-            (((c and 0xFF) * percent / 100))
-    }
-}
 
 /**
  * Reader for WAD files in the classic IWAD format.

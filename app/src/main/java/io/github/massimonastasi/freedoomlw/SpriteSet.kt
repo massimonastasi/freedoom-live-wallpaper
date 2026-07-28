@@ -32,7 +32,7 @@ import android.util.LruCache
  * Mirroring does not create a second Bitmap: the sprite is drawn with a negative X scale,
  * which the hardware Canvas does for free. That halves sprite memory.
  */
-class SpriteSet(private val wad: WadFile, prefix: String, private val dim: Int = 100) {
+class SpriteSet(private val wad: WadFile, prefix: String) {
 
     // slot[frame][rot]: (lump index shl 1) or flip, -1 when absent. rot 0 = all directions.
     private val slot = Array(26) { IntArray(9) { -1 } }
@@ -115,10 +115,11 @@ class SpriteSet(private val wad: WadFile, prefix: String, private val dim: Int =
         cache.get(lump)?.let { return it }
         if (lump in broken) return null
         return try {
+            // Exactly the lump, with exactly the WAD's own palette. The sprites used to be
+            // darkened to 62% here so they would not compete with the launcher icons; that is
+            // the backdrop's job, and it now has a layer and a switch of its own. A lump is
+            // not ours to alter.
             val p = wad.decodePatch(lump)
-            // Dimmed here, once per lump, rather than by a colour filter on every frame. The
-            // array is freshly decoded, so this costs no allocation. See dimInPlace.
-            p.pixels.dimInPlace(dim)
             Sprite(
                 Bitmap.createBitmap(p.pixels, p.width, p.height, Bitmap.Config.ARGB_8888),
                 p.xOffset,
