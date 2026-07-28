@@ -248,18 +248,15 @@ class Scene(
     /**
      * True when this actor's body should be drawn beneath the fight rather than in it.
      *
-     * Two ways in. A body that has settled on its resting frame is furniture and belongs
-     * under the things that move. And a creature that never settles - the Charger, which
-     * detonates and is removed - goes under for the whole of its death, because that
-     * explosion is the widest thing on the screen and it would otherwise cover the pickups
-     * it happens to land on.
+     * Only once it has settled on its resting frame: a death animation belongs where the
+     * fight is, and only what it leaves behind is furniture. That also settles the Charger
+     * without naming it - it detonates and is removed rather than resting, so it never
+     * qualifies, and its explosion plays where everything else can see it.
      */
-    fun restsBelow(a: Actor): Boolean {
-        if (a.mode != Mode.DEATH) return false
-        if (tallCorpses?.getOrNull(a.spriteIndex) != true) return false
-        val c = a.creature ?: return false
-        return a.animTics == -1 || c.death.tics.last() != -1
-    }
+    fun restsBelow(a: Actor): Boolean =
+        a.mode == Mode.DEATH &&
+            a.animTics == -1 &&
+            tallCorpses?.getOrNull(a.spriteIndex) == true
 
     /** Current wave, zero-based. */
     var wave = 0
