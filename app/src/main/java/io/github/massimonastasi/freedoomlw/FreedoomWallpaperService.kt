@@ -293,6 +293,12 @@ class FreedoomWallpaperService : WallpaperService() {
         private var debugVisible = false
         private var overlayVisible = true
 
+        /**
+         * Held here rather than only on the scene, because the scene is rebuilt on every
+         * surface change and a value that lives only there does not survive it.
+         */
+        private var godMode = false
+
         /** Where the finger went down, and when a tap was last acted on, from either source. */
         private var downX = 0f
         private var downY = 0f
@@ -417,15 +423,17 @@ class FreedoomWallpaperService : WallpaperService() {
             readoutVisible = Settings.readout(prefs)
             debugVisible = Settings.debug(prefs)
             overlayVisible = Settings.overlay(prefs)
-            // The scene owns the flag; this is the only place that tells it. Without this the
-            // setting was stored and never read, so god mode did nothing at all.
-            scene?.invulnerable = Settings.godMode(prefs)
+            godMode = Settings.godMode(prefs)
 
             // A different WAD means every sprite, colour and floor is different, so the
             // shader built from the old tiles has to go with them.
             val before = loadedWad
             reloadWadIfChanged()
             if (loadedWad != before) shaderSkill = -1
+
+            // After the reload, never before it: what the scene is told about the WAD has to
+            // be what was just loaded.
+            syncScene()
 
             background = Settings.background(prefs)
             backgroundColour = paletteColour(Settings.backgroundColour(prefs))
@@ -471,18 +479,41 @@ class FreedoomWallpaperService : WallpaperService() {
             scene = Scene(
                 worldWidth = (width / pxPerUnit).toInt(),
                 worldHeight = (height / pxPerUnit).toInt(),
-                // Only the creatures this WAD can draw. Spawning one it cannot would put an
-                // invisible thing in the fight.
-                drawable = drawableCreatures(),
                 // The picker preview is the shop window, and it is watched for seconds, not
                 // minutes: the opening wave arrives at once rather than after the usual pause.
                 instantStart = isPreview,
-            ).apply {
-                // And only the pickups it can draw: a Phase 1 IWAD has no super shotgun.
-                drawableItems = BooleanArray(GameData.items.size) { i ->
-                    val set = sprites.getOrNull(GameData.items[i].spriteIndex)
-                    set != null && set.frameCount > 0
-                }
+            )
+            syncScene()
+        }
+
+        /**
+         * Everything the scene holds that this engine, not the scene, is the source of.
+         *
+         * It exists because a value written onto the scene does not survive the scene, and the
+         * scene is rebuilt on every surface change. God mode was lost exactly that way:
+         * applySettings runs when the wallpaper becomes visible, so on the paths where the
+         * surface arrives afterwards it set the flag on a scene that did not exist yet, and
+         * the one built a moment later began invulnerable = false. Rotating the phone lost it
+         * too.
+         *
+         * The two masks had the mirror-image fault: they were fixed at construction and the
+         * WAD can be swapped without rebuilding the scene, so after an import the fight went
+         * on judging itself against the sprites of the file before it. On a Phase 2 to Phase 1
+         * switch that means spawning creatures the new file cannot draw - invisible things
+         * that still shoot, which is the exact failure the masks were written to prevent.
+         *
+         * Called after every reload and after every rebuild, so neither can outlive the other.
+         */
+        private fun syncScene() {
+            val s = scene ?: return
+            s.invulnerable = godMode
+            // Only the creatures this WAD can draw. Spawning one it cannot would put an
+            // invisible thing in the fight.
+            s.drawable = drawableCreatures()
+            // And only the pickups it can draw: a Phase 1 IWAD has no super shotgun.
+            s.drawableItems = BooleanArray(GameData.items.size) { i ->
+                val set = sprites.getOrNull(GameData.items[i].spriteIndex)
+                set != null && set.frameCount > 0
             }
         }
 
