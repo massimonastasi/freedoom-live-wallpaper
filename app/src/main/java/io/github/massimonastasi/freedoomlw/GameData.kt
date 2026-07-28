@@ -227,7 +227,17 @@ object GameData {
             "Charger", "SKUL", speed = 8, health = 100, radius = 16, walkFrames = 2, walkTics = 3,
             attack = Anim(intArrayOf(2, 3, 2), intArrayOf(10, 4, 4)),
             pain = Anim(intArrayOf(4, 4), intArrayOf(3, 3)),
-            death = Anim(intArrayOf(5, 6, 7, 8, 9, 10), intArrayOf(6, 6, 6, 6, 6, -1)),
+            // info.c S_SKULL_DIE1..DIE6: the last one is `{SPR_SKUL, 32775, 6, {NULL}, S_NULL}`
+            // - it runs for six tics and then goes to S_NULL, which removes the thing. This
+            // one does not die, it detonates: the six frames are the skull bursting into a
+            // ball of fire that fades to a ring and is gone, and every frame is fullbright.
+            //
+            // The last tic was -1 here, our marker for "stays forever", which is right for
+            // every other creature and wrong for this one: it left the final frame of an
+            // explosion - 103 by 90 pixels of red ring in Phase 2, wider than the marine is
+            // tall - lying on the ground for thirty seconds, on top of whatever walked over
+            // it. That was read as a corpse with a blood splat beside it. There is no corpse.
+            death = Anim(intArrayOf(5, 6, 7, 8, 9, 10), intArrayOf(6, 6, 6, 6, 6, 6)),
             painChance = 256, meleeMod = 8, meleeMul = 3,
         ),
         // mobjinfo[MT_SERGEANT] speed 10; A_SargAttack: melee only, (P_Random()%10+1)*4

@@ -98,6 +98,38 @@ class GameDataTest {
         }
     }
 
+    /**
+     * A death animation ends in a body that stays, except the one that ends in nothing.
+     *
+     * The last tic of -1 is this codebase's marker for the resting frame, and it is right for
+     * every creature the original leaves lying on the floor. The Charger is not one: info.c
+     * sends S_SKULL_DIE6 to S_NULL, so the skull bursts into a ball of fire, fades to a ring
+     * and is removed. Marked -1 it stayed instead - in Phase 2 that ring is 103 by 90 pixels,
+     * wider than the marine is tall - and sat on the ground for thirty seconds under whatever
+     * walked over it, which is what read as a blood splat that outlived its corpse.
+     *
+     * Pinned in both directions, because the interesting failure is either way round: a
+     * creature that stops leaving a corpse is as wrong as an explosion that leaves one.
+     */
+    @Test
+    fun `only the Charger leaves nothing behind`() {
+        for (c in GameData.creatures) {
+            val last = c.death.tics.last()
+            if (c.lumpPrefix == "SKUL") {
+                assertTrue(
+                    last > 0,
+                    "the Charger detonates and is removed: its death must not end on a " +
+                        "resting frame (info.c S_SKULL_DIE6 -> S_NULL)",
+                )
+            } else {
+                assertEquals(
+                    -1, last,
+                    "${c.name} must end its death on a resting frame that stays",
+                )
+            }
+        }
+    }
+
     @Test
     fun `every creature has consistent animations`() {
         for (c in GameData.creatures + GameData.player) {
@@ -105,8 +137,9 @@ class GameDataTest {
                 assertEquals(a.frames.size, a.tics.size, "${c.name}: frames and tics do not match")
                 assertTrue(a.frames.isNotEmpty(), "${c.name}: empty animation")
             }
-            // The last death frame stays forever (tic -1), as in states[].
-            assertEquals(-1, c.death.tics.last(), "${c.name}: the corpse must remain")
+            // Whether the last death frame stays is asserted per creature above, in
+            // `only the Charger leaves nothing behind`. It used to be asserted here as -1 for
+            // everyone, which is where the Charger's explosion got its resting frame from.
         }
     }
 
