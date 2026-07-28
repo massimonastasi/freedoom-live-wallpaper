@@ -590,18 +590,18 @@ object GameData {
      * level that owns it, so the change arrives as a warning rather than a wall.
      */
     val skills = listOf(
-        Skill("I'm too young to die", 4, 160, waveCount = 26, toughen = 0, halfDamage = true, doubleAmmo = true),
+        Skill("I'm too young to die", 8, 120, waveCount = 26, toughen = 0, halfDamage = true, doubleAmmo = true),
         // Half damage is gone; the ammunition is not, so this is the first level that hurts.
         // The drop interval has to fall a long way to pay for that, because half damage is by
         // far the strongest lever on this ladder: at 126 tics this measured 68.5%, below the
         // level beneath it, and the gap only closes when the supplies come roughly twice as
         // often as anywhere else.
-        Skill("Just a scratch, then", 4, 55, waveCount = 26, toughen = 0, doubleAmmo = true),
-        Skill("Hey, not too rough", 4, 92, waveCount = 26, toughen = 0),
-        Skill("Rough is fine", 4, 116, waveCount = 26, toughen = 52),
-        Skill("Hurt me plenty", 4, 140, waveCount = 26, toughen = 105),
-        Skill("More than plenty", 4, 195, waveCount = 26, toughen = 112),
-        Skill("Ultra-Violence", 4, 330, waveCount = 26, toughen = 120),
+        Skill("Just a scratch, then", 8, 55, waveCount = 26, toughen = 0, doubleAmmo = true),
+        Skill("Hey, not too rough", 8, 62, waveCount = 26, toughen = 0),
+        Skill("Rough is fine", 8, 116, waveCount = 26, toughen = 52),
+        Skill("Hurt me plenty", 8, 140, waveCount = 26, toughen = 105),
+        Skill("More than plenty", 8, 225, waveCount = 26, toughen = 112),
+        Skill("Ultra-Violence", 8, 330, waveCount = 26, toughen = 120),
         // Fast monsters were tried here, one rung early, and it inverted the ladder: this
         // level measured 0.5% against Nightmare's 1.2%, so the hardest level in the game was
         // no longer the hardest. Speed is not a step, it is a cliff. The rung is made out of
@@ -609,13 +609,13 @@ object GameData {
         // Loosened again after it measured 1.0% against Nightmare's 1.2%: inside the noise of
         // a 200-life sample, but on the wrong side of it, and the ladder is asserted to never
         // rise. The gap has to be real, not merely intended.
-        Skill("Past all reason", 4, 420, waveCount = 26, toughen = 124),
+        Skill("Past all reason", 8, 420, waveCount = 26, toughen = 124),
         // Lower toughen than Ultra-Violence would suggest, and still far harder: this level
         // alone brings fast FleshWorms and monsters that come back, and a wave that refills
         // is a wave the marine is very unlikely to finish. The parameter is not the
         // difficulty; the measured outcome is, and that is what the test asserts.
         Skill(
-            "Nightmare!", 5, 780, waveCount = 26, toughen = 130,
+            "Nightmare!", 8, 1600, waveCount = 26, toughen = 130,
             doubleAmmo = true, fast = true, respawn = true,
         ),
     )
@@ -686,34 +686,45 @@ object GameData {
         // onto "how far down the list", which is [Skill.waveCount]: each skill runs a
         // longer prefix of this table, and only Nightmare ever meets the Cyberlord.
         //
+        // The escort waves arrive as a pair - burst 2 - and the solo waves do not. That is
+        // one change fixing two complaints at once. With burst 1 everywhere, two enemies
+        // never appeared together in the whole table, so the wallpaper had no doubles at all;
+        // and the second wave, which is one creature twice, delivered the same creature in
+        // two consecutive arrivals, which is what read as a repetition. Arriving together it
+        // is a pair rather than a stutter.
+        //
+        // WaveTableTest asserts the shape rather than trusting this paragraph: no creature in
+        // two consecutive arrivals, every creature alone once and escorted once, doubles
+        // present, and the roster never walking back down the bestiary.
+        //
         // Compressing the pacing was tried and measured: shrinking the delays and rests
         // took the mean life from 130 s to 85 s and the easiest skill from 29% to 17%. The
         // marine needs the gaps. They stayed.
         //   creatures                delay              burst  rest after
         Wave(intArrayOf(0), /*             2.00 s */ TICRATE * 2, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(0, 0), /*          1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(0, 0), /*          1.75 s */ TICRATE * 7 / 4, 2, TICRATE * 5 / 4),
         Wave(intArrayOf(1), /*             1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(0, 1), /*          1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(0, 1), /*          1.75 s */ TICRATE * 7 / 4, 2, TICRATE * 5 / 4),
         Wave(intArrayOf(2), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(1, 2), /*          1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
+        Wave(intArrayOf(1, 2), /*          1.50 s */ TICRATE * 3 / 2, 2, TICRATE * 5 / 4),
         Wave(intArrayOf(3), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(2, 3), /*          1.50 s */ TICRATE * 3 / 2, 1, TICRATE),
+        Wave(intArrayOf(2, 3), /*          1.50 s */ TICRATE * 3 / 2, 2, TICRATE),
         Wave(intArrayOf(4), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(3, 4), /*          1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
+        Wave(intArrayOf(3, 4), /*          1.25 s */ TICRATE * 5 / 4, 2, TICRATE),
         Wave(intArrayOf(5), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(4, 5), /*          1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
+        Wave(intArrayOf(4, 5), /*          1.25 s */ TICRATE * 5 / 4, 2, TICRATE),
         Wave(intArrayOf(6), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(5, 6), /*          1.25 s */ TICRATE * 5 / 4, 1, TICRATE),
+        Wave(intArrayOf(5, 6), /*          1.25 s */ TICRATE * 5 / 4, 2, TICRATE),
         Wave(intArrayOf(7), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(6, 7), /*          1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(6, 7), /*          1.00 s */ TICRATE, 2, TICRATE),
         Wave(intArrayOf(8), /*             1.00 s */ TICRATE, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(7, 8), /*          1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(7, 8), /*          1.00 s */ TICRATE, 2, TICRATE),
         Wave(intArrayOf(9), /*             1.00 s */ TICRATE, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(8, 9), /*          1.00 s */ TICRATE, 1, TICRATE),
+        Wave(intArrayOf(8, 9), /*          1.00 s */ TICRATE, 2, TICRATE),
         Wave(intArrayOf(10), /*            1.00 s */ TICRATE, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(9, 10), /*         0.75 s */ TICRATE * 3 / 4, 1, TICRATE),
+        Wave(intArrayOf(9, 10), /*         0.75 s */ TICRATE * 3 / 4, 2, TICRATE),
         Wave(intArrayOf(11), /*            0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(10, 11), /*        0.75 s */ TICRATE * 3 / 4, 1, TICRATE),
+        Wave(intArrayOf(10, 11), /*        0.75 s */ TICRATE * 3 / 4, 2, TICRATE),
         // The last two arrive alone and stay alone. The Overlord takes 71% of the screen
         // width - measured, not guessed - so an escort would leave nowhere to look.
         Wave(intArrayOf(12), /*            0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 2),

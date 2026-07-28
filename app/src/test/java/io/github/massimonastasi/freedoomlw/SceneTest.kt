@@ -168,13 +168,11 @@ class SceneTest {
             "${GameData.skills[it].name} (${GameData.skills[it].waveCount}w) ${odds[it] / 10}.${odds[it] % 10}%"
         })
 
-        // The curve that was asked for, in tenths of a percent: 95, 75, 35, 5, 0.5. It was
-        // briefly unreachable - every skill runs all 26 waves, and over a table ending at a
-        // Cyberdemon the easiest level finished 29% of the time. It is reachable again
-        // because the lever moved to where the difficulty actually lives: monsters spawn at
-        // 18% of their original health rather than 40%, so the marine can work through a
-        // boss instead of being walled by one. The wave count is untouched at 26 for every
-        // skill, and so is the drop rate.
+        // The curve that was asked for, in tenths of a percent: 95, 75, 35, 5, 0.5 for the
+        // five canonical levels. It is reached by the lever where the difficulty actually
+        // lives - monsters spawn at a fraction of their original health, so the marine can
+        // work through a boss instead of being walled by one - and the wave count stays at 26
+        // for every skill.
         // Nine rungs now, and the four new ones are the midpoints of the four gaps: the five
         // canonical levels keep the numbers they were tuned to, and nothing between them was
         // chosen by feel.
@@ -483,13 +481,21 @@ class SceneTest {
             assertTrue(delays[i] <= delays[i - 1], "wave ${i + 1} is slower than the previous one")
         }
         assertTrue(delays.first() > delays.last(), "no acceleration between the first and last wave")
-        // Paired arrivals only exist in the second half.
         // The crowd cap, which is what a phone screen actually shows: at most two arrivals
-        // queued and never more than one at a time, so nothing can pile six bodies into a
-        // single wave again. Difficulty lives in how far down the bestiary a skill runs.
+        // queued, and a burst no larger than the wave itself, so nothing can pile six bodies
+        // into a single wave the way an earlier table did. Difficulty lives in how far down
+        // the bestiary a skill runs.
+        //
+        // The burst used to be pinned at one, which is how the table ended up with no paired
+        // arrivals anywhere in twenty-six waves. Two is the cap now, and WaveTableTest is
+        // where the shape of the pairing is asserted.
         for ((i, w) in GameData.waves.withIndex()) {
             assertTrue(w.order.size <= 2, "wave ${i + 1} queues ${w.order.size} arrivals")
-            assertTrue(w.burst == 1, "wave ${i + 1} spawns ${w.burst} at once")
+            assertTrue(w.burst in 1..2, "wave ${i + 1} spawns ${w.burst} at once")
+            assertTrue(
+                w.burst <= w.order.size,
+                "wave ${i + 1} bursts ${w.burst} out of ${w.order.size} queued",
+            )
         }
     }
 

@@ -1300,7 +1300,16 @@ class Scene(
          */
         const val MUZZLE_HEIGHT = 34
 
-        const val MONSTER_HEALTH = 35
+        /**
+         * Lowered from 35 to 10 when the escort waves began arriving in pairs.
+         *
+         * That change doubled what a wave asks of the marine, and the whole ladder fell with
+         * it: the easiest level went from 94.5% to 44.7%. Measured back up in steps - 22 gave
+         * 69.0%, 18 gave 75.7%, 12 gave 87.0% - the response flattens as it goes, because
+         * below a point the monsters die fast enough that the limit becomes the marine's own
+         * health rather than theirs. Ten puts the ladder back where it was priced.
+         */
+        const val MONSTER_HEALTH = 10
 
         /**
          * The same, for the things at the end of the table.
