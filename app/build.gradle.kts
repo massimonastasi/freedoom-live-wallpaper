@@ -188,28 +188,46 @@ tasks.register("reduceWad") {
         val fStart = (0 until count).first { nameAt(it) == "F_START" }
         val fEnd = (0 until count).first { nameAt(it) == "F_END" }
 
-        val flats = (fStart + 1 until fEnd).mapNotNull { i ->
+        // Every flat a backdrop could be, rather than the handful the ladder currently uses.
+        //
+        // This used to reproduce FloorPicker's selection here, and that was the wrong shape:
+        // two copies of one rule, in two languages, that only disagree when somebody changes
+        // one of them. It disagreed the moment the ladder went from five rungs to nine, and
+        // the shipped WAD could then offer four floors to a picker asking for nine.
+        //
+        // Now the build applies only the *filter* - which is a threshold, not a policy - and
+        // the choosing stays in FloorPicker, where it also runs on an imported WAD. It costs
+        // about 150 KB of flats that may go unused, against a class of bug that cannot happen
+        // any more: whatever the app asks for, the asset can answer.
+        val floors = (fStart + 1 until fEnd).mapNotNull { i ->
             val e = dir + i * 16
             if (int(e + 4) != 64 * 64) return@mapNotNull null
             val at = int(e)
             var r = 0L; var g = 0L; var b = 0L
+            var sum = 0.0; var squares = 0.0
             for (q in 0 until 64 * 64) {
                 val c = palAt + (bytes[at + q].toInt() and 0xFF) * 3
-                r += bytes[c].toInt() and 0xFF
-                g += bytes[c + 1].toInt() and 0xFF
-                b += bytes[c + 2].toInt() and 0xFF
+                val pr = bytes[c].toInt() and 0xFF
+                val pg = bytes[c + 1].toInt() and 0xFF
+                val pb = bytes[c + 2].toInt() and 0xFF
+                r += pr; g += pg; b += pb
+                val l = 0.299 * pr + 0.587 * pg + 0.114 * pb
+                sum += l; squares += l * l
             }
             val n = (64 * 64).toDouble()
             val mr = r / n; val mg = g / n; val mb = b / n
-            listOf(nameAt(i), (0.299 * mr + 0.587 * mg + 0.114 * mb).toString(), (maxOf(mr, mg, mb) - minOf(mr, mg, mb)).toString(), maxOf(mr, mg, mb).toString())
-        }
-        val wanted = 5                                            // one per skill level
-        // Peak channel as well as luminance: a saturated blue measures a low luminance, because
-        // the formula weights blue at 0.114, and is glaring on screen. See FloorPicker.
-        val ranked = flats.filter { it[1].toDouble() in 20.0..45.0 && it[3].toDouble() <= 90.0 }
-            .sortedBy { it[2].toDouble() }
-        val floors = (0 until wanted).map { ranked[it * (ranked.size - 1) / (wanted - 1)][0] }.toSet()
-        logger.lifecycle("reduceWad: floors by measurement: ${floors.joinToString()}")
+            val mean = sum / n
+            val luminance = 0.299 * mr + 0.587 * mg + 0.114 * mb
+            val peak = maxOf(mr, mg, mb)
+            val contrast = Math.sqrt(maxOf(0.0, squares / n - mean * mean))
+            // The same three thresholds FloorPicker states and explains: quiet overall, quiet
+            // in every channel, and not a field of dots pretending to be ground.
+            val usable = luminance in 20.0..45.0 &&
+                peak <= 90.0 &&
+                contrast / maxOf(1.0, luminance) <= 0.60
+            if (usable) nameAt(i) else null
+        }.toSet()
+        logger.lifecycle("reduceWad: ${floors.size} flats pass the backdrop filter")
 
         val kept = mutableListOf<Triple<String, Int, Int>>()      // name, offset, size
         for (i in 0 until count) {

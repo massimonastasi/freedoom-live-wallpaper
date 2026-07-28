@@ -576,12 +576,40 @@ object GameData {
     )
 
 
-    /** g_game.c skill_t, and the names from the difficulty menu. */
+    /**
+     * The ladder: g_game.c skill_t, with a rung of our own between each pair.
+     *
+     * The five names are the engine's, from the difficulty menu, and they keep their places
+     * and their flags. The four in between are this wallpaper's, and they are named after the
+     * people it was made around rather than after anything in the engine - there is no canonical
+     * text to borrow for a level the original does not have, and inventing something that
+     * sounded canonical would be worse than admitting whose ladder this is.
+     *
+     * Each inserted rung takes the step its neighbours leave: the drop interval and the
+     * toughen odds sit between theirs, and a flag is turned on one level before the canonical
+     * level that owns it, so the change arrives as a warning rather than a wall.
+     */
     val skills = listOf(
         Skill("I'm too young to die", 4, 160, waveCount = 26, toughen = 0, halfDamage = true, doubleAmmo = true),
+        // Half damage is gone; the ammunition is not, so this is the first level that hurts.
+        // The drop interval has to fall a long way to pay for that, because half damage is by
+        // far the strongest lever on this ladder: at 126 tics this measured 68.5%, below the
+        // level beneath it, and the gap only closes when the supplies come roughly twice as
+        // often as anywhere else.
+        Skill("Just a scratch, then", 4, 55, waveCount = 26, toughen = 0, doubleAmmo = true),
         Skill("Hey, not too rough", 4, 92, waveCount = 26, toughen = 0),
+        Skill("Rough is fine", 4, 116, waveCount = 26, toughen = 52),
         Skill("Hurt me plenty", 4, 140, waveCount = 26, toughen = 105),
+        Skill("More than plenty", 4, 195, waveCount = 26, toughen = 112),
         Skill("Ultra-Violence", 4, 330, waveCount = 26, toughen = 120),
+        // Fast monsters were tried here, one rung early, and it inverted the ladder: this
+        // level measured 0.5% against Nightmare's 1.2%, so the hardest level in the game was
+        // no longer the hardest. Speed is not a step, it is a cliff. The rung is made out of
+        // the two continuous levers instead, and fast stays where the engine puts it.
+        // Loosened again after it measured 1.0% against Nightmare's 1.2%: inside the noise of
+        // a 200-life sample, but on the wrong side of it, and the ladder is asserted to never
+        // rise. The gap has to be real, not merely intended.
+        Skill("Past all reason", 4, 420, waveCount = 26, toughen = 124),
         // Lower toughen than Ultra-Violence would suggest, and still far harder: this level
         // alone brings fast FleshWorms and monsters that come back, and a wave that refills
         // is a wave the marine is very unlikely to finish. The parameter is not the
