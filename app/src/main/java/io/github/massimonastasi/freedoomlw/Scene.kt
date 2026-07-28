@@ -596,13 +596,11 @@ class Scene(
     private fun newCreature(c: GameData.Creature): Actor {
         val a = Actor(c.spriteIndex)
         a.creature = c
-        // Monsters are softer than the originals; the marine is not. A boss takes both
-        // coefficients, one after the other. See MONSTER_HEALTH and BOSS_HEALTH.
-        a.health = when {
-            c === GameData.player -> c.health
-            c.health >= BOSS_HEALTH_FROM -> c.health * MONSTER_HEALTH / 100 * BOSS_HEALTH / 100
-            else -> c.health * MONSTER_HEALTH / 100
-        }
+        // Softer than the originals, by an amount that depends on where in the ladder and
+        // where in the table this is happening. The marine is never scaled. See healthScale.
+        a.health =
+            if (c === GameData.player) c.health
+            else (c.health * healthScale(skill, wave) / 100).coerceAtLeast(1)
         a.spawnTic = tic
         a.reactionTime = GameData.REACTION_TIME
         return a
@@ -1348,32 +1346,55 @@ class Scene(
         const val MUZZLE_HEIGHT = 34
 
         /**
-         * Lowered from 35 to 10 when the escort waves began arriving in pairs.
+         * The share of its original health a creature is given, as a percentage.
          *
-         * That change doubled what a wave asks of the marine, and the whole ladder fell with
-         * it: the easiest level went from 94.5% to 44.7%. Measured back up in steps - 22 gave
-         * 69.0%, 18 gave 75.7%, 12 gave 87.0% - the response flattens as it goes, because
-         * below a point the monsters die fast enough that the limit becomes the marine's own
-         * health rather than theirs. Ten puts the ladder back where it was priced.
+         * ## The rule
+         *
+         * At the hardest skill nothing is scaled at all: a Cyberdemon has the 4000 health
+         * `info.c` gives it, and every other creature the number the wiki prints. That is the
+         * anchor the rest hangs from, and it makes Nightmare a declared wall rather than a
+         * difficulty setting - it is not meant to be finished.
+         *
+         * Below that, the reduction grows with two things. With the wave, because a life has
+         * to survive a whole table and it is the far end that ends it; and with how far down
+         * the ladder the skill is, because that is what the ladder is for. Wave one is close
+         * to untouched at every level - a Zombie has 20 health and dies to two pistol shots
+         * either way - and the far end of the table is where the levels separate.
+         *
+         * ## Why it replaced two constants
+         *
+         * There used to be a flat 10% for everything and a further 25% for anything at or
+         * above 1000 health. Two blunt numbers, and the second one inverted the bestiary: the
+         * Baron, at 1000, came out with 25 health against the Mancubus's 60, so the wave table
+         * got easier exactly where it was meant to peak. Scaling by position instead of by
+         * size keeps every creature in the order `info.c` puts it in.
          */
-        const val MONSTER_HEALTH = 10
+        internal fun healthScale(skill: Int, wave: Int): Int {
+            val lastSkill = (GameData.skills.size - 1).coerceAtLeast(1)
+            val lastWave = (GameData.waves.size - 1).coerceAtLeast(1)
+            // The whole reduction this skill is entitled to. Zero at the top of the ladder,
+            // which is what anchors the hardest level to the printed numbers.
+            val full = (100 - MIN_HEALTH) * (lastSkill - skill.coerceIn(0, lastSkill)) / lastSkill
+            // How much of it is already in force. Anchoring wave one at full health was tried
+            // and is the wrong shape: it made the easiest level reach the first boss 43% of
+            // the time against a target of 99, because a level that has to be gentle has to
+            // be gentle from the beginning. The wave only decides the last stretch of it.
+            val progress = wave.coerceIn(0, lastWave) * 100 / lastWave
+            val applied = EARLY_SHARE + (100 - EARLY_SHARE) * progress / 100
+            return 100 - full * applied / 100
+        }
 
         /**
-         * The same, for the things at the end of the table.
+         * What the last wave of the easiest level is scaled to.
          *
-         * One coefficient for everything was measured to work and to cost something: at the
-         * 18% that made the last wave reachable, a Zombie spawns with three health and dies
-         * to the first shot fired at it. The wall was never the small ones - it was a
-         * 4000-health Cyberdemon - so softening them to reach it was paying in the wrong
-         * currency. Two numbers separate the chaff from the wall.
-         *
-         * The threshold is a health value rather than a list of names, so a creature added
-         * to the bestiary is classified by what it is instead of by being remembered.
+         * Fitted rather than chosen: the target is that the easiest level reaches the
+         * PainLord - the first creature the original prices at a thousand health, opening
+         * wave 23 of 26 - in 99 lives out of 100.
          */
-        const val BOSS_HEALTH = 25
+        const val MIN_HEALTH = 3
 
-        /** Spawn health at or above which a creature is priced as a boss. PainLord and up. */
-        const val BOSS_HEALTH_FROM = 1000
+        /** How much of a skill's reduction is already in force at the first wave, percent. */
+        const val EARLY_SHARE = 94
 
         /** How long the marine stands still after materialising. */
         const val PLAYER_REACTION = TICRATE / 2
