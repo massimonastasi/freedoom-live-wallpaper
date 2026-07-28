@@ -343,6 +343,15 @@ class Scene(
 
     private var wonUntil = 0
 
+    /** The last creature queued, so the next wave knows what it must not repeat. */
+    private var lastQueued = -1
+
+    /**
+     * The burst this wave is actually delivering: the table's own, unless a substitution had
+     * to be compensated for with a second body. See startWave.
+     */
+    private var waveBurst = 1
+
     fun tick(now: Int) {
         tic = now
 
@@ -416,7 +425,7 @@ class Scene(
         if (spawnIndex < queue.size) {
             if (tic >= nextSpawnAt) {
                 val w = GameData.waves[wave]
-                var n = w.burst
+                var n = waveBurst
                 while (n-- > 0 && spawnIndex < queue.size) {
                     spawnDemon(GameData.creatures[queue[spawnIndex++]], respawned = false)
                 }
@@ -516,6 +525,7 @@ class Scene(
         // gave the opening wave two enemies at every skill, and the ladder started flat.
         val n = (w.order.size * rules.countEighths + 7) / 8
         queue.clear()
+        waveBurst = w.burst
         for (i in 0 until n) {
             // Exactly one step, never more. Promoting further was tried and measured worse:
             // the bestiary is ordered by the original's own toughness, which is health, and
@@ -524,8 +534,18 @@ class Scene(
             // hitscan shots cannot be dodged at all. The odds went *up* at the hard end.
             var c = w.order[i % w.order.size]
             if (pRandom() < rules.toughen && c + 1 < GameData.creatures.size) c++
-            queue.add(substitute(c))
+            // What went in last, so a run of missing creatures does not collapse onto one
+            // survivor. It carries across waves as well as within them, because that is where
+            // it was worst: three identical solo waves two apart.
+            val s = substitute(c, avoid = queue.lastOrNull() ?: lastQueued)
+            val copies = compensation(c, s)
+            // A doubled arrival lands together, whatever the wave's own burst is. Delivered
+            // one at a time it would be the same creature twice in a row, which is precisely
+            // what the substitution was rewritten to stop producing.
+            if (copies > 1) waveBurst = maxOf(waveBurst, copies)
+            repeat(copies) { queue.add(s) }
         }
+        queue.lastOrNull()?.let { lastQueued = it }
         spawnIndex = 0
         nextSpawnAt = tic + if (rushOpening) 0 else w.spawnDelay
         rushOpening = false
@@ -538,13 +558,38 @@ class Scene(
      * rather than a Zombie: the wave keeps roughly the weight it was written with. Only if
      * nothing below exists does it look upwards.
      */
-    internal fun substitute(index: Int): Int {
+    internal fun substitute(index: Int, avoid: Int = -1): Int {
         val ok = drawable ?: return index
         if (ok.getOrElse(index) { true }) return index
-        for (i in index - 1 downTo 0) if (ok.getOrElse(i) { false }) return i
+
+        // Down first, and past [avoid] if there is anywhere else to go. Without that, a file
+        // missing several creatures in a row collapses them all onto the same survivor:
+        // measured on a Phase 1 roster, waves 17 to 22 became six consecutive waves of
+        // Trilobites, three of them identical two apart. Stepping over what just arrived
+        // costs one more rung of weight and buys a table that still changes.
+        for (pass in 0..1) {
+            for (i in index - 1 downTo 0) {
+                if (!ok.getOrElse(i) { false }) continue
+                // A boss is never a substitute. It is the shape of the wave it belongs to,
+                // and dropping one into an ordinary wave would make that wave the finale.
+                if (GameData.creatures[i].health >= BOSS_FROM) continue
+                if (pass == 0 && i == avoid) continue
+                return i
+            }
+        }
         for (i in index + 1 until GameData.creatures.size) if (ok.getOrElse(i) { false }) return i
         return index
     }
+
+    /**
+     * How far a substitution had to fall, in places down the bestiary.
+     *
+     * The wave loses weight in proportion, and that is paid back in bodies rather than in
+     * kind: two or more places down and the arrival is doubled. A Phase 1 file has no Bloater,
+     * and the nearest thing it can draw is three places below - one Trilobite in its place is
+     * a wave that has quietly stopped escalating.
+     */
+    private fun compensation(from: Int, to: Int): Int = if (from - to >= DEEP_SUBSTITUTION) 2 else 1
 
     private fun BooleanArray.getOrElse(i: Int, fallback: () -> Boolean) =
         if (i in indices) this[i] else fallback()
@@ -1476,6 +1521,12 @@ class Scene(
 
         /** What the easiest level takes, before p_inter.c halves it again. */
         const val MIN_TAKEN = 80
+
+        /** Spawn health at or above which a creature is a boss and never a stand-in. */
+        const val BOSS_FROM = 1000
+
+        /** How far a substitution has to fall before the arrival is doubled to make up for it. */
+        const val DEEP_SUBSTITUTION = 2
 
         /** How long the marine stands still after materialising. */
         const val PLAYER_REACTION = TICRATE / 2
