@@ -124,13 +124,15 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
-        // The scrim behind the status bar is exactly as tall as the status bar, which only the
-        // system knows: the same number differs with the cutout, the gesture mode and the OEM.
+        // The scrim is measured from the status bar, which only the system knows: the same
+        // number differs with the cutout, the gesture mode and the OEM. It is drawn twice
+        // that tall so the gradient has room to reach nothing before the page resumes - the
+        // dark part still covers the clock, and the fade below it has no edge.
         val scrim = findViewById<View>(R.id.status_scrim)
         ViewCompat.setOnApplyWindowInsetsListener(scrim) { view, insets ->
-            val top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            if (view.layoutParams.height != top) {
-                view.layoutParams = view.layoutParams.also { it.height = top }
+            val height = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top * SCRIM_REACH
+            if (view.layoutParams.height != height) {
+                view.layoutParams = view.layoutParams.also { it.height = height }
             }
             insets
         }
@@ -522,5 +524,14 @@ class SettingsActivity : AppCompatActivity() {
     private companion object {
         /** Material 3 draws a disabled control at 38% opacity. */
         const val DISABLED_ALPHA = 0.38f
+
+        /**
+         * How far past the status bar the scrim reaches, as a multiple of its height.
+         *
+         * The dark end of the gradient covers the clock; the rest is the fade, and the fade
+         * needs somewhere to happen. One would put the edge exactly where the status bar ends,
+         * which is the flat band this replaced.
+         */
+        const val SCRIM_REACH = 2
     }
 }
