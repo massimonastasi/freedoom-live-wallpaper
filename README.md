@@ -108,6 +108,29 @@ After installing, open it and use **Set as wallpaper**, or go to
 
 Requires Android 12 or newer.
 
+### Checking that a build came from here
+
+Every release is signed with the same key. Its certificate fingerprint is:
+
+```
+SHA-256  bb44dbc7c7af228c396ce7446b474ee85c4dbc56ca0aa823b39aa4ebf775477e
+```
+
+To check an APK against it:
+
+```
+apksigner verify --print-certs freedoom-live-wallpaper.apk
+```
+
+The value lives here rather than in the release notes on purpose. A fingerprint printed
+beside the file it verifies proves nothing — whoever could swap one could swap the other. Here
+it sits in a file with a public history, so it can be read back to any point in time and
+compared against what a given download claims.
+
+It is not a secret, and there is nothing to protect: the certificate is inside every APK, and
+this only saves you extracting it. What must never leave this machine is the key itself, which
+is why it and `keystore.properties` are outside version control.
+
 ## Build from source
 
 1. Install Android Studio (it bundles the JDK, SDK, Gradle and adb):
