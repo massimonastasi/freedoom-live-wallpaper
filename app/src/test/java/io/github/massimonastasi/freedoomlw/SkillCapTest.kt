@@ -44,14 +44,19 @@ class SkillCapTest {
         var wavesSeen = 0
         var previousWave = scene.wave
         var lowestSkill = top
+        // The green wash, which fires on every finish. It is the observable for winning now
+        // that the counter is not: god mode is what makes this test able to reach the end at
+        // all, and god mode is exactly what stops the end being tallied.
+        var won = false
 
         for (t in 1..TICRATE * 3600) {
             scene.tick(t)
+            if (scene.winFade > 0f) won = true
             if (scene.skill < lowestSkill) lowestSkill = scene.skill
             // Invulnerable, so the skill may only ever be at the top or back at the bottom
             // having just won; anything in between would be a promotion that cannot happen.
             assertTrue(
-                scene.skill == top || scene.completions > 0,
+                scene.skill == top || won,
                 "tic $t: the skill left Nightmare without winning",
             )
             if (scene.wave != previousWave) {
@@ -60,13 +65,42 @@ class SkillCapTest {
             }
         }
 
-        println("Nightmare: $wavesSeen wave changes, ${scene.completions} completions")
+        println("Nightmare: $wavesSeen wave changes, won=$won, ${scene.completions} completions")
         assertTrue(wavesSeen > 0, "the waves stopped advancing on the hardest skill")
-        assertTrue(scene.completions > 0, "an invulnerable marine never finished the table in an hour")
+        assertTrue(won, "an invulnerable marine never finished the table in an hour")
+        assertEquals(0, scene.completions, "a win under god mode must not be counted")
         // Where it *went*, not where it ended: an invulnerable marine climbs the whole ladder
         // again inside the same hour, so reading the skill at the end measures the second run
         // rather than the win.
         assertEquals(0, lowestSkill, "a win restarts the ladder from the first level")
+    }
+
+    /**
+     * The latch itself, which is the part the hour-long test cannot show: it can prove a
+     * god-mode win is not counted, but not that an honest one would be, because an honest
+     * marine does not survive Nightmare - that is the point of Nightmare.
+     */
+    @Test
+    fun `god mode taints the run it is switched on in, and only that run`() {
+        GameData.clearRandom()
+        val scene = Scene(720, 1600)
+
+        assertTrue(!scene.cheated, "a fresh scene has nothing to hide")
+
+        scene.invulnerable = true
+        assertTrue(scene.cheated, "switching god mode on must taint the run in progress")
+
+        scene.invulnerable = false
+        assertTrue(scene.cheated, "switching it off again must not launder the same run")
+
+        // A death is the only way out with god mode off, and it is what starts a clean run.
+        var t = 0
+        while (t < TICRATE * 600 && scene.cheated) scene.tick(++t)
+        assertTrue(!scene.cheated, "a restart with god mode off must begin a countable run")
+
+        // The converse - a restart while god mode is still on - is what `cheated = invulnerable`
+        // in restart() is for, and the hour-long test above is where it is exercised: that
+        // marine wins with it on, restarts, and must still be uncounted afterwards.
     }
 
     @Test

@@ -206,6 +206,22 @@ class Scene(
 
     /** Setting: the marine never dies. Used by the balance measurements. */
     var invulnerable = false
+        set(value) {
+            // Latched here rather than sampled per tic: the run is tainted the moment god
+            // mode is switched on, and turning it off again before the last wave must not
+            // launder it. The latch is cleared only by a restart, which is a new run.
+            if (value) cheated = true
+            field = value
+        }
+
+    /**
+     * Whether god mode has been on at any point in the run now in progress.
+     *
+     * A table finished without dying is only worth counting if dying was possible: with god
+     * mode on, reaching the end is a matter of waiting rather than of surviving.
+     */
+    var cheated = false
+        private set
 
     /**
      * Which creatures the active WAD can actually draw, by index into GameData.creatures.
@@ -462,7 +478,7 @@ class Scene(
                     // here that can be called finishing the game: there is no harder level to
                     // be promoted to. The scene marks it and restarts from the bottom, the
                     // same way a death does, so it keeps running afterwards.
-                    completions++
+                    if (!cheated) completions++
                     wonUntil = tic + DEATH_DELAY
                     restart()
                     return
@@ -507,6 +523,9 @@ class Scene(
         wave = 0
         skill = 0
         cleared = 0
+        // Not false: god mode is a setting, not an event, so a run that begins with it
+        // already on is tainted from its first tic without anything being switched.
+        cheated = invulnerable
         // He takes the same moment to arrive after dying as he did at the start. The red
         // wash has already faded by now, so this is a beat of quiet ground, not a second
         // pause stacked on the first.
