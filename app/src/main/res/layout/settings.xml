@@ -249,14 +249,20 @@
                 style="@style/ListGroup">
 
                 <!--
-                    Source is shown and disabled: the repository is not public yet, so the row
-                    says the source exists and will be reachable, rather than appearing and
-                    disappearing between versions.
+                    Source first, then the licences, then the way to report a problem: what
+                    this is, what it is under, and what to do when it goes wrong.
                 -->
                 <include android:id="@+id/row_source" layout="@layout/list_row" />
 
                 <include
                     android:id="@+id/row_licences"
+                    layout="@layout/list_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/list_row_gap" />
+
+                <include
+                    android:id="@+id/row_report"
                     layout="@layout/list_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

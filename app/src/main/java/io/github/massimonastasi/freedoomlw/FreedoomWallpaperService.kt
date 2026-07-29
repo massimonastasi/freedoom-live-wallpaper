@@ -97,6 +97,9 @@ class FreedoomWallpaperService : WallpaperService() {
 
     override fun onCreate() {
         super.onCreate()
+        // Before loadWad, which reads a file the user chose and is the most likely thing here
+        // to throw on a device nobody tested it on.
+        CrashLog.install(this)
         loadWad()
     }
 

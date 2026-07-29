@@ -86,7 +86,17 @@
         <item quantity="one">Finished once, first on %2$s</item>
         <item quantity="other">Finished %1$d times, first on %2$s</item>
     </plurals>
+    <!--
+        The one URL this application knows. Both the Source row and the problem report are
+        built from it, so a repository that moves is a one-line change and cannot end up
+        half-updated.
+    -->
+    <string name="repo_url" translatable="false">https://github.com/massimonastasi/freedoom-live-wallpaper</string>
     <string name="settings_source">Source</string>
-    <string name="settings_source_note">GitHub repository, once it is public</string>
+    <string name="settings_source_note">The whole of this app, and the licence it is under</string>
+    <string name="settings_report">Report a problem</string>
+    <string name="settings_report_note">Opens GitHub with the details filled in. Nothing is sent until you send it</string>
+    <string name="settings_report_crash_note">It crashed last time. The report is ready, with the trace attached</string>
+    <string name="no_browser">No app on this device can open a web page.</string>
 </resources>
 

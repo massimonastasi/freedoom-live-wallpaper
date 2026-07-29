@@ -95,6 +95,7 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashLog.install(this)
         setContentView(R.layout.settings)
         loadPalette()
 
@@ -307,21 +308,56 @@ class SettingsActivity : AppCompatActivity() {
     private fun showAbout() {
         showCompleted()
 
-        // Source is shown and disabled: the repository is not public yet, so the row says the
-        // source exists and will be reachable rather than appearing and disappearing between
-        // versions. Disabling the whole row rather than only its click means it also reads as
-        // unavailable instead of looking broken when tapped.
-        row(R.id.row_source, R.string.settings_source, getString(R.string.settings_source_note))
-        findViewById<View>(R.id.row_source).apply {
-            findViewById<View>(R.id.row_radio).visibility = View.GONE
-            isEnabled = false
-            alpha = DISABLED_ALPHA
+        // Not a courtesy: GPL-2.0 section 3 requires that whoever receives the binary can get
+        // the corresponding source, and for an application handed out as an APK this row is
+        // how that is offered. It stays enabled from here on.
+        link(R.id.row_source, R.string.settings_source, getString(R.string.settings_source_note)) {
+            open(getString(R.string.repo_url))
         }
 
-        row(R.id.row_licences, R.string.settings_licences, getString(R.string.settings_licences_note))
-        findViewById<View>(R.id.row_licences).findViewById<View>(R.id.row_radio).visibility = View.GONE
-        pointer(R.id.row_licences, R.drawable.ic_chevron)
-        findViewById<View>(R.id.row_licences).setOnClickListener { openLicences() }
+        link(R.id.row_licences, R.string.settings_licences, getString(R.string.settings_licences_note)) {
+            openLicences()
+        }
+
+        // The report says something different when there is a trace waiting, because that is
+        // the one moment the row is worth noticing rather than being a permanent offer.
+        val crashed = CrashLog.read(this) != null
+        val note = if (crashed) R.string.settings_report_crash_note else R.string.settings_report_note
+        link(R.id.row_report, R.string.settings_report, getString(note)) {
+            open(CrashLog.issueUrl(this, prefs))
+            // Cleared on the way out, not on return: the user has seen it, and a trace that
+            // reappears every time the screen opens reads as an app still broken.
+            CrashLog.clear(this)
+            showAbout()
+        }
+    }
+
+    /** A row that goes somewhere: no radio, a chevron, and the whole row is the target. */
+    private fun link(id: Int, label: Int, note: String, onClick: () -> Unit) {
+        row(id, label, note)
+        findViewById<View>(id).findViewById<View>(R.id.row_radio).visibility = View.GONE
+        pointer(id, R.drawable.ic_chevron)
+        findViewById<View>(id).setOnClickListener { onClick() }
+    }
+
+    /**
+     * Hands a URL to whatever the user browses with.
+     *
+     * No in-app browser and no custom tab: this application requests no permissions and opens
+     * no network connection of its own, and both of those would make that sentence false. The
+     * page is theirs to read, in their browser, signed into their own account.
+     */
+    private fun open(url: String) {
+        // Try and catch, not resolveActivity. Since Android 11 an application sees only the
+        // packages it declares in <queries>, so resolveActivity returns null whether or not a
+        // browser exists - measured here: it returned null on a device with Vivaldi installed
+        // and handling https, and the row silently reported that nothing could open a page.
+        // Declaring <queries> would fix the query; not asking the question fixes the feature.
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        } catch (_: android.content.ActivityNotFoundException) {
+            toast(getString(R.string.no_browser))
+        }
     }
 
     /**
