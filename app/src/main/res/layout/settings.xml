@@ -336,7 +336,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/settings_set_wallpaper" />
+            android:text="@string/settings_set_wallpaper"
+            tools:ignore="VisualLintButtonSize" />
 
     </LinearLayout>
 
