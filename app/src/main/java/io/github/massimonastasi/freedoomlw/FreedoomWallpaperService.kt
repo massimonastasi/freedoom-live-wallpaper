@@ -58,9 +58,6 @@ class FreedoomWallpaperService : WallpaperService() {
     /** Floor texture per skill level, tiled behind the scene. Null entries when absent. */
     private var floorTiles: Array<Bitmap?> = arrayOfNulls(GameData.skills.size)
 
-    /** Which flat each skill actually resolved to, for the debug overlay. */
-    private var floorNames: Array<String> = Array(GameData.skills.size) { "?" }
-
     /** Status bar numerals from the WAD. */
     private var digits: Array<Bitmap>? = null
 
@@ -215,11 +212,9 @@ class FreedoomWallpaperService : WallpaperService() {
         return Array(GameData.skills.size) { skill ->
             val flat = chosen.getOrNull(skill) ?: chosen.lastOrNull()
             if (flat == null) {
-                floorNames[skill] = "-"
                 Log.i(TAG, "no floor for ${GameData.skills[skill].name}")
                 return@Array null
             }
-            floorNames[skill] = flat.name
             Log.i(TAG, "floor for ${GameData.skills[skill].name}: ${flat.name} " +
                 "(luminance ${"%.1f".format(flat.luminance)}, chroma ${"%.1f".format(flat.chroma)})")
 
@@ -318,7 +313,6 @@ class FreedoomWallpaperService : WallpaperService() {
         private val prefs = Settings.of(this@FreedoomWallpaperService)
         private var chosenFps = Settings.DEFAULT_FPS
         private var readoutVisible = true
-        private var debugVisible = false
         private var overlayVisible = true
 
         /**
@@ -452,7 +446,6 @@ class FreedoomWallpaperService : WallpaperService() {
         private fun applySettings() {
             chosenFps = Settings.fps(prefs)
             readoutVisible = Settings.readout(prefs)
-            debugVisible = Settings.debug(prefs)
             overlayVisible = Settings.overlay(prefs)
             godMode = Settings.godMode(prefs)
 
@@ -655,7 +648,6 @@ class FreedoomWallpaperService : WallpaperService() {
             for (i in s.actors.indices) if (!s.restsBelow(s.actors[i])) drawActor(canvas, s.actors[i])
 
             drawReadout(canvas, s)
-            drawDebug(canvas, s)
 
             // Marine death: the screen washes red. The colour is not invented, it is
             // PLAYPAL palette 8, the original game's damage flash — but at full strength it
@@ -771,48 +763,10 @@ class FreedoomWallpaperService : WallpaperService() {
             drawNumber(canvas, health, frame.width() - digitCount(health) * gw - pad, baseline, scale)
         }
 
-        /**
-         * Debug overlay: the flat in use top left, the skill and wave top right.
-         *
-         * Shown when the Debug mode setting is on. It used to be gated on BuildConfig.DEBUG,
-         * which meant the switch existed in the release build and could never do anything -
-         * the overlay was compiled out of the very build people were toggling it in. It draws
-         * with
-         * the platform font instead of the WAD numerals: those cover the ten digits and
-         * nothing else, and this needs letters.
-         */
         /** GOD and MODE, in the corners the readout numbers otherwise occupy. */
         private val wordPaint = Paint().apply {
             isAntiAlias = true
             isFakeBoldText = true
-        }
-
-        private val debugPaint = Paint().apply {
-            color = 0x99FFFFFF.toInt()
-            textSize = 13f * resources.displayMetrics.density
-            isAntiAlias = true
-        }
-
-        /** Rebuilt only when it changes, so the draw loop keeps allocating nothing. */
-        private var debugRight = ""
-        private var debugSkill = -1
-        private var debugWave = -1
-
-        private fun drawDebug(canvas: Canvas, s: Scene) {
-            if (!debugVisible) return
-
-            if (s.skill != debugSkill || s.wave != debugWave) {
-                debugSkill = s.skill
-                debugWave = s.wave
-                debugRight = "skill ${s.skill + 1}/${GameData.skills.size}  wave ${s.wave + 1}/${GameData.skills[s.skill].waveCount}"
-            }
-
-            // Clear of the status bar, which a wallpaper is drawn behind.
-            val pad = READOUT_PADDING * spriteScale * READOUT_SCALE
-            val y = pad + debugPaint.textSize + STATUS_BAR_CLEARANCE * resources.displayMetrics.density
-
-            canvas.drawText(floorNames.getOrElse(s.skill) { "?" }, pad, y, debugPaint)
-            canvas.drawText(debugRight, frame.width() - debugPaint.measureText(debugRight) - pad, y, debugPaint)
         }
 
         private fun digitCount(value: Int) = when {
@@ -995,9 +949,6 @@ class FreedoomWallpaperService : WallpaperService() {
 
         /** The IWAD shipped in assets, used until the user supplies one of their own. */
         const val BUNDLED = "freedoom2.wad"
-
-        /** Room left above the debug overlay for the status bar, in dp. */
-        const val STATUS_BAR_CLEARANCE = 34f
 
         /**
          * Peak opacity of the death wash, reached at the very end of the fade.

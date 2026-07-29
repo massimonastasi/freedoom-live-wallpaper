@@ -154,13 +154,6 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/list_row_gap" />
 
-                <include
-                    android:id="@+id/row_debug"
-                    layout="@layout/list_row"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/list_row_gap" />
-
             </LinearLayout>
 
             <!-- ================================================== Background -->
@@ -260,15 +253,7 @@
                     says the source exists and will be reachable, rather than appearing and
                     disappearing between versions.
                 -->
-                <!-- The one row that reports rather than sets. -->
-                <include android:id="@+id/row_runs" layout="@layout/list_row" />
-
-                <include
-                    android:id="@+id/row_source"
-                    layout="@layout/list_row"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/list_row_gap" />
+                <include android:id="@+id/row_source" layout="@layout/list_row" />
 
                 <include
                     android:id="@+id/row_licences"
@@ -278,6 +263,35 @@
                     android:layout_marginTop="@dimen/list_row_gap" />
 
             </LinearLayout>
+
+            <!--
+                What the hardest level was worth. Gone until the wave table has been finished
+                on it, so the screen never mentions a thing that has not happened.
+
+                An assist chip rather than a list row: a row is a control and this is a
+                record, and a chip is Material's own component for a compact piece of
+                information sitting beside content. It is not clickable, because there is
+                nothing to open - the record is the whole of it.
+
+                It was very nearly a tooltip. Material 3 for Views has none that is public:
+                TooltipDrawable and Widget.Material3.Tooltip exist, and both are
+                @RestrictedApi(LIBRARY_GROUP) - the Slider's, not an application's. A chip
+                says the same thing without a gesture to discover.
+            -->
+            <com.google.android.material.chip.Chip
+                android:id="@+id/completed"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="8dp"
+                android:clickable="false"
+                android:focusable="false"
+                android:visibility="gone"
+                app:chipIcon="@drawable/ic_completed"
+                tools:text="Finished 2 times, first on 28 July 2026"
+                tools:visibility="visible" />
 
             <!-- Clears the pinned buttons, which are not part of this scrolling page. -->
             <Space

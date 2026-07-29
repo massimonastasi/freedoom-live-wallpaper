@@ -43,8 +43,8 @@ object Settings {
     const val KEY_BACKGROUND_COLOUR = "background_colour"
     const val KEY_OVERLAY = "overlay"
     const val KEY_COMPLETIONS = "completions"
+    const val KEY_FIRST_COMPLETION = "first_completion"
     const val KEY_GOD_MODE = "god_mode"
-    const val KEY_DEBUG = "debug"
     const val KEY_SPRITES = "sprites"
 
     const val SPRITES_BUNDLED = "bundled"
@@ -81,9 +81,6 @@ object Settings {
      */
     fun godMode(p: SharedPreferences): Boolean = p.getBoolean(KEY_GOD_MODE, false)
 
-    /** The readout at the top: floor, skill, wave and what the scene is actually doing. */
-    fun debug(p: SharedPreferences): Boolean = p.getBoolean(KEY_DEBUG, false)
-
 
     /**
      * A dark wash over whatever the background is, drawn under the fight.
@@ -106,8 +103,14 @@ object Settings {
      */
     fun completions(p: SharedPreferences): Int = p.getInt(KEY_COMPLETIONS, 0)
 
+    /** When the table was first finished at the hardest skill, or 0 if it never has been. */
+    fun firstCompletion(p: SharedPreferences): Long = p.getLong(KEY_FIRST_COMPLETION, 0L)
+
     fun addCompletion(p: SharedPreferences) {
-        p.edit().putInt(KEY_COMPLETIONS, completions(p) + 1).apply()
+        val edit = p.edit().putInt(KEY_COMPLETIONS, completions(p) + 1)
+        // Written once and never again: it is the date of the first, not of the last.
+        if (firstCompletion(p) == 0L) edit.putLong(KEY_FIRST_COMPLETION, System.currentTimeMillis())
+        edit.apply()
     }
 
     /** What is drawn behind the fight. */

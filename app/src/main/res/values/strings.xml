@@ -15,7 +15,7 @@
     <string name="wad_undecodable">That WAD names the right sprites but none of them could be read.</string>
     <string name="settings_readout">Show health and armour</string>
     <string name="settings_sprites">Sprites</string>
-    <string name="sprites_bundled">Freedoom (included)</string>
+    <string name="sprites_bundled">Freedoom</string>
     <string name="wad_unnamed">Imported WAD</string>
     <string name="settings_reset">Reset everything</string>
     <string name="settings_reset_confirm">This puts every setting back and deletes the WAD and photo you imported. It cannot be undone.</string>
@@ -49,13 +49,13 @@
     <string name="settings_readout_note">Bottom of the screen</string>
     <string name="settings_god_mode">God mode</string>
     <string name="settings_god_mode_note">No damage. The marine never dies, so the difficulty only ever climbs.</string>
-    <string name="settings_debug">Debug mode</string>
-    <string name="settings_debug_note">Top of the screen: floor, skill, wave and what the scene is doing</string>
-    <string name="settings_version">Version %s</string>    <string name="sprites_bundled_note">Included with the app</string>
+    <string name="settings_version">Version %s</string>
+    <string name="sprites_bundled_note">Included with the app</string>
     <string name="sprites_size">%d KB</string>
     <string name="wad_delete">Delete this WAD</string>
     <string name="wad_delete_confirm">The file is removed from this app and the bundled sprites come back. Your original is untouched.</string>
-    <string name="settings_licences_note">What this app is built from, and under what terms</string>    <string name="licences_heading">Third-party notices</string>
+    <string name="settings_licences_note">What this app is built from, and under what terms</string>
+    <string name="licences_heading">Third-party notices</string>
     <string name="licences_gpl">GNU General Public License, version 2</string>
     <!-- The three the draw loop offers, ascending: left to right means less to more. -->
     <string name="fps_10">10 fps</string>
@@ -64,14 +64,8 @@
 
     <!-- Under the launcher icon only, where "Freedoom Live Wallpaper" does not fit anyway. -->
     <string name="launcher_label">FLW</string>
-    <string name="settings_runs">Completed</string>
-    <string name="settings_runs_none">Not yet — the last skill has never finished its table</string>
-    <plurals name="settings_runs_count">
-        <item quantity="one">%d time</item>
-        <item quantity="other">%d times</item>
-    </plurals>
     <string name="wad_stale">Your imported WAD was prepared by an older version and has been removed. Import it again to use it.</string>
-    <string name="background_overlay">Dim the background</string>
+    <string name="background_overlay">Add overlay</string>
     <string name="background_overlay_note">Keeps whatever is behind the fight from competing with your icons</string>
     <string name="background_floor">Dungeon floor</string>
     <string name="background_floor_note">Changes with the difficulty</string>
@@ -79,6 +73,15 @@
     <string name="background_colour_note">From the palette of the WAD in use</string>
     <string name="background_photo">Image</string>
     <string name="background_photo_note">From your device</string>
+    <!--
+        The reward for finishing the hardest level, and the only thing on this screen that is
+        not there from the start. Two forms because "1 times" is not English, and %1$d is
+        skipped in the singular for the same reason.
+    -->
+    <plurals name="settings_completed_record">
+        <item quantity="one">Finished once, first on %2$s</item>
+        <item quantity="other">Finished %1$d times, first on %2$s</item>
+    </plurals>
     <string name="settings_source">Source</string>
     <string name="settings_source_note">GitHub repository, once it is public</string>
 </resources>

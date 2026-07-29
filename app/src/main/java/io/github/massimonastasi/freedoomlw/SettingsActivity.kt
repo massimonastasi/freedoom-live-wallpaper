@@ -31,6 +31,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.chip.Chip
+import com.google.android.material.tooltip.TooltipDrawable
 import java.nio.channels.FileChannel
 
 /**
@@ -169,10 +171,6 @@ class SettingsActivity : AppCompatActivity() {
             R.id.row_god, R.string.settings_god_mode, R.string.settings_god_mode_note,
             Settings.KEY_GOD_MODE, default = false,
         )
-        switchRow(
-            R.id.row_debug, R.string.settings_debug, R.string.settings_debug_note,
-            Settings.KEY_DEBUG, default = false,
-        )
     }
 
     /**
@@ -294,16 +292,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showAbout() {
-        // Reports rather than sets: how often the table has been finished at the hardest
-        // skill, which is the only thing here that can be called finishing the game. Not
-        // clickable and with no radio, because there is nothing to choose.
-        val runs = Settings.completions(prefs)
-        row(
-            R.id.row_runs, R.string.settings_runs,
-            if (runs == 0) getString(R.string.settings_runs_none)
-            else resources.getQuantityString(R.plurals.settings_runs_count, runs, runs),
-        )
-        findViewById<View>(R.id.row_runs).findViewById<View>(R.id.row_radio).visibility = View.GONE
+        showCompleted()
 
         // Source is shown and disabled: the repository is not public yet, so the row says the
         // source exists and will be reachable rather than appearing and disappearing between
@@ -320,6 +309,40 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<View>(R.id.row_licences).findViewById<View>(R.id.row_radio).visibility = View.GONE
         pointer(R.id.row_licences, R.drawable.ic_chevron)
         findViewById<View>(R.id.row_licences).setOnClickListener { openLicences() }
+    }
+
+    /**
+     * The completion marker, and the tooltip that carries what it knows.
+     *
+     * Absent until the wave table has been finished at the hardest skill. There is no row
+     * saying "not yet": a screen that lists things that have not happened is a screen making
+     * promises, and this is the one thing here that is earned rather than set.
+     *
+     * An assist chip rather than a list row because of what it holds: a count and a date are
+     * a record, and a list row is a control. It is not clickable - there is nothing to open.
+     *
+     * ## Not a tooltip
+     *
+     * A tooltip was the first shape tried, and Material 3 for Views has no public one. The
+     * library carries `TooltipDrawable` and a `Widget.Material3.Tooltip` style, which look
+     * like the obvious answer until lint refuses them in thirteen places: both are
+     * `@RestrictedApi(LIBRARY_GROUP)`, built for the Slider rather than for applications.
+     *
+     * The chip is better anyway. A tooltip hides its content behind a gesture almost nobody
+     * performs, and this is the one thing on the screen worth being seen.
+     */
+    private fun showCompleted() {
+        val chip = findViewById<Chip>(R.id.completed)
+        val runs = Settings.completions(prefs)
+        if (runs <= 0) {
+            chip.visibility = View.GONE
+            return
+        }
+        // Formatted by the platform, so the order of day and month is the reader's own.
+        val date = java.text.DateFormat.getDateInstance(java.text.DateFormat.LONG)
+            .format(java.util.Date(Settings.firstCompletion(prefs)))
+        chip.text = resources.getQuantityString(R.plurals.settings_completed_record, runs, runs, date)
+        chip.visibility = View.VISIBLE
     }
 
     private fun openLicences() = startActivity(Intent(this, LicencesActivity::class.java))
