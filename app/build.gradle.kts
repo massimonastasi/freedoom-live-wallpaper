@@ -18,8 +18,8 @@ android {
         // minSdk 31: Material You (onComputeColors -> system theme) arrived with Android 12.
         minSdk = 31
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.5"
+        versionCode = 6
+        versionName = "0.6"
     }
 
     /**
