@@ -1,8 +1,18 @@
 # Freedoom Live Wallpaper
 
-An Android live wallpaper: an endless battle on your home screen, with movement speeds and
-animation timings read from the original engine source. Free, no ads, no permissions, no
-network access, nothing collected.
+An Android live wallpaper: an endless battle on your home screen. Free, no ads, no
+permissions, no network access, nothing collected.
+
+**Everything you see here is [Freedoom](https://github.com/freedoom/freedoom).** Every
+sprite, every colour in the palette, every floor — the marine, the creatures, the blood, the
+weapons on the ground — is the Freedoom project's artwork, made over twenty years by
+volunteers and given away under a BSD licence. This application draws it and does nothing
+else with it: without their work there would be no wallpaper here at all, because the only
+alternative was shipping game data that is not ours to give.
+
+Freedoom is a complete, free game in its own right — <https://freedoom.github.io> — and it
+deserves to be played rather than only borrowed from. This project is not affiliated with
+it, and the Freedoom team neither endorses nor is involved in it.
 
 | The wallpaper | The settings |
 |---|---|
@@ -12,7 +22,7 @@ network access, nothing collected.
 
 - **Fourteen creatures** with the speeds, states, animation lengths and health `info.c` gives
   them, and `P_NewChaseDir` reproduced from the source: table-based movement, no trigonometry.
-  This is why they move like the engine monsters rather than like something chasing a point.
+  This is why they move like the original creatures rather than like something chasing a point.
 - **Twenty-six waves and nine skill levels** — the five from `g_game.c` with four of ours
   between them, each fitted by measurement rather than by feel. The easiest reaches the first
   boss 99 times in 100; Nightmare is a wall by construction.
@@ -45,22 +55,21 @@ samples taken months earlier. A second method that bounds the same number from a
 ceiling at 0.93%/hour; the honest claim is the range. Hidden — any full-screen app, the screen
 off — it costs **zero measured CPU ticks**.
 
-Full working in [docs/STATUS.md](docs/STATUS.md).
-
 ## Where it comes from
 
-The idea comes from **a live wallpaper**, made by **James Gittins** in 2011, which can no
+First and above everything else, the **Freedoom project**, whose artwork this draws — see the
+top of this page. It is their twenty years of work that make this possible at all.
+
+The idea comes from a live wallpaper made by **James Gittins** in 2011, which can no
 longer be installed on a modern Android: it targets an API level the system now refuses. No
 code and no asset is shared with it — this was written from nothing — but the thing it did is
 the thing this does.
 
-Particular thanks to **John Carmack**, for releasing the engine source. The movement, the
-timings and the creature values here are read from it, and are the reason the scene feels
-like the original rather than like an imitation of it.
-
-And to the **Freedoom team**, whose artwork this draws. Without their twenty years of work
-there would be nothing to show, because the alternative was shipping game data that is not
-ours to give. Neither project endorses or is involved in this one.
+The movement, the timings and the creature values are read from the `linuxdoom-1.10` source
+release, which is GPL-2.0 and is why this application is. Every such value carries a comment
+naming the file and symbol it came from; those comments are the attribution the licence
+requires. It is also why the scene feels like the original rather than like an imitation of
+it: nothing here was tuned by eye.
 
 ## Install
 
@@ -95,7 +104,7 @@ Requires Android 12 or newer.
    reads — 639 of 3610, 1.9 MB instead of 27.5 MB. Neither file is in the repository (see
    `.gitignore`), and the input stays outside `assets` so it is never packaged.
 
-   **Phase 2, not Phase 1.** Freedoom Phase 1 is Phase 1 compatible and carries nine of the
+   **Phase 2, not Phase 1.** Freedoom Phase 1 carries nine of the
    fourteen creatures this bestiary names; the five it lacks — the ChaingunZombie,
    BoneStalker, LesserLord, Spiderling and Bloater — were being substituted away at runtime,
    so the shipped wallpaper never showed a third of its own table. The balance measurements
@@ -111,14 +120,14 @@ none of them launches the app.
 
 ## Licences
 
-- Code: **GPL-2.0**. The gameplay constants (speeds, state tables, physics) derive from
-  `id-Software/the engine` (`linuxdoom-1.10`), GPL-2.0. Every value carries a comment naming
-  its origin in the id source.
-- Assets: **Freedoom**, 3-clause BSD licence. No commercial asset is redistributed.
-- Users may optionally point the app at an IWAD they legally own. No commercial WAD is
-  bundled with the app or downloadable from it.
+- Assets: **Freedoom**, 3-clause BSD licence — the artwork this whole application exists to
+  draw. Full text and attribution in [NOTICE.md](NOTICE.md).
+- Code: **GPL-2.0**. The gameplay constants (speeds, state tables, physics) derive from the
+  `linuxdoom-1.10` source release, which is GPL-2.0. Every value carries a comment naming the
+  file and symbol it came from; those comments are the attribution the licence requires and
+  must not be removed.
+- No commercial asset is redistributed here in any form. Users may point the app at an IWAD
+  they legally own; nothing of the kind is bundled with the app, downloaded by it, or linked
+  from it.
 
 Privacy policy: [PRIVACY.md](PRIVACY.md). It is short.
-
-the engine is a trademark of ZeniMax Media Inc. This project is neither affiliated with nor
-endorsed by ZeniMax or the Freedoom project.

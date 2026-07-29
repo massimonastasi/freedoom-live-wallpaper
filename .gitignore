@@ -28,3 +28,9 @@ build/
 keystore.properties
 *.jks
 *.keystore
+
+# Working documents that stay on this machine. They are the project's own notes -
+# planning, measurements, status - and were never meant to be published. Ignored so
+# they cannot be committed again by accident.
+/docs/STATUS.md
+/docs/PLAN.md

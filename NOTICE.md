@@ -2,12 +2,12 @@
 
 This application is licensed under the **GNU General Public License, version 2**, whose
 full text is in [LICENSE](LICENSE). It is GPL-2.0 by obligation, not by preference: it
-contains constants and tables taken from the id Software engine source release, which is
-GPL-2.0, and a work containing them must be distributed under the same terms.
+contains constants and tables taken from the `linuxdoom-1.10` source release by id Software,
+which is GPL-2.0, and a work containing them must be distributed under the same terms.
 
 ---
 
-## id Software — engine source code (`linuxdoom-1.10`)
+## id Software — `linuxdoom-1.10` source release
 
 > Copyright (C) 1993-1996 id Software, Inc.
 >
@@ -82,10 +82,11 @@ permission, which is a publication-time decision and does not affect this reposi
 
 ---
 
-## Trademarks
+## Affiliation
 
-the engine is a trademark of id Software LLC / ZeniMax Media Inc. This project is not
-affiliated with, endorsed by or sponsored by either, nor by the Freedoom project.
+This project is independent. It is not affiliated with, endorsed by or sponsored by the
+Freedoom project, by id Software LLC, or by any other rights holder. Trademarks belonging
+to others are the property of their respective owners.
 
 No commercial game data is distributed here in any form. A user may point the application
 at an IWAD they already own, which is read from their own device and never copied,
