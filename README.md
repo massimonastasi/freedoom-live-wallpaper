@@ -3,20 +3,35 @@
 An Android live wallpaper: an endless battle on your home screen. Free, no ads, no
 permissions, no network access, nothing collected.
 
-**Everything you see here is [Freedoom](https://github.com/freedoom/freedoom).** Every
-sprite, every colour in the palette, every floor — the marine, the creatures, the blood, the
-weapons on the ground — is the Freedoom project's artwork, made over twenty years by
-volunteers and given away under a BSD licence. This application draws it and does nothing
-else with it: without their work there would be no wallpaper here at all, because the only
-alternative was shipping game data that is not ours to give.
-
-Freedoom is a complete, free game in its own right — <https://freedoom.github.io> — and it
-deserves to be played rather than only borrowed from. This project is not affiliated with
-it, and the Freedoom team neither endorses nor is involved in it.
-
 | The wallpaper | The settings |
 |---|---|
 | <img src="docs/images/scene.png" width="320" alt="A marine fighting among corpses, blood and dropped weapons"> | <img src="docs/images/settings.png" width="320" alt="The settings screen"> |
+
+## What it is built from
+
+**Artwork: [Freedoom](https://github.com/freedoom/freedoom)** (3-clause BSD). Every sprite,
+palette colour and floor tile on screen is theirs — the marine, the creatures, the blood, the
+weapons on the ground. This application reads and composes them and adds no artwork of its
+own. Freedoom is a complete free game in its own right: <https://freedoom.github.io>.
+
+**Behaviour: [id-Software/DOOM](https://github.com/id-Software/DOOM)** (GPL-2.0), the engine
+source release, which is why this application is GPL-2.0 too. No code was copied — the
+constants and algorithms were reimplemented in Kotlin — and each value carries a comment
+naming the file and symbol it came from. What was taken:
+
+| Source | Used for |
+|---|---|
+| `info.c` | `mobjinfo`: speed, health, radius, pain chance. `states`: sprite, frame and tic count for every animation step |
+| `p_enemy.c` | `P_NewChaseDir` and the `xspeed`/`yspeed` direction tables; `P_TryWalk`'s random `movecount`; `P_CheckMissileRange` |
+| `m_random.c` | The 256-byte `rndtable` and its advancing index |
+| `p_mobj.c` | 16.16 fixed-point movement, friction, stop speed |
+| `p_inter.c` | Armour absorption and how damage is applied |
+| `p_pspr.c` | The weapon damage formulas |
+| `p_map.c` | `PIT_CheckThing`'s missile damage multiplier |
+| `g_game.c` | The five skill levels and their flags |
+| `r_things.c` | Sprite rotation selection and mirrored frames |
+
+Neither project is affiliated with this one, endorses it, or is involved in it.
 
 ## What it does
 
@@ -55,21 +70,11 @@ samples taken months earlier. A second method that bounds the same number from a
 ceiling at 0.93%/hour; the honest claim is the range. Hidden — any full-screen app, the screen
 off — it costs **zero measured CPU ticks**.
 
-## Where it comes from
+## Where the idea comes from
 
-First and above everything else, the **Freedoom project**, whose artwork this draws — see the
-top of this page. It is their twenty years of work that make this possible at all.
-
-The idea comes from a live wallpaper made by **James Gittins** in 2011, which can no
-longer be installed on a modern Android: it targets an API level the system now refuses. No
-code and no asset is shared with it — this was written from nothing — but the thing it did is
-the thing this does.
-
-The movement, the timings and the creature values are read from the `linuxdoom-1.10` source
-release, which is GPL-2.0 and is why this application is. Every such value carries a comment
-naming the file and symbol it came from; those comments are the attribution the licence
-requires. It is also why the scene feels like the original rather than like an imitation of
-it: nothing here was tuned by eye.
+A live wallpaper made by **James Gittins** in 2011, which can no longer be installed on a
+modern Android: it targets an API level the system now refuses. No code and no asset is
+shared with it — this was written from nothing — but the thing it did is the thing this does.
 
 ## Install
 
@@ -120,12 +125,10 @@ none of them launches the app.
 
 ## Licences
 
-- Assets: **Freedoom**, 3-clause BSD licence — the artwork this whole application exists to
-  draw. Full text and attribution in [NOTICE.md](NOTICE.md).
-- Code: **GPL-2.0**. The gameplay constants (speeds, state tables, physics) derive from the
-  `linuxdoom-1.10` source release, which is GPL-2.0. Every value carries a comment naming the
-  file and symbol it came from; those comments are the attribution the licence requires and
-  must not be removed.
+- Assets: **Freedoom**, 3-clause BSD licence.
+- Code: **GPL-2.0**, by obligation rather than preference — see what it is built from, above.
+  The comments naming each constant's origin are the attribution the licence requires and
+  must not be removed. Full texts in [NOTICE.md](NOTICE.md).
 - No commercial asset is redistributed here in any form. Users may point the app at an IWAD
   they legally own; nothing of the kind is bundled with the app, downloaded by it, or linked
   from it.

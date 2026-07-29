@@ -9,6 +9,8 @@ which is GPL-2.0, and a work containing them must be distributed under the same 
 
 ## id Software — `linuxdoom-1.10` source release
 
+Source: <https://github.com/id-Software/DOOM>
+
 > Copyright (C) 1993-1996 id Software, Inc.
 >
 > This program is free software; you can redistribute it and/or modify it under the terms
