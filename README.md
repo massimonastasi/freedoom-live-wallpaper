@@ -89,9 +89,14 @@ off — it costs **zero measured CPU ticks**.
 
 ## Where the idea comes from
 
-A live wallpaper made by **James Gittins** in 2011, which can no longer be installed on a
-modern Android: it targets an API level the system now refuses. No code and no asset is
-shared with it — this was written from nothing — but the thing it did is the thing this does.
+Back in 2011, **James Gittins** made a live wallpaper that put a little pixel fight on your
+home screen, and a lot of us left it running there for years. It cannot be installed on a
+modern Android any more — it targets an API level the system now refuses — and at some point
+you upgrade your phone and it is simply gone.
+
+This is not a port or a revival of it: no code and no asset is shared, and everything here
+was written from nothing. It is just that the idea was a good one, and good ideas deserve to
+still work on the phone you actually have. Thanks, James.
 
 ## Install
 
