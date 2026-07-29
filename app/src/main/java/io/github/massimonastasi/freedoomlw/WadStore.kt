@@ -53,7 +53,7 @@ object WadStore {
      * The copy in files/wads is not the user's file, it is what [WadReducer] made of it: the
      * lumps this wallpaper reads, chosen by rules that live in the app. Those rules move -
      * FloorPicker went from picking five flats by chroma to picking nine by colour family -
-     * and the copy does not move with them. Measured on a real device: a your.wad reduced by
+     * and the copy does not move with them. Measured on a real device: a full IWAD reduced by
      * the old rules kept nine flats, and two of the nine the current rules want were simply
      * not in the file. The floors were being chosen from a pool that no longer matched, and
      * nothing about it looked broken.

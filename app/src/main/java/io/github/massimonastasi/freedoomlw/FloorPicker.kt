@@ -50,7 +50,7 @@ package io.github.massimonastasi.freedoomlw
  *
  * Ranking by saturation alone was tried first and does not produce this: it is a single
  * ordering, so it cannot say "brown before green" at all, and on a WAD where one family
- * dominates it simply returns that family. Measured on freedoom1, an even spread over such an
+ * dominates it simply returns that family. Measured on freephase1, an even spread over such an
  * ordering picks four browns and no green at all — 25 of the 46 usable flats are brown.
  *
  * **Blue is deliberately not a rung.** Freedoom has two blue flats inside the band and they

@@ -32,7 +32,7 @@ import kotlin.test.assertEquals
  * reducer keeps is decided by rules that live in this app. When those rules change, every
  * copy already on a device becomes something the app would no longer build - and it goes on
  * working, quietly, from a set of lumps that no longer matches. Measured on a real device
- * before this existed: a your.wad reduced by the old rules held nine flats, and two of the
+ * before this existed: a full IWAD reduced by the old rules held nine flats, and two of the
  * nine the new rules ask for were not among them.
  *
  * The format number is what lets the app notice, and a number somebody has to remember to
