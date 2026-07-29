@@ -20,6 +20,7 @@ package io.github.massimonastasi.freedoomlw
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 
 /**
  * The user's choices, and the only place their names are written down.
@@ -106,11 +107,10 @@ object Settings {
     /** When the table was first finished at the hardest skill, or 0 if it never has been. */
     fun firstCompletion(p: SharedPreferences): Long = p.getLong(KEY_FIRST_COMPLETION, 0L)
 
-    fun addCompletion(p: SharedPreferences) {
-        val edit = p.edit().putInt(KEY_COMPLETIONS, completions(p) + 1)
+    fun addCompletion(p: SharedPreferences) = p.edit {
+        putInt(KEY_COMPLETIONS, completions(p) + 1)
         // Written once and never again: it is the date of the first, not of the last.
-        if (firstCompletion(p) == 0L) edit.putLong(KEY_FIRST_COMPLETION, System.currentTimeMillis())
-        edit.apply()
+        if (firstCompletion(p) == 0L) putLong(KEY_FIRST_COMPLETION, System.currentTimeMillis())
     }
 
     /** What is drawn behind the fight. */

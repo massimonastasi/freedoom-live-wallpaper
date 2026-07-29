@@ -23,6 +23,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
+import androidx.core.content.edit
 import java.io.File
 
 /**
@@ -54,7 +55,7 @@ object PhotoStore {
 
     fun clear(context: Context) {
         context.getSharedPreferences(Settings.FILE, Context.MODE_PRIVATE)
-            .edit().remove(KEY_NAME).apply()
+            .edit { remove(KEY_NAME) }
         file(context)?.delete()
     }
 
@@ -68,7 +69,7 @@ object PhotoStore {
         val ok = load(context, 1080, 2400) != null
         if (ok) {
             context.getSharedPreferences(Settings.FILE, Context.MODE_PRIVATE)
-                .edit().putString(KEY_NAME, displayName(context, uri)).apply()
+                .edit { putString(KEY_NAME, displayName(context, uri)) }
         }
         ok
     } catch (e: Exception) {

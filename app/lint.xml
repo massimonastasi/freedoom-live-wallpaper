@@ -32,4 +32,17 @@
         <ignore path="src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml" />
     </issue>
 
+    <!--
+        "Custom view SwatchGrid is missing constructor used by tools: (Context, AttributeSet)."
+
+        That constructor exists so a view can be inflated from a layout and previewed in the
+        editor. This one is never inflated: it is constructed in code, by the settings screen,
+        with the palette it is meant to draw - it has nothing to show without one. Adding the
+        constructor would add a second way to build it that no caller uses and the preview
+        would render an empty grid, which is a worse answer than no preview.
+    -->
+    <issue id="ViewConstructor">
+        <ignore path="src/main/java/io/github/massimonastasi/freedoomlw/SwatchGrid.kt" />
+    </issue>
+
 </lint>

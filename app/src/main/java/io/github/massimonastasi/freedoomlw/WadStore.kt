@@ -22,6 +22,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
+import androidx.core.content.edit
 import java.io.File
 import java.nio.channels.FileChannel
 
@@ -83,7 +84,7 @@ object WadStore {
         file.delete()
         // Remembered so the settings screen can say what happened. Silently losing a file the
         // user imported is worse than the stale floors it was causing.
-        prefs.edit().remove(KEY_NAME).remove(KEY_FORMAT).putBoolean(KEY_STALE, true).apply()
+        prefs.edit { remove(KEY_NAME); remove(KEY_FORMAT); putBoolean(KEY_STALE, true) }
         return null
     }
 
@@ -91,7 +92,7 @@ object WadStore {
     fun takeStaleNotice(context: Context): Boolean {
         val prefs = Settings.of(context)
         if (!prefs.getBoolean(KEY_STALE, false)) return false
-        prefs.edit().remove(KEY_STALE).apply()
+        prefs.edit { remove(KEY_STALE) }
         return true
     }
 
@@ -120,7 +121,7 @@ object WadStore {
 
     fun clear(context: Context) {
         active(context)?.delete()
-        Settings.of(context).edit().remove(KEY_NAME).remove(KEY_FORMAT).remove(KEY_STALE).apply()
+        Settings.of(context).edit { remove(KEY_NAME); remove(KEY_FORMAT); remove(KEY_STALE) }
     }
 
     /**
@@ -174,11 +175,11 @@ object WadStore {
         }
         // Stamped with the rules that produced it, so a later version can tell whether what
         // is on disk is still what it would build today.
-        Settings.of(context).edit()
-            .putString(KEY_NAME, displayName(context, uri) ?: context.getString(R.string.wad_unnamed))
-            .putInt(KEY_FORMAT, REDUCTION_FORMAT)
-            .remove(KEY_STALE)
-            .apply()
+        Settings.of(context).edit {
+            putString(KEY_NAME, displayName(context, uri) ?: context.getString(R.string.wad_unnamed))
+            putInt(KEY_FORMAT, REDUCTION_FORMAT)
+            remove(KEY_STALE)
+        }
         Log.i(TAG, "WAD imported: $reduced lumps, ${full / 1024} KB -> ${target.length() / 1024} KB")
         return null
     }

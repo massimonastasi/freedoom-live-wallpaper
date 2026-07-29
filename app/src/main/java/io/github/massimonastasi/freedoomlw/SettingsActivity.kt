@@ -27,12 +27,15 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isEmpty
+import androidx.core.view.isVisible
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.chip.Chip
-import com.google.android.material.tooltip.TooltipDrawable
 import java.nio.channels.FileChannel
 
 /**
@@ -61,7 +64,7 @@ class SettingsActivity : AppCompatActivity() {
         val ok = PhotoStore.import(this, uri)
         // The choice follows the file, not the tap that opened the picker: a cancelled or
         // unreadable pick leaves the background exactly where it was.
-        if (ok) prefs.edit().putString(Settings.KEY_BACKGROUND, "photo").apply()
+        if (ok) prefs.edit { putString(Settings.KEY_BACKGROUND, "photo") }
         toast(if (ok) getString(R.string.photo_imported) else getString(R.string.photo_unreadable))
         showBackground()
     }
@@ -87,7 +90,7 @@ class SettingsActivity : AppCompatActivity() {
         if (problem == null) {
             // A new WAD brings its own palette, so the swatches have to be re-read.
             loadPalette()
-            prefs.edit().putString(Settings.KEY_SPRITES, Settings.SPRITES_USER).apply()
+            prefs.edit { putString(Settings.KEY_SPRITES, Settings.SPRITES_USER) }
         }
         showSprites()
         showBackground()
@@ -172,7 +175,7 @@ class SettingsActivity : AppCompatActivity() {
         group.addOnButtonCheckedListener { _, id, checked ->
             if (!checked) return@addOnButtonCheckedListener
             val fps = values[ids.indexOf(id).coerceAtLeast(0)]
-            prefs.edit().putString(Settings.KEY_FPS, fps.toString()).apply()
+            prefs.edit { putString(Settings.KEY_FPS, fps.toString()) }
         }
     }
 
@@ -219,14 +222,14 @@ class SettingsActivity : AppCompatActivity() {
         // and the only arrangement in which the radio clearly owns them.
         val extra = findViewById<View>(R.id.row_colour)
             .findViewById<android.widget.FrameLayout>(R.id.row_extra)
-        if (extra.childCount == 0) {
+        if (extra.isEmpty()) {
             val grid = SwatchGrid(
                 this,
                 resources.getTextArray(R.array.palette_labels),
                 resources.getTextArray(R.array.palette_values),
             )
             grid.colourOf = { palette[it.coerceIn(0, 255)] }
-            grid.onChosen = { prefs.edit().putString(Settings.KEY_BACKGROUND_COLOUR, it).apply() }
+            grid.onChosen = { prefs.edit { putString(Settings.KEY_BACKGROUND_COLOUR, it) } }
             grid.show(prefs.getString(Settings.KEY_BACKGROUND_COLOUR, "0"))
             // match_parent, so the grid is measured against the width the row has left rather
             // than against its own children. The frame around it stays wrap_content: it is
@@ -249,11 +252,11 @@ class SettingsActivity : AppCompatActivity() {
                 // The image it pointed at is gone, so the choice goes with it. Left alone the
                 // row stayed selected over nothing, and the dungeon floor - which is what the
                 // wallpaper actually draws in that state - showed as unselected.
-                prefs.edit().remove(Settings.KEY_BACKGROUND).apply()
+                prefs.edit { remove(Settings.KEY_BACKGROUND) }
                 showBackground()
             }
         } else {
-            pointer(R.id.row_photo, R.drawable.ic_chevron)
+            pointer(R.id.row_photo)
         }
 
         rows.forEachIndexed { i, id ->
@@ -263,7 +266,7 @@ class SettingsActivity : AppCompatActivity() {
                     choosePhoto.launch(arrayOf("image/*"))
                     return@setOnClickListener
                 }
-                prefs.edit().putString(Settings.KEY_BACKGROUND, values[i]).apply()
+                prefs.edit { putString(Settings.KEY_BACKGROUND, values[i]) }
                 showBackground()
             }
         }
@@ -295,11 +298,11 @@ class SettingsActivity : AppCompatActivity() {
             action(R.id.row_wad, R.drawable.ic_delete) { confirmDeleteWad() }
             shapeGroup(R.id.sprites_group)
             wadRow.setOnClickListener {
-                prefs.edit().putString(Settings.KEY_SPRITES, Settings.SPRITES_USER).apply()
+                prefs.edit { putString(Settings.KEY_SPRITES, Settings.SPRITES_USER) }
                 showSprites()
             }
             findViewById<View>(R.id.row_bundled).setOnClickListener {
-                prefs.edit().putString(Settings.KEY_SPRITES, Settings.SPRITES_BUNDLED).apply()
+                prefs.edit { putString(Settings.KEY_SPRITES, Settings.SPRITES_BUNDLED) }
                 showSprites()
             }
         }
@@ -336,7 +339,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun link(id: Int, label: Int, note: String, onClick: () -> Unit) {
         row(id, label, note)
         findViewById<View>(id).findViewById<View>(R.id.row_radio).visibility = View.GONE
-        pointer(id, R.drawable.ic_chevron)
+        pointer(id)
         findViewById<View>(id).setOnClickListener { onClick() }
     }
 
@@ -354,7 +357,7 @@ class SettingsActivity : AppCompatActivity() {
         // and handling https, and the row silently reported that nothing could open a page.
         // Declaring <queries> would fix the query; not asking the question fixes the feature.
         try {
-            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+            startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
         } catch (_: android.content.ActivityNotFoundException) {
             toast(getString(R.string.no_browser))
         }
@@ -409,7 +412,7 @@ class SettingsActivity : AppCompatActivity() {
         val group = findViewById<android.view.ViewGroup>(groupId)
         val rows = (0 until group.childCount)
             .map { group.getChildAt(it) }
-            .filter { it.visibility == View.VISIBLE }
+            .filter { it.isVisible }
             .filterIsInstance<com.google.android.material.card.MaterialCardView>()
 
         rows.forEachIndexed { i, card ->
@@ -469,12 +472,12 @@ class SettingsActivity : AppCompatActivity() {
      * because a control announced beside a row that does the same thing is one target too
      * many.
      */
-    private fun pointer(id: Int, icon: Int) {
+    private fun pointer(id: Int) {
         val row = findViewById<View>(id)
         row.findViewById<MaterialButton>(R.id.row_action).visibility = View.GONE
         row.findViewById<android.widget.ImageView>(R.id.row_icon).apply {
             visibility = View.VISIBLE
-            setImageResource(icon)
+            setImageResource(R.drawable.ic_chevron)
         }
     }
 
@@ -490,7 +493,7 @@ class SettingsActivity : AppCompatActivity() {
         root.isActivated = on
         root.setOnClickListener {
             on = !on
-            prefs.edit().putBoolean(key, on).apply()
+            prefs.edit { putBoolean(key, on) }
             toggle.isChecked = on
             root.isActivated = on
         }
@@ -504,7 +507,7 @@ class SettingsActivity : AppCompatActivity() {
             .setMessage(R.string.wad_delete_confirm)
             .setPositiveButton(R.string.wad_delete) { _, _ ->
                 WadStore.clear(this)
-                prefs.edit().putString(Settings.KEY_SPRITES, Settings.SPRITES_BUNDLED).apply()
+                prefs.edit { putString(Settings.KEY_SPRITES, Settings.SPRITES_BUNDLED) }
                 loadPalette()
                 showSprites()
             }
@@ -523,7 +526,7 @@ class SettingsActivity : AppCompatActivity() {
             .setTitle(R.string.settings_reset)
             .setMessage(R.string.settings_reset_confirm)
             .setPositiveButton(R.string.settings_reset) { _, _ ->
-                prefs.edit().clear().apply()
+                prefs.edit { clear() }
                 WadStore.clear(this)
                 PhotoStore.clear(this)
                 loadPalette()
@@ -558,9 +561,6 @@ class SettingsActivity : AppCompatActivity() {
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
 
     private companion object {
-        /** Material 3 draws a disabled control at 38% opacity. */
-        const val DISABLED_ALPHA = 0.38f
-
         /**
          * How far past the status bar the scrim reaches, as a multiple of its height.
          *
