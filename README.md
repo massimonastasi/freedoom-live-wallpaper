@@ -90,9 +90,8 @@ off — it costs **zero measured CPU ticks**.
 ## Where the idea comes from
 
 Back in 2011, **James Gittins** put the fight itself on your home screen, and a lot of us left
-it running there for years. It cannot be installed on a modern Android any more: it targets an
-API level the system now refuses, so at some point you upgrade your phone and it is simply
-gone.
+it running there for years. It stopped installing on modern Android a long time ago, the way
+apps of that age do — at some point you upgrade your phone and it is simply gone.
 
 This is not a port or a revival. No code and no asset is shared, everything here was written
 from nothing, and the artwork is Freedoom's — which is what makes this one free to pass on.
