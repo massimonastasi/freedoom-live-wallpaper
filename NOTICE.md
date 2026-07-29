@@ -9,7 +9,16 @@ which is GPL-2.0, and a work containing them must be distributed under the same 
 
 ## id Software — `linuxdoom-1.10` source release
 
-Source: <https://github.com/id-Software/DOOM>
+Source: <https://github.com/id-Software/DOOM>, released under GPL-2.0. The source files
+carry the id Software copyright quoted below; the rights are now held by **ZeniMax Media
+Inc.**, which is how that repository states its own copyright.
+
+**Non-profit use.** That repository's README says the source "is released for your non-profit
+use." GPL-2.0 itself permits charging a fee, so the two do not say the same thing, and this
+project resolves the difference by taking the narrower reading: **this application is free,
+carries no advertising, no paid version and no purchases of any kind, and is not to be
+monetised in any form.** That is a condition of using this material, not a preference, and it
+binds anyone who takes this work further under the same terms.
 
 > Copyright (C) 1993-1996 id Software, Inc.
 >
@@ -48,10 +57,16 @@ files, and were written from those descriptions rather than copied.
 
 ## The Freedoom project — game assets
 
-The application bundles a **reduced subset** of `freedoom2.wad`: 639 of its 3610 lumps,
-being the sprites, palette, floor texture and numerals actually drawn. Nothing is added
-and nothing is altered; lumps that are never used are omitted. The subset retains
-Freedoom's own `FREEDOOM` identifying lump.
+Source: <https://github.com/freedoom/freedoom>. Licence text below reproduced from their
+`COPYING.adoc`. The individual contributors are listed in that repository's `CREDITS`,
+`CREDITS-LEVELS` and `CREDITS-MUSIC` files, which are the authoritative record of who made
+what and are not restated here.
+
+The application bundles a **reduced subset** of `freedoom2.wad` from **Freedoom Phase 2,
+version 0.13.0** — the version is read from the WAD's own `FREEDOOM` lump, not assumed. 639
+of its 3610 lumps: the sprites, palette, floor flats and numerals actually drawn. Nothing is
+added and nothing is altered; lumps that are never used are omitted. The subset retains
+Freedoom's own `FREEDOOM` identifying lump, so what ships stays recognisable as theirs.
 
 > Copyright © 2001-2024
 > Contributors to the Freedoom project.  All rights reserved.

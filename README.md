@@ -3,16 +3,21 @@
 An Android live wallpaper: an endless battle on your home screen. Free, no ads, no
 permissions, no network access, nothing collected.
 
+Free is a condition, not a stance: the engine source this borrows from is published "for your
+non-profit use", so this application carries no advertising, no paid version and no purchases,
+and neither may anything derived from it. See [NOTICE.md](NOTICE.md).
+
 | The wallpaper | The settings |
 |---|---|
 | <img src="docs/images/scene.png" width="320" alt="A marine fighting among corpses, blood and dropped weapons"> | <img src="docs/images/settings.png" width="320" alt="The settings screen"> |
 
 ## What it is built from
 
-**Artwork: [Freedoom](https://github.com/freedoom/freedoom)** (3-clause BSD). Everything drawn
-on screen is theirs; this application composes it and adds no artwork of its own. Freedoom is
-a complete free game in its own right: <https://freedoom.github.io>. The APK carries 639 of
-Phase 2's 3610 lumps — nothing added, nothing altered, the unused ones omitted:
+**Artwork: [Freedoom](https://github.com/freedoom/freedoom)** (3-clause BSD, per their
+`COPYING.adoc`; contributors listed in their `CREDITS` files). Everything drawn on screen is
+theirs; this application composes it and adds no artwork of its own. Freedoom is a complete
+free game in its own right: <https://freedoom.github.io>. The APK carries 639 of the 3610
+lumps in **Phase 2, version 0.13.0** — nothing added, nothing altered, the unused omitted:
 
 | Lumps | Used for |
 |---|---|
@@ -26,10 +31,10 @@ Phase 2's 3610 lumps — nothing added, nothing altered, the unused ones omitted
 | `STTNUM0`–`9` | The health and armour numerals |
 | `FREEDOOM` | Their identifying lump, kept so the subset stays recognisable as theirs |
 
-**Behaviour: [id-Software/DOOM](https://github.com/id-Software/DOOM)** (GPL-2.0), the engine
-source release, which is why this application is GPL-2.0 too. No code was copied — the
-constants and algorithms were reimplemented in Kotlin — and each value carries a comment
-naming the file and symbol it came from. What was taken:
+**Behaviour: [id-Software/DOOM](https://github.com/id-Software/DOOM)** (GPL-2.0, rights held
+by ZeniMax Media Inc.), the engine source release — which is why this application is GPL-2.0
+too, and why it is free. No code was copied: the constants and algorithms were reimplemented
+in Kotlin, each carrying a comment naming the file and symbol it came from. What was taken:
 
 | Source | Used for |
 |---|---|
