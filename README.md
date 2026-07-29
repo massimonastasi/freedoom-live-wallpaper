@@ -9,10 +9,22 @@ permissions, no network access, nothing collected.
 
 ## What it is built from
 
-**Artwork: [Freedoom](https://github.com/freedoom/freedoom)** (3-clause BSD). Every sprite,
-palette colour and floor tile on screen is theirs — the marine, the creatures, the blood, the
-weapons on the ground. This application reads and composes them and adds no artwork of its
-own. Freedoom is a complete free game in its own right: <https://freedoom.github.io>.
+**Artwork: [Freedoom](https://github.com/freedoom/freedoom)** (3-clause BSD). Everything drawn
+on screen is theirs; this application composes it and adds no artwork of its own. Freedoom is
+a complete free game in its own right: <https://freedoom.github.io>. The APK carries 639 of
+Phase 2's 3610 lumps — nothing added, nothing altered, the unused ones omitted:
+
+| Lumps | Used for |
+|---|---|
+| `POSS` `SPOS` `CPOS` `TROO` `SARG` `HEAD` `BOSS` `BOS2` `SKUL` `SPID` `BSPI` `CYBR` `FATT` `SKEL` | The fourteen creatures, in every rotation, with the mirrored frames |
+| `PLAY` | The marine, walking, firing, in pain and dying |
+| `BAL1` `BAL7` `MISL` `PLSS` `APLS` `MANF` `FATB` | Fireballs, rockets and plasma in flight, and their impacts |
+| `BLUD` `TFOG` | Blood, and the fog a creature arrives in |
+| `MEDI` `STIM` `ARM1` `ARM2` `SHOT` `SGN2` `MGUN` `LAUN` `PLAS` | Supply drops, and the weapons left on the ground |
+| Flats between `F_START` and `F_END` | The dungeon floor, chosen by measuring the lightness and saturation of the WAD's own flats |
+| `PLAYPAL` | The palette — every colour on screen, including the red wash on death and the green one on winning |
+| `STTNUM0`–`9` | The health and armour numerals |
+| `FREEDOOM` | Their identifying lump, kept so the subset stays recognisable as theirs |
 
 **Behaviour: [id-Software/DOOM](https://github.com/id-Software/DOOM)** (GPL-2.0), the engine
 source release, which is why this application is GPL-2.0 too. No code was copied — the
