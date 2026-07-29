@@ -34,3 +34,4 @@ keystore.properties
 # they cannot be committed again by accident.
 /docs/STATUS.md
 /docs/PLAN.md
+/docs/DESIGN.md
