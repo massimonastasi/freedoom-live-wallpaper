@@ -31,7 +31,6 @@ import android.graphics.Shader
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
-import android.app.WallpaperColors
 import android.service.wallpaper.WallpaperService
 import android.util.Log
 import android.view.MotionEvent
@@ -482,82 +481,9 @@ class FreedoomWallpaperService : WallpaperService() {
                     frame.height().coerceAtLeast(1),
                 )
             }
-
-            // The same check as the draw loop's, not a forced notification: the key covers the
-            // WAD and the photograph as well as the skill, so if nothing that feeds the
-            // colours moved, nothing is sent.
-            refreshColours()
         }
 
         private var photoStamp = 0L
-
-        /**
-         * The colours this wallpaper hands the system, so Material You tints the launcher, the
-         * notification shade and the quick settings from whatever is actually on the screen.
-         *
-         * The answer is never invented: it is read from the background the user chose, which
-         * is also the largest area of the wallpaper by a wide margin.
-         *
-         *  - the dungeon floor: the flat itself, a 64x64 tile from the active WAD, so a
-         *    different WAD retints the whole phone and so does climbing the ladder, because
-         *    the floor is what changes with the difficulty
-         *  - a flat colour: that colour, with no extraction to do
-         *  - a photograph: the photograph
-         *
-         * `WallpaperColors.fromBitmap` does the extraction. Writing a histogram here would be
-         * reimplementing the platform's own answer to this exact question, and worse: the
-         * system's version is what every other wallpaper is measured by, so matching it is
-         * also the way to look native rather than merely coloured.
-         *
-         * Computed when asked - a handful of times an hour at most - and never per frame.
-         */
-        override fun onComputeColors(): WallpaperColors? {
-            if (background == Settings.Background.COLOUR) {
-                return WallpaperColors(Color.valueOf(backgroundColour), null, null)
-            }
-            val source = photo?.takeIf { background == Settings.Background.PHOTO }
-                ?: floorTiles.getOrNull(scene?.skill ?: 0)
-                ?: return null
-            return WallpaperColors.fromBitmap(source)
-        }
-
-        /**
-         * What the last set of colours was read from, as one number.
-         *
-         * The system asks for at most one notification a second and logs a warning otherwise,
-         * so this has to describe *everything* the answer depends on rather than one part of
-         * it. Keying on the skill alone looked right and was not: applySettings runs on every
-         * visibility change, and forcing a notification from there meant every screen-on sent
-         * the system a set of colours identical to the ones it already had. Measured, not
-         * reasoned about - the log said so twice within half a second.
-         *
-         * The dungeon floor changes with the difficulty, so the skill is genuinely part of the
-         * key: the theme follows the ladder, because otherwise the phone would stay tinted by
-         * a floor that is no longer on the screen. That moves a handful of times an hour.
-         *
-         * An Int rather than a string or a data class: this is computed once per frame and the
-         * draw loop allocates nothing.
-         */
-        private var colourKey = 0
-
-        /** Re-reads the colours only when the thing they were read from has actually changed. */
-        private fun refreshColours() {
-            val key = when (background) {
-                Settings.Background.COLOUR -> 1 * 31 + backgroundColour
-                Settings.Background.PHOTO -> 2 * 31 + photoStamp.hashCode()
-                // The tile is this WAD's flat for this skill, so both identify it.
-                Settings.Background.DYNAMIC ->
-                    (3 * 31 + (scene?.skill ?: 0)) * 31 + (loadedWad?.hashCode() ?: 0)
-            }
-            if (key == colourKey) return
-            colourKey = key
-            // Logged like the WAD and the floors are: what this wallpaper handed the system is
-            // otherwise invisible, since a live wallpaper's colours appear in no dumpsys.
-            val c = onComputeColors()
-            Log.i(TAG, "colours: primary=${c?.primaryColor?.toArgb()?.let { "#%08X".format(it) }}" +
-                " secondary=${c?.secondaryColor?.toArgb()?.let { "#%08X".format(it) }}")
-            notifyColorsChanged()
-        }
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
             super.onSurfaceDestroyed(holder)
@@ -642,10 +568,6 @@ class FreedoomWallpaperService : WallpaperService() {
             }
 
             draw()
-
-            // One integer comparison per frame, and a call into the system only when the
-            // ground the theme was read from has actually changed underneath it.
-            refreshColours()
 
             if (now - powerSaveCheckedAt > 1_000_000_000L) {
                 powerSaveCheckedAt = now
