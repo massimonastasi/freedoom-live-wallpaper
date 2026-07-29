@@ -63,7 +63,7 @@
     <string name="fps_20">20 fps</string>
 
     <!-- Under the launcher icon only, where "Freedoom Live Wallpaper" does not fit anyway. -->
-    <string name="launcher_label">FLW</string>
+    <string name="launcher_label">Flw</string>
     <string name="wad_stale">Your imported WAD was prepared by an older version and has been removed. Import it again to use it.</string>
     <string name="background_overlay">Add overlay</string>
     <string name="background_overlay_note">Keeps whatever is behind the fight from competing with your icons</string>

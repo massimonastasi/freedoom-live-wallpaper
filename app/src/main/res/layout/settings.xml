@@ -334,4 +334,23 @@
 
     </LinearLayout>
 
+    <!--
+        The status bar scrim, and the last child so it is over everything.
+
+        The page slides up over the fixed header, which means its text reaches y=0 and passes
+        under the clock, with nothing behind the status bar in edge-to-edge to separate them.
+        This is that separation: a band the height of the status bar inset, set from the inset
+        in code because it is a device measurement and not a dimension we get to choose.
+
+        Solid rather than a gradient: it has to work over two different things - the header
+        artwork at rest and the page's own surface once scrolled - and a fade that suits one
+        of them fails on the other.
+    -->
+    <View
+        android:id="@+id/status_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_gravity="top"
+        android:background="#66000000" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

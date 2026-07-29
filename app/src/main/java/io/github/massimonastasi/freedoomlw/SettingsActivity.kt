@@ -124,6 +124,17 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
+        // The scrim behind the status bar is exactly as tall as the status bar, which only the
+        // system knows: the same number differs with the cutout, the gesture mode and the OEM.
+        val scrim = findViewById<View>(R.id.status_scrim)
+        ViewCompat.setOnApplyWindowInsetsListener(scrim) { view, insets ->
+            val top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            if (view.layoutParams.height != top) {
+                view.layoutParams = view.layoutParams.also { it.height = top }
+            }
+            insets
+        }
+
         findViewById<MaterialButton>(R.id.set_wallpaper).setOnClickListener {
             SetupActivity.open(this) { setWallpaper.launch(it) }
         }
