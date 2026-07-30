@@ -320,6 +320,17 @@ class Scene(
      * Monsters waiting to come back, on the skills that respawn them. Each entry packs the
      * tic it is due at together with its creature index, so this stays one flat list of ints
      * with no allocation per corpse.
+     *
+     * The index field was three bits wide while the bestiary held fourteen creatures, so the
+     * six that do not fit in three bits wrote their top bit into the tic and read back as
+     * something else: a PainLord came back as a ChaingunZombie, a Cyberlord as a Charger, and
+     * each of them a tic or two late. It was invisible in every test, because nothing asserts
+     * what a respawned creature *is* - only that one arrives.
+     *
+     * Four bits hold sixteen, which is the bestiary plus the marine plus one spare, and
+     * RespawnPackingTest fails if that stops being true. The cost is one bit of the tic
+     * field: entries stay valid for 2^27 tics, about forty days of screen-on time, and the
+     * tic only advances while the wallpaper is visible.
      */
     private val respawns = ArrayList<Int>()
 
@@ -500,8 +511,8 @@ class Scene(
         var i = 0
         while (i < respawns.size) {
             val packed = respawns[i]
-            if (tic >= packed shr 3) {
-                spawnDemon(GameData.creatures[packed and 7], respawned = true)
+            if (tic >= packed shr RESPAWN_INDEX_BITS) {
+                spawnDemon(GameData.creatures[packed and RESPAWN_INDEX_MASK], respawned = true)
                 respawns.removeAt(i)
             } else i++
         }
@@ -1163,7 +1174,7 @@ class Scene(
             target.spawnTic = tic
             if (rules.respawn && !target.isPlayer && !target.respawned) {
                 val i = GameData.creatures.indexOf(c)
-                if (i >= 0) respawns.add(((tic + GameData.RESPAWN_DELAY) shl 3) or i)
+                if (i >= 0) respawns.add(((tic + GameData.RESPAWN_DELAY) shl RESPAWN_INDEX_BITS) or i)
             }
             return
         }
@@ -1540,6 +1551,16 @@ class Scene(
 
         /** What the easiest level takes, before p_inter.c halves it again. */
         const val MIN_TAKEN = 80
+
+        /**
+         * Width of the creature-index field in a packed respawn entry.
+         *
+         * Sixteen values, which the bestiary and the marine fit inside with one to spare.
+         * RespawnPackingTest asserts that, because widening the bestiary past it would not
+         * fail anywhere else - it would just hand back the wrong creature.
+         */
+        const val RESPAWN_INDEX_BITS = 4
+        const val RESPAWN_INDEX_MASK = (1 shl RESPAWN_INDEX_BITS) - 1
 
         /** Spawn health at or above which a creature is a boss and never a stand-in. */
         const val BOSS_FROM = 1000
