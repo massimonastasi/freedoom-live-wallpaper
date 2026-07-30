@@ -30,8 +30,8 @@ import kotlin.test.assertTrue
  * Check on the WAD parser: if anyone breaks the column decoding or the sprite naming
  * convention, this fails.
  *
- * The .wad is not under version control (see .gitignore), so the test skips itself rather
- * than failing when the file is missing.
+ * The .wad is not under version control, so the test skips itself rather than failing when
+ * the file is missing.
  */
 class WadFileTest {
 

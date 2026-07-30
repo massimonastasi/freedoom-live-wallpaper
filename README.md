@@ -151,8 +151,8 @@ is why it and `keystore.properties` are outside version control.
    gradlew reduceWad
    ```
    That writes `app/src/main/assets/freedoom2.wad` containing only the lumps the wallpaper
-   reads — 639 of 3610, 1.9 MB instead of 27.5 MB. Neither file is in the repository (see
-   `.gitignore`), and the input stays outside `assets` so it is never packaged.
+   reads — 639 of 3610, 1.9 MB instead of 27.5 MB. Neither file is in the repository, and the
+   input stays outside `assets` so it is never packaged.
 
    **Phase 2, not Phase 1.** Freedoom Phase 1 carries nine of the
    fourteen creatures this bestiary names; the five it lacks — the ChaingunZombie,
