@@ -738,28 +738,35 @@ class Scene(
         a.respawned = respawned
         // Only the FleshWorm: g_game.c touches S_SARG_RUN1..S_SARG_PAIN2 and nothing else.
         a.fast = rules.fast && c === GameData.fleshWorm
-        // Anywhere across the width, and in the half of the screen the marine is not in.
+        // Anywhere in the field, provided it is not on top of the marine.
         //
-        // Arrivals used to come from one of the two side edges, which made every wave enter
-        // the same way and left the middle of the screen a place nothing ever appeared. This
-        // spreads them: horizontally free, vertically on the far side of the marine, so a
-        // creature has ground to cross before it reaches him and does not materialise on top
-        // of him.
+        // Arrivals used to come from one of the two side edges, then from the vertical half
+        // the marine was not in. Both tied the spawn to his position: the half held no real
+        // distance when he sat on the midline, so the arrivals read as mirroring him. This
+        // instead places a creature freely and only rejects points closer than
+        // SPAWN_MIN_DISTANCE, keeping the farthest tried as a fallback so a world smaller
+        // than that radius still yields its most distant point instead of looping.
         //
         // The margins still hold. A sprite is anchored at its feet and drawn upwards, so
         // spawning flush against an edge puts half the creature off screen - and a quick kill
         // could then remove it before it had ever properly been seen.
-        val top = marginTop
-        val bottom = worldHeight - spawnMarginBottom
-        val middle = (top + bottom) / 2
-        val marineY = player?.let { it.y / FRACUNIT } ?: middle
-
-        a.x = randomIn(marginX, worldWidth - marginX) * FRACUNIT
-        a.y = if (marineY < middle) {
-            randomIn(middle, bottom)
-        } else {
-            randomIn(top, middle)
-        } * FRACUNIT
+        val p = player
+        val minDist = SPAWN_MIN_DISTANCE * FRACUNIT
+        var bestX = 0
+        var bestY = 0
+        var bestD = -1
+        repeat(SPAWN_TRIES) {
+            val x = randomIn(marginX, worldWidth - marginX) * FRACUNIT
+            val y = randomIn(marginTop, worldHeight - spawnMarginBottom) * FRACUNIT
+            if (p == null) { a.x = x; a.y = y; materialise(a); return }
+            val dx = abs(x - p.x)
+            val dy = abs(y - p.y)
+            val d = if (dx > dy) dx + (dy shr 1) else dy + (dx shr 1)
+            if (d >= minDist) { a.x = x; a.y = y; materialise(a); return }
+            if (d > bestD) { bestD = d; bestX = x; bestY = y }
+        }
+        a.x = bestX
+        a.y = bestY
         materialise(a)
     }
 
@@ -1451,6 +1458,31 @@ class Scene(
          * way, the worst is the Trilobite at 8 pixels, so 16 map units.
          */
         const val BOTTOM_MARGIN = 16
+
+        /**
+         * How far from the marine a creature must arrive, in map units.
+         *
+         * A base creature covers 8 units a tic, so 280 is about one second of walking at
+         * TICRATE: far enough that an arrival reads as coming from elsewhere and never
+         * materialises on top of him. This is the only reason the rule exists; it replaced a
+         * branch that put every creature in the vertical half the marine was not in, which
+         * held no real distance when he sat on the midline and read as the spawns mirroring
+         * his position.
+         *
+         * ponytail: 280 is the starting value, tuned on the JVM; the device decides the
+         * final one, measured against how long a creature then takes to reach him.
+         */
+        const val SPAWN_MIN_DISTANCE = 280
+
+        /**
+         * How many random points to try before settling for the farthest one seen.
+         *
+         * The field is large next to SPAWN_MIN_DISTANCE, so the first or second point almost
+         * always clears it. The cap matters only for a world small enough that the whole of
+         * it sits inside that radius — a split screen, a foldable cover, a picker thumbnail —
+         * where it degrades to "as far from him as this surface allows" instead of looping.
+         */
+        const val SPAWN_TRIES = 8
 
         /**
          * Monster health as a percentage of the value in mobjinfo.
