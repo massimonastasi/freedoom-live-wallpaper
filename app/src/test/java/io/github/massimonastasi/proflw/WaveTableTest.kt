@@ -39,35 +39,28 @@ import kotlin.test.assertTrue
  */
 class WaveTableTest {
 
-    /** The arrival groups of one wave: [Wave.burst] creatures land together in each. */
-    private fun arrivals(w: GameData.Wave): List<List<Int>> =
-        w.order.toList().chunked(w.burst)
-
-    /** Every arrival group in the table, in the order the scene delivers them. */
-    private fun allArrivals(): List<List<Int>> = GameData.waves.flatMap { arrivals(it) }
+    /** Every arrival in the table, in the order the scene delivers them, one per second. */
+    private fun allArrivals(): List<Int> = GameData.waves.flatMap { it.order.toList() }
 
     @Test
     fun `no creature arrives twice in a row`() {
-        val groups = allArrivals()
-        for (i in 1 until groups.size) {
-            val previous = groups[i - 1]
-            val current = groups[i]
-            // A pair of the same creature landing together is one event, not a repetition;
-            // the same creature in two *separate* arrivals is what reads as a stutter.
+        val arrivals = allArrivals()
+        for (i in 1 until arrivals.size) {
             assertTrue(
-                previous.size > 1 || current.size > 1 || previous[0] != current[0],
-                "arrival $i repeats ${GameData.creatures[current[0]].name} " +
-                    "immediately after itself: $groups",
+                arrivals[i] != arrivals[i - 1],
+                "arrival $i repeats ${GameData.creatures[arrivals[i]].name} " +
+                    "immediately after itself: $arrivals",
             )
         }
     }
 
     @Test
-    fun `enemies do arrive together`() {
-        val doubles = GameData.waves.count { it.burst >= 2 }
-        assertTrue(doubles > 0, "no wave ever delivers two enemies at once")
-        // Not merely present: common enough to be a feature of the table rather than a quirk
-        // of one wave. Twelve of the twenty-six, which is every escort wave.
+    fun `enemies do share the field`() {
+        // Arrivals are a second apart now rather than landing together, so a wave of two is
+        // two on screen at once for as long as the first one lives - which is what the old
+        // burst was reaching for. Twelve of the twenty-six, which is every escort wave.
+        val doubles = GameData.waves.count { it.order.size >= 2 }
+        assertTrue(doubles > 0, "no wave ever puts two enemies on the field")
         assertTrue(
             doubles >= GameData.waves.size / 3,
             "only $doubles of ${GameData.waves.size} waves deliver a pair",

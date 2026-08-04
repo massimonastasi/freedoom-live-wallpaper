@@ -70,9 +70,9 @@ class SceneBalanceTest {
         println("marine alive: ${playerAlive * 100 / totalTics}% of the time")
         println("average demons alive: ${aliveSamples.average().let { "%.1f".format(it) }}")
         println("highest wave reached: ${highestWave + 1}")
-        println("highest skill reached: ${GameData.skills[highestSkill].name}")
+        println("highest skill reached: ${GameData.skills[highestSkill]}")
         for (i in GameData.skills.indices) {
-            if (skillTics[i] > 0) println("  %-22s %2d%% of the time".format(GameData.skills[i].name, skillTics[i] * 100 / totalTics))
+            if (skillTics[i] > 0) println("  %-22s %2d%% of the time".format(GameData.skills[i], skillTics[i] * 100 / totalTics))
         }
         println()
         println("%-16s %8s %8s %10s".format("creature", "spawned", "killed", "% killed"))

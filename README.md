@@ -38,28 +38,28 @@ in Kotlin, each carrying a comment naming the file and symbol it came from. What
 
 | Source | Used for |
 |---|---|
-| `info.c` | `mobjinfo`: speed, health, radius, pain chance. `states`: sprite, frame and tic count for every animation step |
+| `info.c` | `mobjinfo`: speed, radius, pain chance. `states`: sprite, frame and tic count for every animation step |
 | `p_enemy.c` | `P_NewChaseDir` and the `xspeed`/`yspeed` direction tables; `P_TryWalk`'s random `movecount`; `P_CheckMissileRange` |
 | `m_random.c` | The 256-byte `rndtable` and its advancing index |
 | `p_mobj.c` | 16.16 fixed-point movement, friction, stop speed |
-| `p_inter.c` | Armour absorption and how damage is applied |
-| `p_pspr.c` | The weapon damage formulas |
-| `p_map.c` | `PIT_CheckThing`'s missile damage multiplier |
-| `g_game.c` | The five skill levels and their flags |
+| `p_inter.c` | Armour absorption, how damage is applied, pickup amounts and ammo limits |
+| `g_game.c` | The five skill names, and `G_PlayerReborn` handing back the pistol |
 | `r_things.c` | Sprite rotation selection and mirrored frames |
 
 Neither project is affiliated with this one, endorses it, or is involved in it.
 
 ## What it does
 
-- **Fourteen creatures** with the speeds, states, animation lengths and health `info.c` gives
-  them, and `P_NewChaseDir` reproduced from the source: table-based movement, no trigonometry.
-  This is why they move like the original creatures rather than like something chasing a point.
-- **Twenty-six waves and nine skill levels** — the five from `g_game.c` with four of ours
-  between them, each fitted by measurement rather than by feel. The easiest reaches the first
-  boss 99 times in 100; Nightmare is a wall by construction.
-- **Combat**: melee, hitscan, missiles, pain, death, corpses. Missile damage goes through
-  `PIT_CheckThing`'s multiplier, so a rocket is a rocket.
+- **Fourteen creatures** with the speeds, states and animation lengths `info.c` gives them, and
+  `P_NewChaseDir` reproduced from the source: table-based movement, no trigonometry. This is
+  why they move like the original creatures rather than like something chasing a point.
+- **Twenty-six waves and nine skill levels** — the five names from `g_game.c` with four of ours
+  between them. The difficulty is the wave table alone: every skill runs the whole of it, and
+  clearing it moves you one rung up the ladder.
+- **Combat**: melee, hitscan, missiles, pain, death, corpses. Health and damage are small whole
+  numbers, fixed — no roll, no multiplier. A creature deals its place in the roster, 1 through
+  14, and which attack it has says only how that is delivered. The figures, and the `info.c`
+  originals they descend from, are in [docs/BALANCE.md](docs/BALANCE.md).
 - **Your own sprites**: point it at any IWAD you already own and its sprites, palette, floors
   and numerals replace the bundled ones. The file is copied into the app and never leaves the
   device. No WAD is downloaded by this app, and none is linked from it.
@@ -165,7 +165,7 @@ is why it and `keystore.properties` are outside version control.
    *Settings → Wallpaper → Live wallpapers* and pick it.
 
 The emulator works for rendering but is not representative of power consumption. `gradlew test`
-runs 53 JVM tests, including an hour-long simulation that pins the top of the skill ladder;
+runs 55 JVM tests, including an hour-long simulation that pins the top of the skill ladder;
 none of them launches the app.
 
 ## Licences

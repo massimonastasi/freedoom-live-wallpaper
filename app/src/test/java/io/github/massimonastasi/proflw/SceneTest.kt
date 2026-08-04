@@ -78,10 +78,9 @@ class SceneTest {
         // A single instant is not enough: between waves there is a pause where zero demons
         // is correct. Look at the last half minute instead.
         var maxRecent = 0
-        // The hardest skills stretch the queue to nine eighths and can respawn the fallen,
-        // so the ceiling is no longer the wave's own size. Doubling it still catches a
-        // runaway spawn, which is what this bound is for.
-        val biggestWave = GameData.waves.maxOf { it.size } * 2
+        // Doubling the largest wave still catches a runaway spawn, which is what this bound
+        // is for.
+        val biggestWave = GameData.waves.maxOf { it.order.size } * 2
         for (t in 1..TICRATE * 600) {
             scene.tick(t)
             val n = scene.actors.count { it.creature != null && !it.isPlayer && !it.dead }
@@ -128,145 +127,6 @@ class SceneTest {
     }
 
     /**
-     * How often one life carries the marine all the way to the last wave, unaided.
-     *
-     * The last wave rather than the first, because that is what the skill ladder is priced
-     * in: a promotion costs the whole table in a single life, so this number *is* how often
-     * the difficulty can rise. Measuring the opening wave said almost nothing about it —
-     * the opening was being cleared 95% of the time while the table was never finished once.
-     *
-     * Runs the same table from many points in the P_Random table, since that table is fixed
-     * and a single run would only ever measure one shuffle of the drops.
-     */
-    /**
-     * How often one life gets as far as a given wave, in tenths of a percent.
-     *
-     * The ladder is priced on finishing the whole table, but the health scale is fitted on
-     * something nearer the middle: reaching the first boss. Those are different questions and
-     * they need different measurements.
-     */
-    private fun reachedWave(skill: Int, target: Int, runs: Int = 400): Int {
-        var wins = 0
-        for (r in 0 until runs) {
-            GameData.clearRandom()
-            repeat(r) { GameData.pRandom() }
-            val scene = Scene(worldWidth, worldHeight, startSkill = skill)
-            var t = 0
-            var died = false
-            while (t < TICRATE * 600 && scene.wave < target && !died) {
-                scene.tick(++t)
-                if (scene.deathFade > 0f) died = true
-            }
-            if (!died && scene.wave >= target) wins++
-        }
-        return wins * 1000 / runs
-    }
-
-    private fun reachedLastWave(skill: Int, runs: Int = 400): Int {
-        // Each skill runs its own prefix of the table, so "the last wave" is that skill's
-        // last, not the bestiary's. Measuring them all against wave 26 would only ever be
-        // measuring whether the Cyberlord had been reached.
-        val last = GameData.skills[skill].waveCount - 1
-        var wins = 0
-        for (r in 0 until runs) {
-            GameData.clearRandom()
-            repeat(r) { GameData.pRandom() }
-            val scene = Scene(worldWidth, worldHeight, startSkill = skill)
-            var t = 0
-            var died = false
-            while (t < TICRATE * 600 && scene.wave < last && !died) {
-                scene.tick(++t)
-                if (scene.deathFade > 0f) died = true
-            }
-            if (!died && scene.wave >= last) wins++
-        }
-        // Tenths of a percent: the hardest levels are aimed below one percent, which sixty
-        // runs and whole percentages could not tell apart from zero.
-        return wins * 1000 / runs
-    }
-
-    /**
-     * The easiest level gets to the first boss almost always, and the hardest does not.
-     *
-     * This is the target the health scale is fitted through. The PainLord is the first
-     * creature the original prices at a thousand health, and it opens wave 23 of 26: getting
-     * there is most of a table, and it is where somebody watching a wallpaper on the easiest
-     * setting should reliably arrive.
-     *
-     * The other end is deliberately left where it falls. At the hardest skill nothing is
-     * scaled at all, so Nightmare is a wall by construction rather than by tuning, and it is
-     * asserted to be one.
-     */
-    @Test
-    fun `the easiest level reaches the first boss, the hardest does not`() {
-        val firstBoss = GameData.waves.indexOfFirst { w ->
-            w.order.any { GameData.creatures[it].health >= 1000 }
-        }
-        assertTrue(firstBoss > 0, "no wave introduces a thousand-health creature")
-
-        val odds = GameData.skills.indices.map { reachedWave(it, firstBoss) }
-        println("reached wave ${firstBoss + 1}, the first boss: " + GameData.skills.indices.joinToString {
-            "${GameData.skills[it].name} ${odds[it] / 10}.${odds[it] % 10}%"
-        })
-
-        // 99% is the target and 99.0% is what it measures, with two levers rather than one.
-        // Raising the marine's damage alone tops out at 94: 3300, 5000 and 8000 percent all
-        // give 94.0, because past the point where one shot kills anything the rest is spent
-        // on corpses. The remaining deaths are about what lands on him, so the second lever
-        // is what he takes - and that one moves it, 94.0 to 99.0 at 80 percent.
-        assertTrue(odds.first() >= 980, "the easiest level reaches the first boss ${odds.first()}/1000")
-        assertTrue(odds.last() <= 200, "the hardest level is meant to be a wall: ${odds.last()}/1000")
-        for (i in 1 until odds.size) {
-            assertTrue(odds[i] <= odds[i - 1] + 20, "reaching the first boss must not get easier: $odds")
-        }
-    }
-
-    @Test
-    fun `one life reaches the last wave, less and less often as it hardens`() {
-        val odds = GameData.skills.indices.map { reachedLastWave(it) }
-        println("finished its own table unaided: " + GameData.skills.indices.joinToString {
-            "${GameData.skills[it].name} (${GameData.skills[it].waveCount}w) ${odds[it] / 10}.${odds[it] % 10}%"
-        })
-
-        // The curve that was asked for, in tenths of a percent: 95, 75, 35, 5, 0.5 for the
-        // five canonical levels. It is reached by the lever where the difficulty actually
-        // lives - monsters spawn at a fraction of their original health, so the marine can
-        // work through a boss instead of being walled by one - and the wave count stays at 26
-        // for every skill.
-        // The per-rung targets that used to live here - 95, 85, 75, 55, 35, 20, 5, 2.8, 0.5 -
-        // were fitted when a flat coefficient softened every monster at every level. The
-        // health scale is anchored differently now: the hardest skill gets the printed
-        // numbers and nothing is scaled at all, and the easiest is fitted on reaching the
-        // first boss rather than on finishing the table. Finishing the table stops being a
-        // useful measure above the third rung, where it reads zero for everyone.
-        //
-        // What is still asserted is what was actually agreed: the easiest level finishes what
-        // it starts, the hardest does not, and the ladder never climbs. The shape of the
-        // middle is an open question and is deliberately not asserted rather than being
-        // asserted to numbers nobody chose.
-        assertTrue(odds.first() >= 900, "the easiest level should finish its table: ${odds.first()}")
-        assertTrue(odds.last() <= 50, "the hardest level is a wall: ${odds.last()}")
-        // The ladder must never climb - but only where the measurement can see the step.
-        //
-        // 400 lives resolve 2.5 tenths of a percent, so at the top of the ladder, where every
-        // level lands under 3%, two adjacent rungs differ by a handful of lives and their
-        // order is decided by which shuffle of the random table each one drew. Tuning cannot
-        // fix that: loosening the eighth rung from 480 to 420 tics moved it from 1.0% to 0.0%,
-        // the wrong way, because both numbers are the same number.
-        //
-        // So the assertion allows a rise no larger than the sampling floor. Anywhere the
-        // ladder is actually legible - the first seven rungs, spanning 95% to 3% - the floor
-        // is far smaller than the step and the ordering is enforced exactly as before.
-        val samplingFloor = 20                     // tenths of a percent: eight lives in 400
-        for (i in 1 until odds.size) {
-            assertTrue(
-                odds[i] <= odds[i - 1] + samplingFloor,
-                "the odds must never rise with the skill: $odds",
-            )
-        }
-    }
-
-    /**
      * Nobody may stand close enough to the top edge for their sprite to leave the screen.
      *
      * A sprite is anchored at the feet and drawn upwards, so an actor bounded only by its
@@ -300,11 +160,12 @@ class SceneTest {
     }
 
     /**
-     * The preview opens on a fight, and only the opening wave is rushed: a preview that ran
-     * at a different pace throughout would be advertising a different wallpaper.
+     * The preview opens on a fight: it skips the empty ground the marine walks onto, and
+     * nothing else. A preview that ran at a different pace would advertise a different
+     * wallpaper, so the only thing [Scene.instantStart] touches is when he arrives.
      */
     @Test
-    fun `an instant start fills the scene at once but leaves later waves alone`() {
+    fun `an instant start fills the scene at once`() {
         fun demons(s: Scene) = s.actors.count { it.creature != null && !it.isPlayer && !it.dead }
 
         // The first tick brings the marine in and arms the wave, returning before arrivals
@@ -318,19 +179,11 @@ class SceneTest {
         val preview = Scene(worldWidth, worldHeight, instantStart = true)
         preview.tick(1); preview.tick(2)
         assertTrue(demons(preview) > 0, "the preview must open with an enemy already present")
-
-        // Past the first wave the two must agree: run on until a wave has been cleared.
-        var t = 2
-        while (t < TICRATE * 300 && preview.wave == 0) preview.tick(++t)
-        assertTrue(preview.wave > 0, "the preview never got past the opening wave")
-        val armed = t
-        while (t < armed + GameData.waves[preview.wave].spawnDelay - 1) preview.tick(++t)
-        assertEquals(0, demons(preview), "the second wave must keep its authored delay")
     }
 
     /**
-     * The scene opens on empty ground, and the first enemy is still a full wave delay behind
-     * the marine rather than arriving on his heels.
+     * The scene opens on empty ground, and the marine still gets the tic he arrives on to
+     * himself: the wave is armed by his arrival, so the first enemy comes the tic after.
      */
     @Test
     fun `the marine arrives after a pause and the wave shifts with him`() {
@@ -345,18 +198,15 @@ class SceneTest {
         scene.tick(Scene.ARRIVAL_DELAY)
         assertTrue(scene.actors.any { it.isPlayer }, "the marine must arrive on the delay")
 
-        // Still nobody else a tic before his full spawn delay has run.
-        val firstEnemy = Scene.ARRIVAL_DELAY + GameData.waves[0].spawnDelay
-        for (t in Scene.ARRIVAL_DELAY + 1 until firstEnemy) scene.tick(t)
         assertEquals(
             0, scene.actors.count { it.creature != null && !it.isPlayer },
-            "an enemy arrived before the wave delay had run from the marine's own arrival",
+            "an enemy arrived on the marine's own arrival tic",
         )
 
-        scene.tick(firstEnemy)
+        scene.tick(Scene.ARRIVAL_DELAY + 1)
         assertEquals(
             1, scene.actors.count { it.creature != null && !it.isPlayer },
-            "exactly one must arrive once the delay has run",
+            "exactly one must arrive once the wave is armed",
         )
     }
 
@@ -497,19 +347,6 @@ class SceneTest {
     }
 
     @Test
-    fun `nightmare makes the FleshWorm fast and nothing else`() {
-        GameData.clearRandom()
-        val fast = Actor(0).apply { creature = GameData.fleshWorm; this.fast = true }
-        val normal = Actor(0).apply { creature = GameData.fleshWorm }
-
-        // g_game.c halves the run tics, which in the engine doubles both the animation and
-        // the stepping, since movement happens inside A_Chase.
-        val walked = (1..40).count { fast.frame(it) != fast.frame(it - 1) }
-        val strolled = (1..40).count { normal.frame(it) != normal.frame(it - 1) }
-        assertEquals(strolled * 2, walked, "the fast FleshWorm must animate at twice the rate")
-    }
-
-    @Test
     fun `the marine arrives first and enemies one at a time`() {
         GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
@@ -522,42 +359,33 @@ class SceneTest {
         assertTrue(scene.actors.any { it.isPlayer }, "the marine must appear first")
         assertEquals(0, demons(), "no enemy alongside the marine")
 
-        // The first one arrives a full wave delay after him, not after the scene opened.
-        val firstDelay = GameData.waves[0].spawnDelay
-        for (t in arrives + 1 until arrives + firstDelay) scene.tick(t)
-        assertEquals(0, demons(), "an enemy arrived before the expected $firstDelay tics")
+        // The wave is armed by his arrival, so the first enemy comes the tic after it.
+        scene.tick(arrives + 1)
+        assertEquals(1, demons(), "exactly one must arrive once the wave is armed")
 
-        scene.tick(arrives + firstDelay)
-        assertEquals(1, demons(), "exactly one must arrive after the delay")
-
-        // The second does not come with the first, but after another interval.
-        scene.tick(arrives + firstDelay + 1)
-        assertEquals(1, demons(), "two enemies together in the first wave")
+        // And they come one at a time: nothing else lands inside the next second.
+        for (t in arrives + 2..arrives + GameData.SPAWN_DELAY) scene.tick(t)
+        assertEquals(1, demons(), "a second enemy arrived inside the spawn interval")
     }
 
     @Test
-    fun `waves get denser as they progress`() {
-        // The delay must fall monotonically: that is the tension curve.
-        val delays = GameData.waves.map { it.spawnDelay }
-        for (i in 1 until delays.size) {
-            assertTrue(delays[i] <= delays[i - 1], "wave ${i + 1} is slower than the previous one")
+    fun `waves get heavier as they progress`() {
+        // The tension curve is the health a wave puts on the field, and it may stand still
+        // but never fall. It used to be the spawn delay walking down from two seconds, which
+        // was a curve nobody could see: what a phone screen shows is bodies, not tics.
+        val weight = GameData.waves.map { w -> w.order.sumOf { GameData.creatures[it].health } }
+        for (i in 1 until weight.size) {
+            assertTrue(
+                weight[i] >= weight[i - 1],
+                "wave ${i + 1} drops to ${weight[i]} from ${weight[i - 1]}: $weight",
+            )
         }
-        assertTrue(delays.first() > delays.last(), "no acceleration between the first and last wave")
+        assertTrue(weight.first() < weight.last(), "the table does not get heavier at all")
         // The crowd cap, which is what a phone screen actually shows: at most two arrivals
-        // queued, and a burst no larger than the wave itself, so nothing can pile six bodies
-        // into a single wave the way an earlier table did. Difficulty lives in how far down
-        // the bestiary a skill runs.
-        //
-        // The burst used to be pinned at one, which is how the table ended up with no paired
-        // arrivals anywhere in twenty-six waves. Two is the cap now, and WaveTableTest is
-        // where the shape of the pairing is asserted.
+        // queued, so nothing can pile six bodies into a single wave the way an earlier table
+        // did. Spacing them a second apart is what keeps them from landing as a crowd.
         for ((i, w) in GameData.waves.withIndex()) {
             assertTrue(w.order.size <= 2, "wave ${i + 1} queues ${w.order.size} arrivals")
-            assertTrue(w.burst in 1..2, "wave ${i + 1} spawns ${w.burst} at once")
-            assertTrue(
-                w.burst <= w.order.size,
-                "wave ${i + 1} bursts ${w.burst} out of ${w.order.size} queued",
-            )
         }
     }
 

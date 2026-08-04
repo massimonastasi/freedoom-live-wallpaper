@@ -114,17 +114,6 @@ class Actor(val spriteIndex: Int) {
     var reactionTime = 0
 
     /**
-     * g_game.c:1423 halves the FleshWorm's run and pain tics on the fast skills. In the
-     * engine that alone doubles its speed, because movement happens inside A_Chase and the
-     * state calls A_Chase twice as often; here the chase runs every tic, so the doubling has
-     * to be applied to the step as well as to the animation.
-     */
-    var fast = false
-
-    /** Already came back once, and so will not be queued to respawn again. */
-    var respawned = false
-
-    /**
      * Direction the sprite is drawn facing, which is not always the direction of travel.
      * It follows movement while walking, and snaps to the target when an attack starts —
      * that is what A_FaceTarget does in the engine. Without it the marine, who backs away
@@ -147,7 +136,7 @@ class Actor(val spriteIndex: Int) {
         item?.let { return if (it.frames > 1) ((tic - spawnTic) / 6) % it.frames else 0 }
         val c = creature ?: return 0
         // Walking: the original engine repeats each frame twice (A,A,B,B,...), so it lasts walkTics*2.
-        val per = if (fast) c.walkTics else c.walkTics * 2
+        val per = c.walkTics * 2
         return ((tic - spawnTic) / per) % c.walkFrames
     }
 
@@ -286,19 +275,14 @@ class Scene(
     var skill = startSkill.coerceIn(GameData.skills.indices)
         private set
 
-    private val rules get() = GameData.skills[skill]
-
     /** Waves cleared since the last death, which is what earns the promotion. */
     private var cleared = 0
-
-    /** Consumed by the first wave that is armed, so only that one skips its delay. */
-    private var rushOpening = instantStart
 
     /**
      * The tic the marine is due to arrive on, held empty until then.
      *
-     * The preview has no time to spend on an empty floor, so it skips the wait entirely —
-     * the same reasoning as [rushOpening], and the same exception.
+     * The preview has no time to spend on an empty floor, so it skips the wait entirely, and
+     * the fight it is advertising starts on its first tic.
      */
     private var playerDueAt = if (instantStart) 0 else ARRIVAL_DELAY
 
@@ -315,24 +299,6 @@ class Scene(
     private val queue = ArrayList<Int>()
     private var spawnIndex = 0
     private var nextSpawnAt = 0
-
-    /**
-     * Monsters waiting to come back, on the skills that respawn them. Each entry packs the
-     * tic it is due at together with its creature index, so this stays one flat list of ints
-     * with no allocation per corpse.
-     *
-     * The index field was three bits wide while the bestiary held fourteen creatures, so the
-     * six that do not fit in three bits wrote their top bit into the tic and read back as
-     * something else: a PainLord came back as a ChaingunZombie, a Cyberlord as a Charger, and
-     * each of them a tic or two late. It was invisible in every test, because nothing asserts
-     * what a respawned creature *is* - only that one arrives.
-     *
-     * Four bits hold sixteen, which is the bestiary plus the marine plus one spare, and
-     * RespawnPackingTest fails if that stops being true. The cost is one bit of the tic
-     * field: entries stay valid for 2^27 tics, about forty days of screen-on time, and the
-     * tic only advances while the wallpaper is visible.
-     */
-    private val respawns = ArrayList<Int>()
 
     /**
      * 0 while the marine is alive, rising to 1 as the screen sinks into red after his
@@ -373,26 +339,18 @@ class Scene(
     /** The last creature queued, so the next wave knows what it must not repeat. */
     private var lastQueued = -1
 
-    /**
-     * The burst this wave is actually delivering: the table's own, unless a substitution had
-     * to be compensated for with a second body. See startWave.
-     */
-    private var waveBurst = 1
-
     fun tick(now: Int) {
         tic = now
 
         updateWaves()
 
         // An item every now and then: it gives the marine a reason to cross the scene and
-        // makes the fighting less predictable.
-        // Rarer the harder it gets. Over a table lasting minutes this is what decides
-        // whether the marine survives it, far more than what he is fighting.
+        // makes the fighting less predictable. Over a table lasting minutes this is what
+        // decides whether he survives it, far more than what he is fighting.
         //
-        // Only once he is on the field: at the easiest skill the drops come every fifty
-        // tics, which is sooner than he arrives, and supplies were materialising onto empty
-        // ground with nobody there to want them.
-        if (player != null && deadUntil == 0 && tic % rules.dropInterval == 0) spawnItem()
+        // Only once he is on the field, so supplies do not materialise onto empty ground with
+        // nobody there to want them.
+        if (player != null && deadUntil == 0 && tic % GameData.DROP_INTERVAL == 0) spawnItem()
 
         var i = 0
         while (i < actors.size) {
@@ -434,8 +392,8 @@ class Scene(
         if (p == null) {
             // The scene opens on empty ground for a moment before he arrives, so his
             // teleport fog is something that happens rather than something already there
-            // when you looked. The wave is only armed once he is in, so the first enemy is
-            // still a full spawnDelay behind him and the whole opening simply shifts.
+            // when you looked. The wave is only armed once he is in, so the opening shifts
+            // with him rather than being squeezed, and he keeps the tic he lands on.
             if (tic < playerDueAt) return
             spawnPlayer()
             startWave()
@@ -446,22 +404,24 @@ class Scene(
             return
         }
 
-        updateRespawns()
-
         // Staggered arrivals: until the whole wave is in, we do not judge it finished.
         if (spawnIndex < queue.size) {
             if (tic >= nextSpawnAt) {
-                val w = GameData.waves[wave]
-                var n = waveBurst
-                while (n-- > 0 && spawnIndex < queue.size) {
-                    spawnDemon(GameData.creatures[queue[spawnIndex++]], respawned = false)
+                val c = queue[spawnIndex++]
+                spawnDemon(GameData.creatures[c])
+                // A repeat in the queue lands together rather than a second later. Only a
+                // compensated substitution ever queues one - the table itself never repeats -
+                // and delivered one at a time it would be the same creature twice in a row,
+                // which is precisely what the compensation was written to avoid looking like.
+                if (spawnIndex < queue.size && queue[spawnIndex] == c) {
+                    spawnDemon(GameData.creatures[queue[spawnIndex++]])
                 }
-                nextSpawnAt = tic + w.spawnDelay
+                nextSpawnAt = tic + GameData.SPAWN_DELAY
             }
             return
         }
 
-        if (countDemons() > 0 || respawns.isNotEmpty()) {
+        if (countDemons() > 0) {
             nextWaveAt = 0
             return
         }
@@ -473,14 +433,11 @@ class Scene(
         }
         if (tic >= nextWaveAt) {
             nextWaveAt = 0
-            wave = (wave + 1) % rules.waveCount
-            // The whole sequence then replays one skill level harder, up to Nightmare,
-            // which is where it stays.
+            wave = (wave + 1) % GameData.waves.size
+            // At the end of the table the skill index advances by one, up to the last. The
+            // levels are identical for now; the climb is the seam for a reimplemented ladder.
             cleared++
-            // Reset rather than modulo: each skill runs a different number of waves, so a
-            // running total taken against a changing divisor would promote at the wrong
-            // place the moment the ladder moved.
-            if (cleared >= rules.waveCount) {
+            if (cleared >= GameData.waves.size) {
                 cleared = 0
                 if (skill < GameData.skills.size - 1) {
                     skill++
@@ -500,25 +457,6 @@ class Scene(
     }
 
     /**
-     * P_NightmareRespawn (p_mobj.c): on the skills that respawn, a monster comes back twelve
-     * seconds after it fell.
-     *
-     * ponytail: a monster only comes back once. The engine respawns forever, which there is
-     * fine because a level ends; here a wave would never clear and the marine would be stuck
-     * on the same one until he died.
-     */
-    private fun updateRespawns() {
-        var i = 0
-        while (i < respawns.size) {
-            val packed = respawns[i]
-            if (tic >= packed shr RESPAWN_INDEX_BITS) {
-                spawnDemon(GameData.creatures[packed and RESPAWN_INDEX_MASK], respawned = true)
-                respawns.removeAt(i)
-            } else i++
-        }
-    }
-
-    /**
      * After death everything restarts: first wave, lowest skill, nothing carried over.
      *
      * g_game.c G_PlayerReborn memsets the whole player struct and hands back the pistol, so
@@ -527,7 +465,6 @@ class Scene(
      */
     private fun restart() {
         actors.clear()
-        respawns.clear()
         player = null
         deadUntil = 0
         nextWaveAt = 0
@@ -544,41 +481,22 @@ class Scene(
     }
 
     /**
-     * Arms the wave: nobody enters immediately, the first arrives after spawnDelay.
-     *
-     * The queue is the wave's own order stretched or trimmed to the skill's share of it,
-     * which is this scene's stand-in for the map thing flags the engine filters on.
+     * Arms the wave: the first creature arrives at once, the rest a second apart. The queue
+     * is the wave's own order, each creature swapped for one the active WAD can draw.
      */
     private fun startWave() {
         val w = GameData.waves[wave]
-        // Rounded up, so the ratio still bites on the short early waves: rounding to nearest
-        // gave the opening wave two enemies at every skill, and the ladder started flat.
-        val n = (w.order.size * rules.countEighths + 7) / 8
         queue.clear()
-        waveBurst = w.burst
-        for (i in 0 until n) {
-            // Exactly one step, never more. Promoting further was tried and measured worse:
-            // the bestiary is ordered by the original's own toughness, which is health, and
-            // that is not lethality here. Two steps turns a Zombie into a Serpentipede,
-            // whose fireballs the marine sidesteps, instead of a ShotgunZombie, whose three
-            // hitscan shots cannot be dodged at all. The odds went *up* at the hard end.
-            var c = w.order[i % w.order.size]
-            if (pRandom() < rules.toughen && c + 1 < GameData.creatures.size) c++
+        for (c in w.order) {
             // What went in last, so a run of missing creatures does not collapse onto one
             // survivor. It carries across waves as well as within them, because that is where
             // it was worst: three identical solo waves two apart.
             val s = substitute(c, avoid = queue.lastOrNull() ?: lastQueued)
-            val copies = compensation(c, s)
-            // A doubled arrival lands together, whatever the wave's own burst is. Delivered
-            // one at a time it would be the same creature twice in a row, which is precisely
-            // what the substitution was rewritten to stop producing.
-            if (copies > 1) waveBurst = maxOf(waveBurst, copies)
-            repeat(copies) { queue.add(s) }
+            repeat(compensation(c, s)) { queue.add(s) }
         }
         queue.lastOrNull()?.let { lastQueued = it }
         spawnIndex = 0
-        nextSpawnAt = tic + if (rushOpening) 0 else w.spawnDelay
-        rushOpening = false
+        nextSpawnAt = tic
     }
 
     /**
@@ -706,38 +624,16 @@ class Scene(
     private fun newCreature(c: GameData.Creature): Actor {
         val a = Actor(c.spriteIndex)
         a.creature = c
-        // Softer than the originals, by an amount that depends on where in the ladder and
-        // where in the table this is happening. The marine is never scaled. See healthScale.
-        // Exactly what info.c prints, at every level. The difficulty is carried by what the
-        // marine does to them, not by what they are; see marineDamage.
+        // The rebalanced fixed value from the table; see GameData.creatures and docs/BALANCE.md.
         a.health = c.health
         a.spawnTic = tic
         a.reactionTime = GameData.REACTION_TIME
         return a
     }
 
-    /**
-     * The marine's damage, scaled by where he is on the ladder and in the table.
-     *
-     * This is the whole difficulty lever, and it sits on his side of the fight rather than on
-     * the monsters'. Health used to be the lever - every creature spawned with a fraction of
-     * the figure info.c gives it - and moving it here buys two things. The arithmetic happens
-     * once per shot instead of once per creature per spawn, and, more usefully, the bestiary
-     * reads as itself: a Cyberdemon has 4000 health on every skill, so the table of what
-     * things are is one column rather than nine.
-     *
-     * The shape is the one that was fitted when this was health, mirrored: none of it at the
-     * hardest skill, where the marine deals exactly what p_pspr.c says and nothing is bent in
-     * his favour, and most of it already in force at the first wave, because a level that has
-     * to be gentle has to be gentle from the start. The wave decides only the last stretch.
-     */
-    internal fun marineDamage(base: Int): Int = base * damageScale(skill, wave) / 100
 
-    private fun spawnDemon(c: GameData.Creature, respawned: Boolean) {
+    private fun spawnDemon(c: GameData.Creature) {
         val a = newCreature(c)
-        a.respawned = respawned
-        // Only the FleshWorm: g_game.c touches S_SARG_RUN1..S_SARG_PAIN2 and nothing else.
-        a.fast = rules.fast && c === GameData.fleshWorm
         // Anywhere in the field, provided it is not on top of the marine.
         //
         // Arrivals used to come from one of the two side edges, then from the vertical half
@@ -905,10 +801,7 @@ class Scene(
     private fun giveAmmo(kit: Loadout, type: Int, clips: Int): Boolean {
         if (type < 0) return false
         if (kit.ammo[type] >= GameData.maxAmmo[type]) return false
-        // p_inter.c:95 — double ammo on the easiest skill and on Nightmare, where it is
-        // needed for the opposite reason.
-        var given = clips * GameData.clipAmmo[type]
-        if (rules.doubleAmmo) given = given shl 1
+        val given = clips * GameData.clipAmmo[type]
         kit.ammo[type] = minOf(GameData.maxAmmo[type], kit.ammo[type] + given)
         return true
     }
@@ -919,17 +812,17 @@ class Scene(
      */
     private fun currentWeaponIndex(p: Actor): Int {
         val kit = p.loadout ?: return GameData.WEAPON_PISTOL
-        // By expected damage per tic, not by position in the list. The original's slot order
+        // By damage per second, not by position in the list. The original's slot order
         // puts the rocket launcher near the end and it is the weakest thing in this scene,
         // because splash is not modelled; ranking by position had the marine reach for it
-        // over a super shotgun. See Weapon.damagePerTic.
+        // over a super shotgun. See Weapon.damagePerSecond.
         var best = GameData.WEAPON_PISTOL
-        var bestRate = GameData.weapons[GameData.WEAPON_PISTOL].damagePerTic
+        var bestRate = GameData.weapons[GameData.WEAPON_PISTOL].damagePerSecond
         for (i in GameData.weapons.indices) {
             if (i == GameData.WEAPON_PISTOL || !kit.has(i)) continue
             val w = GameData.weapons[i]
             if (w.ammo >= 0 && kit.ammo[w.ammo] <= 0) continue
-            if (w.damagePerTic > bestRate) { bestRate = w.damagePerTic; best = i }
+            if (w.damagePerSecond > bestRate) { bestRate = w.damagePerSecond; best = i }
         }
         return best
     }
@@ -1035,7 +928,7 @@ class Scene(
     private fun checkMissileRange(a: Actor, target: Actor): Boolean {
         var dist = approxDistance(a, target) - 64 * FRACUNIT
         val c = a.creature ?: return false
-        if (c.meleeMod == 0) dist -= 128 * FRACUNIT
+        if (!c.melee) dist -= 128 * FRACUNIT
         dist = dist shr 16
         if (dist < 0) dist = 0
         if (dist > 200) dist = 200
@@ -1054,8 +947,8 @@ class Scene(
         val target = enemyOf(a) ?: return
 
         // Melee when the target is in reach: P_CheckMeleeRange uses MELEERANGE.
-        if (c.meleeMod > 0 && approxDistance(a, target) < MELEERANGE + target.radius * FRACUNIT) {
-            damageActor(target, (pRandom() % c.meleeMod + 1) * c.meleeMul)
+        if (c.melee && approxDistance(a, target) < MELEERANGE + target.radius * FRACUNIT) {
+            damageActor(target, c.damage)
             return
         }
         // The marine fires whatever he is holding, which may be hitscan or a missile; a
@@ -1071,28 +964,26 @@ class Scene(
                 if (--kit.ammo[w.ammo] <= 0) kit.drop(i)
             }
             if (w.projectile >= 0) {
-                spawnMissile(a, target, GameData.projectiles[w.projectile])
+                spawnMissile(a, target, GameData.projectiles[w.projectile], w.damage)
             } else {
-                // p_pspr.c: every pellet deals 5*(P_Random()%3+1). Only the count changes -
-                // one for the pistol and chaingun, seven for the shotgun, twenty for the
-                // super shotgun.
-                var total = 0
-                repeat(w.pellets) { total += GameData.gunShotDamage() }
-                damageActor(target, marineDamage(total))
+                // Fixed damage per trigger pull, no roll; see GameData.weapons.
+                damageActor(target, w.damage)
             }
             return
         }
 
-        if (c.hitscanShots > 0) {
+        if (c.hitscan) {
             // Instant shot: no projectile to simulate, damage applied directly.
-            repeat(c.hitscanShots) { damageActor(target, GameData.hitscanDamage()) }
+            damageActor(target, c.damage)
             return
         }
-        if (c.projectile >= 0) spawnMissile(a, target, GameData.projectiles[c.projectile])
+        if (c.projectile >= 0) {
+            spawnMissile(a, target, GameData.projectiles[c.projectile], c.damage)
+        }
     }
 
     /** P_SpawnMissile: constant speed along the direction of the target. */
-    private fun spawnMissile(from: Actor, target: Actor, p: GameData.Projectile) {
+    private fun spawnMissile(from: Actor, target: Actor, p: GameData.Projectile, damage: Int) {
         val m = Actor(p.spriteIndex)
         m.mode = Mode.PROJECTILE
         m.anim = GameData.ballAnim
@@ -1103,10 +994,7 @@ class Scene(
         // travelled, so the trajectory and everything it collides with are unchanged.
         m.drawHeight = MUZZLE_HEIGHT
         m.spawnTic = tic
-        // The engine multiplies at impact; this is the same number, worked out once at
-        // launch, because it no longer depends on a roll. See GameData.missileDamage.
-        m.damage = GameData.missileDamage(p.damage)
-            .let { if (from.isPlayer) marineDamage(it) else it }
+        m.damage = damage
         m.firedByPlayer = from.isPlayer
 
         val dx = target.x - from.x
@@ -1114,10 +1002,7 @@ class Scene(
         val dist = approxDistance(from, target).coerceAtLeast(1)
         // Momentum is in fixed-point: p.speed is units per tic, as in mobjinfo where the
         // missiles have speed 10*FRACUNIT (monsters instead carry a plain integer).
-        // g_game.c:1425 forces every monster missile to speed 20 on the fast skills. The
-        // marine's own shots are hitscan, so nothing of his is affected.
-        val speed = if (rules.fast && !from.isPlayer) GameData.FAST_MISSILE_SPEED else p.speed
-        val v = (speed * FRACUNIT).toLong()
+        val v = (p.speed * FRACUNIT).toLong()
         m.momX = (v * dx / dist).toInt()
         m.momY = (v * dy / dist).toInt()
         actors.add(m)
@@ -1154,13 +1039,9 @@ class Scene(
         val c = target.creature ?: return
 
         // p_inter.c: armour absorbs a third of the damage when green, half when blue, and
-        // is consumed by the same amount. Once it runs out, the type is cleared too.
-        // p_inter.c:799 — half damage to the player in trainer mode, before the armour. That
-        // is the engine's own rule and belongs to the first level alone; the graded one below
-        // is ours and covers the rest of the ladder. They compound on the first rung, which
-        // is intended: that level is meant to be the gentlest thing this scene can be.
-        var amount = if (target.isPlayer && rules.halfDamage) amount shr 1 else amount
-        if (target.isPlayer) amount = amount * damageTakenScale(skill) / 100
+        // is consumed by the same amount. Once it runs out, the type is cleared too. The
+        // marine takes the hit in full: no skill scaling sits between the monster and him.
+        var amount = amount
         val kit = target.loadout
         if (kit != null && kit.armorType > 0) {
             var saved = GameData.armorSaved(amount, kit.armorType)
@@ -1179,10 +1060,6 @@ class Scene(
             target.dead = true
             begin(target, Mode.DEATH, c.death)
             target.spawnTic = tic
-            if (rules.respawn && !target.isPlayer && !target.respawned) {
-                val i = GameData.creatures.indexOf(c)
-                if (i >= 0) respawns.add(((tic + GameData.RESPAWN_DELAY) shl RESPAWN_INDEX_BITS) or i)
-            }
             return
         }
         // painchance: the odds of being interrupted by a hit.
@@ -1230,8 +1107,8 @@ class Scene(
             }
             val inMelee = dist < MELEERANGE + target.radius * FRACUNIT
             val attacks = !breakingOff && (
-                (c.meleeMod > 0 && inMelee) ||
-                    ((c.hitscanShots > 0 || c.projectile >= 0) && checkMissileRange(a, target))
+                (c.melee && inMelee) ||
+                    ((c.hitscan || c.projectile >= 0) && checkMissileRange(a, target))
                 )
             if (attacks) {
                 a.facing = dirTo(a, target)          // A_FaceTarget: turn to shoot
@@ -1268,7 +1145,7 @@ class Scene(
     private fun move(a: Actor): Boolean {
         val d = a.moveDir
         if (d >= 8) return false
-        val speed = (a.creature?.speed ?: return false) * (if (a.fast) 2 else 1)
+        val speed = a.creature?.speed ?: return false
         val tryX = a.x + speed * xspeed[d]
         val tryY = a.y + speed * yspeed[d]
         if (tryX < minX || tryX > maxX) return false
@@ -1485,21 +1362,6 @@ class Scene(
         const val SPAWN_TRIES = 8
 
         /**
-         * Monster health as a percentage of the value in mobjinfo.
-         *
-         * A deliberate divergence, and the only one applied to a creature's own numbers.
-         * Everything else about them — speed, animation timing, pain chance, damage — is the
-         * original's. It is applied here, at spawn, rather than by editing GameData, so the
-         * licensed values stay in the table with their provenance and this stays one number
-         * in one place.
-         *
-         * It exists to pay for a slower supply of pickups. Difficulty over a table lasting
-         * minutes is the balance between how fast the marine is worn down and how fast he
-         * can heal; the drops were frequent enough to be visible clutter, so they were thinned
-         * and the monsters softened to match. The marine's own 100 is untouched: it is
-         * MAXHEALTH, and it is what the readout shows.
-         */
-        /**
          * How far above an actor's feet a shot leaves it, and where blood appears when one
          * lands. In map units.
          *
@@ -1511,91 +1373,8 @@ class Scene(
          */
         const val MUZZLE_HEIGHT = 34
 
-        /**
-         * The share of its original health a creature is given, as a percentage.
-         *
-         * ## The rule
-         *
-         * At the hardest skill nothing is scaled at all: a Cyberdemon has the 4000 health
-         * `info.c` gives it, and every other creature the number the wiki prints. That is the
-         * anchor the rest hangs from, and it makes Nightmare a declared wall rather than a
-         * difficulty setting - it is not meant to be finished.
-         *
-         * Below that, the reduction grows with two things. With the wave, because a life has
-         * to survive a whole table and it is the far end that ends it; and with how far down
-         * the ladder the skill is, because that is what the ladder is for. Wave one is close
-         * to untouched at every level - a Zombie has 20 health and dies to two pistol shots
-         * either way - and the far end of the table is where the levels separate.
-         *
-         * ## Why it replaced two constants
-         *
-         * There used to be a flat 10% for everything and a further 25% for anything at or
-         * above 1000 health. Two blunt numbers, and the second one inverted the bestiary: the
-         * Baron, at 1000, came out with 25 health against the Mancubus's 60, so the wave table
-         * got easier exactly where it was meant to peak. Scaling by position instead of by
-         * size keeps every creature in the order `info.c` puts it in.
-         */
-        internal fun damageScale(skill: Int, wave: Int): Int {
-            val lastSkill = (GameData.skills.size - 1).coerceAtLeast(1)
-            val lastWave = (GameData.waves.size - 1).coerceAtLeast(1)
-            // The whole bonus this skill is entitled to. Zero at the top of the ladder, which
-            // is what anchors the hardest level to the printed numbers.
-            val full = (MAX_DAMAGE - 100) * (lastSkill - skill.coerceIn(0, lastSkill)) / lastSkill
-            // How much of it is already in force. Anchoring wave one at no bonus at all was
-            // tried, when this lever was on the monsters' health, and is the wrong shape: a
-            // level that has to be gentle has to be gentle from the beginning. The wave
-            // decides the last stretch of it, not the bulk.
-            val progress = wave.coerceIn(0, lastWave) * 100 / lastWave
-            val applied = EARLY_SHARE + (100 - EARLY_SHARE) * progress / 100
-            return 100 + full * applied / 100
-        }
-
-        /**
-         * What the marine's damage is multiplied by, as a percentage, at the deepest wave of
-         * the easiest level.
-         *
-         * Fitted rather than chosen: the target is that the easiest level reaches the
-         * PainLord - the first creature the original prices at a thousand health, opening
-         * wave 23 of 26 - as near to every life as this lever can manage.
-         */
-        const val MAX_DAMAGE = 3300
-
-        /** How much of a skill's bonus is already in force at the first wave, percent. */
-        const val EARLY_SHARE = 94
-
-        /**
-         * How much of a hit the marine actually takes, as a percentage, by skill.
-         *
-         * The other half of the ladder, and it exists because the first half ran out. Raising
-         * what he deals stops helping once one shot kills anything: 3300, 5000 and 8000
-         * percent all measured 94.0% at reaching the first boss, and the flatness says the
-         * remaining deaths are not about how fast he kills. They are about what lands on him,
-         * which is the thing this scales.
-         *
-         * A hundred at the hardest skill, so that level takes what the engine throws, and it
-         * pairs with p_inter.c's own halfDamage rather than replacing it: that rule is the
-         * engine's and belongs to the first level, this one is ours and grades the rest.
-         */
-        internal fun damageTakenScale(skill: Int): Int {
-            val lastSkill = (GameData.skills.size - 1).coerceAtLeast(1)
-            return MIN_TAKEN + (100 - MIN_TAKEN) * skill.coerceIn(0, lastSkill) / lastSkill
-        }
-
-        /** What the easiest level takes, before p_inter.c halves it again. */
-        const val MIN_TAKEN = 80
-
-        /**
-         * Width of the creature-index field in a packed respawn entry.
-         *
-         * Sixteen values, which the bestiary and the marine fit inside with one to spare.
-         * RespawnPackingTest asserts that, because widening the bestiary past it would not
-         * fail anywhere else - it would just hand back the wrong creature.
-         */
-        const val RESPAWN_INDEX_BITS = 4
-        const val RESPAWN_INDEX_MASK = (1 shl RESPAWN_INDEX_BITS) - 1
-
         /** Spawn health at or above which a creature is a boss and never a stand-in. */
-        const val BOSS_FROM = 1000
+        const val BOSS_FROM = 45
 
         /** How far a substitution has to fall before the arrival is doubled to make up for it. */
         const val DEEP_SUBSTITUTION = 2
@@ -1607,8 +1386,7 @@ class Scene(
          * Empty ground before the marine arrives, at the start and after every death.
          *
          * Two seconds. Everything downstream shifts with it rather than being squeezed: the
-         * wave is armed when he lands, so the first enemy is still a full spawnDelay behind
-         * him and the opening keeps its shape.
+         * wave is armed when he lands, so the opening keeps its shape wherever it starts.
          */
         const val ARRIVAL_DELAY = TICRATE * 2
 

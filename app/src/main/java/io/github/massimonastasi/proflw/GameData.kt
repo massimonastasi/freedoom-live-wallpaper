@@ -107,8 +107,16 @@ object GameData {
      * [walkTics] and [walkFrames] give the walk animation: the original engine repeats each
      * frame twice (A,A,B,B,...), so every frame lasts walkTics*2.
      *
-     * Attacks, from p_enemy.c: melee deals `(P_Random() % meleeMod + 1) * meleeMul`,
-     * [hitscanShots] is the number of instant shots, [projectile] an index into [projectiles].
+     * Attacks: [damage] is what one attack deals, **fixed**, exactly as the marine's weapons
+     * are fixed - no roll, no multiplier, no shot count. Which of [melee], [hitscan] and
+     * [projectile] is set decides only *how* it is delivered: melee needs contact, hitscan
+     * lands at once, a projectile flies. A creature with both melee and a projectile uses
+     * melee when the target is in reach, and both deal the same [damage].
+     *
+     * The originals rolled: `(P_Random() % 8 + 1) * 3` for a claw, `((P_Random() % 5) + 1) * 3`
+     * per instant shot, `((P_Random() % 8) + 1) * base` for a missile. Those are gone with the
+     * skill levers, and for the same reason - a wallpaper nobody is playing has nothing to do
+     * with the spread, and the numbers below can be read against the health beside them.
      */
     class Creature(
         val name: String,
@@ -122,33 +130,38 @@ object GameData {
         val pain: Anim,
         val death: Anim,
         val painChance: Int,
-        val meleeMod: Int = 0,
-        val meleeMul: Int = 0,
-        val hitscanShots: Int = 0,
+        val damage: Int = 0,
+        val melee: Boolean = false,
+        val hitscan: Boolean = false,
         val projectile: Int = -1,
     ) {
         var spriteIndex = -1
     }
 
-    /** info.c: the missiles. Their `speed` is already in FRACUNIT, unlike the monsters'. */
+    /**
+     * info.c: the missiles. Their `speed` is already in FRACUNIT, unlike the monsters'.
+     *
+     * A missile carries no damage of its own: whoever fired it says what it deals, the same
+     * figure that shooter would have dealt by hand. mobjinfo's `damage` was a multiplicand for
+     * a roll that no longer happens, so it is gone with the roll.
+     */
     class Projectile(
         val lumpPrefix: String,
         val speed: Int,
-        val damage: Int,
     ) {
         var spriteIndex = -1
     }
 
     // info.c mobjinfo[]: MT_TROOPSHOT and MT_BRUISERSHOT are the monsters' fireballs,
-    // MT_PLASMA and MT_ROCKET the marine's. Speeds and damage verbatim from the table.
+    // MT_PLASMA and MT_ROCKET the marine's. Speeds verbatim from the table.
     val projectiles = listOf(
-        Projectile("BAL1", speed = 10, damage = 3),      // MT_TROOPSHOT
-        Projectile("BAL7", speed = 15, damage = 8),      // MT_BRUISERSHOT
-        Projectile("PLSS", speed = 25, damage = 5),      // MT_PLASMA
-        Projectile("MISL", speed = 20, damage = 20),     // MT_ROCKET
-        Projectile("FATB", speed = 10, damage = 10),     // MT_TRACER, without the homing
-        Projectile("MANF", speed = 20, damage = 8),      // MT_FATSHOT
-        Projectile("APLS", speed = 25, damage = 5),      // MT_ARACHPLAZ
+        Projectile("BAL1", speed = 10),      // MT_TROOPSHOT
+        Projectile("BAL7", speed = 15),      // MT_BRUISERSHOT
+        Projectile("PLSS", speed = 25),      // MT_PLASMA
+        Projectile("MISL", speed = 20),      // MT_ROCKET
+        Projectile("FATB", speed = 10),      // MT_TRACER, without the homing
+        Projectile("MANF", speed = 20),      // MT_FATSHOT
+        Projectile("APLS", speed = 25),      // MT_ARACHPLAZ
     )
 
     const val PROJECTILE_PLASMA = 2
@@ -169,19 +182,15 @@ object GameData {
     /**
      * The bestiary, ordered by escalation.
      *
-     * Spawn health orders all of it but the last two, which are in the order the original
-     * puts them in: the Cyberdemon is met first and the Spider Mastermind closes, even
-     * though it has a thousand health less. That order is canonical and is not to be
-     * rearranged - the arithmetic serves the sequence here, not the other way round.
-     *
-     * Health is not lethality - that was measured, and is why the weapons rank themselves by
-     * damage per tic rather than by position. But the order still has to mean something,
-     * because toughen promotes an arrival one step along it and substitute walks it looking
-     * for a creature the WAD can draw. Health is the honest choice: it is the original's own
-     * measure of how much of a thing there is.
+     * Health orders all of it: the roster climbs from the Zombie to the Overlord, which
+     * closes it. These health values are rebalanced for the wallpaper and are ours, not the
+     * original's - the info.c figures they descend from are recorded in docs/BALANCE.md. The
+     * order still has to mean something, because substitute walks it looking for a creature
+     * the WAD can draw.
      *
      * Names are ours. Where Freedoom has one it is used; the rest are descriptive, and none
-     * are the trademarked ones. Every value beside them is from info.c with its provenance.
+     * are the trademarked ones. Every other value beside them - speed, radius, timings, attack,
+     * pain chance - is from info.c, with the provenance in the comment above each Creature.
      *
      * Which of these ever appears is decided by the loaded WAD alone. Freedoom Phase 1 and a
      * Phase 1 IWAD carry exactly the same roster - measured, not assumed - and a Phase 2 IWAD
@@ -190,41 +199,41 @@ object GameData {
     val creatures = listOf(
         // mobjinfo[MT_POSSESSED]; S_POSS_RUN 4 tics, ATK 10/8/8, PAIN 3+3, DIE 5,5,5,5,-1
         Creature(
-            "Zombie", "POSS", speed = 8, health = 20, radius = 20, walkFrames = 4, walkTics = 4,
+            "Zombie", "POSS", speed = 8, health = 1, radius = 20, walkFrames = 4, walkTics = 4,
             attack = Anim(intArrayOf(4, 5, 4), intArrayOf(10, 8, 8)),
             pain = Anim(intArrayOf(6, 6), intArrayOf(3, 3)),
             death = Anim(intArrayOf(7, 8, 9, 10, 11), intArrayOf(5, 5, 5, 5, -1)),
-            painChance = 200, hitscanShots = 1,
+            painChance = 200, damage = 1, hitscan = true,
         ),
         // mobjinfo[MT_SHOTGUY]; A_SPosAttack fires 3 shots
         Creature(
-            "ShotgunZombie", "SPOS", speed = 8, health = 30, radius = 20, walkFrames = 4, walkTics = 3,
+            "ShotgunZombie", "SPOS", speed = 8, health = 2, radius = 20, walkFrames = 4, walkTics = 3,
             attack = Anim(intArrayOf(4, 5, 4), intArrayOf(10, 10, 10)),
             pain = Anim(intArrayOf(6, 6), intArrayOf(3, 3)),
             death = Anim(intArrayOf(7, 8, 9, 10, 11), intArrayOf(5, 5, 5, 5, -1)),
-            painChance = 170, hitscanShots = 3,
+            painChance = 170, damage = 2, hitscan = true,
         ),
-        // mobjinfo[MT_TROOP]; A_TroopAttack: melee (P_Random()%8+1)*3, otherwise MT_TROOPSHOT
+        // mobjinfo[MT_TROOP]; A_TroopAttack: melee, otherwise MT_TROOPSHOT
         Creature(
-            "Serpentipede", "TROO", speed = 8, health = 60, radius = 20, walkFrames = 4, walkTics = 3,
+            "Serpentipede", "TROO", speed = 8, health = 3, radius = 20, walkFrames = 4, walkTics = 3,
             attack = Anim(intArrayOf(4, 5, 6), intArrayOf(8, 8, 6)),
             pain = Anim(intArrayOf(7, 7), intArrayOf(2, 2)),
             death = Anim(intArrayOf(8, 9, 10, 11, 12), intArrayOf(8, 8, 6, 6, -1)),
-            painChance = 200, meleeMod = 8, meleeMul = 3, projectile = 0,
+            painChance = 200, damage = 3, melee = true, projectile = 0,
         ),
-        // mobjinfo[MT_CHAINGUY]; A_CPosAttack deals ((P_Random()%5)+1)*3 per shot, in bursts.
+        // mobjinfo[MT_CHAINGUY]; A_CPosAttack, a hitscan burst.
         // Phase 2 and later: absent from Phase 1 and from Freedoom Phase 1.
         Creature(
-            "ChaingunZombie", "CPOS", speed = 8, health = 70, radius = 20, walkFrames = 4, walkTics = 3,
+            "ChaingunZombie", "CPOS", speed = 8, health = 4, radius = 20, walkFrames = 4, walkTics = 3,
             attack = Anim(intArrayOf(4, 5, 4), intArrayOf(10, 4, 4)),
             pain = Anim(intArrayOf(6, 6), intArrayOf(3, 3)),
             death = Anim(intArrayOf(7, 8, 9, 10, 11, 12, 13), intArrayOf(5, 5, 5, 5, 5, 5, -1)),
-            painChance = 170, hitscanShots = 4,
+            painChance = 170, damage = 4, hitscan = true,
         ),
-        // mobjinfo[MT_SKULL]; charges rather than walks, and its collision deals
-        // (P_Random()%8+1)*3. Present in every IWAD this loader accepts.
+        // mobjinfo[MT_SKULL]; charges rather than walks, and damages by collision.
+        // Present in every IWAD this loader accepts.
         Creature(
-            "Charger", "SKUL", speed = 8, health = 100, radius = 16, walkFrames = 2, walkTics = 3,
+            "Charger", "SKUL", speed = 8, health = 5, radius = 16, walkFrames = 2, walkTics = 3,
             attack = Anim(intArrayOf(2, 3, 2), intArrayOf(10, 4, 4)),
             pain = Anim(intArrayOf(4, 4), intArrayOf(3, 3)),
             // info.c S_SKULL_DIE1..DIE6: the last one is `{SPR_SKUL, 32775, 6, {NULL}, S_NULL}`
@@ -238,130 +247,102 @@ object GameData {
             // tall - lying on the ground for thirty seconds, on top of whatever walked over
             // it. That was read as a corpse with a blood splat beside it. There is no corpse.
             death = Anim(intArrayOf(5, 6, 7, 8, 9, 10), intArrayOf(6, 6, 6, 6, 6, 6)),
-            painChance = 256, meleeMod = 8, meleeMul = 3,
+            painChance = 256, damage = 5, melee = true,
         ),
-        // mobjinfo[MT_SERGEANT] speed 10; A_SargAttack: melee only, (P_Random()%10+1)*4
+        // mobjinfo[MT_SERGEANT] speed 10; A_SargAttack: melee only
         Creature(
-            "FleshWorm", "SARG", speed = 10, health = 150, radius = 30, walkFrames = 4, walkTics = 2,
+            "FleshWorm", "SARG", speed = 10, health = 8, radius = 30, walkFrames = 4, walkTics = 2,
             attack = Anim(intArrayOf(4, 5, 6), intArrayOf(8, 8, 8)),
             pain = Anim(intArrayOf(7, 7), intArrayOf(2, 2)),
             death = Anim(intArrayOf(8, 9, 10, 11, 12, 13), intArrayOf(8, 8, 4, 4, 4, -1)),
-            painChance = 180, meleeMod = 10, meleeMul = 4,
+            painChance = 180, damage = 6, melee = true,
         ),
-        // mobjinfo[MT_UNDEAD]; A_SkelFist deals ((P_Random()%10)+1)*6, A_SkelMissile fires
+        // mobjinfo[MT_UNDEAD]; A_SkelFist punches, A_SkelMissile fires
         // MT_TRACER. The tracer's homing is not reproduced: it flies straight here.
         // Phase 2 and later.
         Creature(
-            "BoneStalker", "SKEL", speed = 10, health = 300, radius = 20, walkFrames = 6, walkTics = 2,
+            "BoneStalker", "SKEL", speed = 10, health = 10, radius = 20, walkFrames = 6, walkTics = 2,
             attack = Anim(intArrayOf(6, 7, 8), intArrayOf(6, 6, 6)),
             pain = Anim(intArrayOf(10, 10), intArrayOf(5, 5)),
             death = Anim(intArrayOf(11, 12, 13, 14, 15, 16), intArrayOf(7, 7, 7, 7, 7, -1)),
-            painChance = 100, meleeMod = 10, meleeMul = 6, projectile = PROJECTILE_TRACER,
+            painChance = 100, damage = 7, melee = true, projectile = PROJECTILE_TRACER,
         ),
-        // mobjinfo[MT_HEAD]; A_HeadAttack: melee (P_Random()%6+1)*10, otherwise MT_HEADSHOT.
+        // mobjinfo[MT_HEAD]; A_HeadAttack: melee, otherwise MT_HEADSHOT.
         // ponytail: reuses BAL1 instead of BAL2 - one fireball sprite less to handle, and
         // BAL2 is not guaranteed to exist in every IWAD.
         Creature(
-            "Trilobite", "HEAD", speed = 8, health = 400, radius = 31, walkFrames = 1, walkTics = 3,
+            "Trilobite", "HEAD", speed = 8, health = 15, radius = 31, walkFrames = 1, walkTics = 3,
             attack = Anim(intArrayOf(1, 2, 3), intArrayOf(5, 5, 5)),
             pain = Anim(intArrayOf(4, 4), intArrayOf(3, 3)),
             death = Anim(intArrayOf(6, 7, 8, 9, 10, 11), intArrayOf(8, 8, 8, 8, 8, -1)),
-            painChance = 128, meleeMod = 6, meleeMul = 10, projectile = 0,
+            painChance = 128, damage = 8, melee = true, projectile = 0,
         ),
         // mobjinfo[MT_KNIGHT]; the same attack as MT_BRUISER at half the health.
         // Phase 2 and later.
         Creature(
-            "LesserLord", "BOS2", speed = 8, health = 500, radius = 24, walkFrames = 4, walkTics = 3,
+            "LesserLord", "BOS2", speed = 8, health = 20, radius = 24, walkFrames = 4, walkTics = 3,
             attack = Anim(intArrayOf(4, 5, 6), intArrayOf(8, 8, 8)),
             pain = Anim(intArrayOf(7, 7), intArrayOf(2, 2)),
             death = Anim(intArrayOf(8, 9, 10, 11, 12, 13, 14), intArrayOf(8, 8, 8, 8, 8, 8, -1)),
-            painChance = 50, meleeMod = 8, meleeMul = 10, projectile = 1,
+            painChance = 50, damage = 9, melee = true, projectile = 1,
         ),
         // mobjinfo[MT_BABY]; A_BspiAttack fires MT_ARACHPLAZ. Phase 2 and later.
         Creature(
-            "Spiderling", "BSPI", speed = 12, health = 500, radius = 64, walkFrames = 6, walkTics = 3,
+            "Spiderling", "BSPI", speed = 12, health = 25, radius = 64, walkFrames = 6, walkTics = 3,
             attack = Anim(intArrayOf(0, 6, 7), intArrayOf(20, 4, 4)),
             pain = Anim(intArrayOf(8, 8), intArrayOf(3, 3)),
             death = Anim(intArrayOf(9, 10, 11, 12, 13, 14, 15), intArrayOf(20, 7, 7, 7, 7, 7, -1)),
-            painChance = 128, projectile = PROJECTILE_ARACHPLAZ,
+            painChance = 128, damage = 10, projectile = PROJECTILE_ARACHPLAZ,
         ),
         // mobjinfo[MT_FATSO]; A_FatAttack fires MT_FATSHOT in a spread, modelled as one.
         // Phase 2 and later.
         Creature(
-            "Bloater", "FATT", speed = 8, health = 600, radius = 48, walkFrames = 6, walkTics = 4,
+            "Bloater", "FATT", speed = 8, health = 30, radius = 48, walkFrames = 6, walkTics = 4,
             attack = Anim(intArrayOf(6, 7, 8), intArrayOf(20, 10, 5)),
             pain = Anim(intArrayOf(9, 9), intArrayOf(3, 3)),
             death = Anim(intArrayOf(10, 11, 12, 13, 14, 15, 16, 17, 18), intArrayOf(6, 6, 6, 6, 6, 6, 6, 6, -1)),
-            painChance = 80, projectile = PROJECTILE_FATSHOT,
+            painChance = 80, damage = 11, projectile = PROJECTILE_FATSHOT,
         ),
-        // mobjinfo[MT_BRUISER]; A_BruisAttack: melee (P_Random()%8+1)*10, otherwise MT_BRUISERSHOT
+        // mobjinfo[MT_BRUISER]; A_BruisAttack: melee, otherwise MT_BRUISERSHOT
         Creature(
-            "PainLord", "BOSS", speed = 8, health = 1000, radius = 24, walkFrames = 4, walkTics = 3,
+            "PainLord", "BOSS", speed = 8, health = 45, radius = 24, walkFrames = 4, walkTics = 3,
             attack = Anim(intArrayOf(4, 5, 6), intArrayOf(8, 8, 8)),
             pain = Anim(intArrayOf(7, 7), intArrayOf(2, 2)),
             death = Anim(intArrayOf(8, 9, 10, 11, 12, 13, 14), intArrayOf(8, 8, 8, 8, 8, 8, -1)),
-            painChance = 50, meleeMod = 8, meleeMul = 10, projectile = 1,
+            painChance = 50, damage = 12, melee = true, projectile = 1,
         ),
         // mobjinfo[MT_CYBORG]; fires MT_ROCKET. Present in every IWAD this loader accepts.
         // At 30% of the screen width it is barely larger than the PainLord already drawn
         // at 23%.
         Creature(
-            "Cyberlord", "CYBR", speed = 16, health = 4000, radius = 40, walkFrames = 4, walkTics = 3,
+            "Cyberlord", "CYBR", speed = 16, health = 60, radius = 40, walkFrames = 4, walkTics = 3,
             attack = Anim(intArrayOf(4, 5, 4), intArrayOf(6, 12, 12)),
             pain = Anim(intArrayOf(6, 6), intArrayOf(10, 10)),
             death = Anim(intArrayOf(7, 8, 9, 10, 11, 12, 13, 14), intArrayOf(10, 10, 10, 10, 10, 10, 10, -1)),
-            painChance = 20, projectile = PROJECTILE_ROCKET,
+            painChance = 20, damage = 13, projectile = PROJECTILE_ROCKET,
         ),
         // mobjinfo[MT_SPIDER]; A_SPosAttack with A_SpidRefire, so a hitscan burst. Present
         // in every IWAD this loader accepts. It is the largest thing drawn by a distance -
         // 71% of the screen width against the PainLord's 23% - and is here because that was
         // asked for after the measurement, not in spite of it.
         Creature(
-            "Overlord", "SPID", speed = 12, health = 3000, radius = 128, walkFrames = 6, walkTics = 3,
+            "Overlord", "SPID", speed = 12, health = 70, radius = 128, walkFrames = 6, walkTics = 3,
             attack = Anim(intArrayOf(0, 6, 7), intArrayOf(20, 4, 4)),
             pain = Anim(intArrayOf(8, 8), intArrayOf(3, 3)),
             death = Anim(intArrayOf(9, 10, 11, 12, 13, 14, 15, 16, 17, 18), intArrayOf(20, 10, 10, 10, 10, 10, 10, 10, 10, -1)),
-            painChance = 40, hitscanShots = 3,
+            painChance = 40, damage = 14, hitscan = true,
         ),
     )
-    /** The one creature the fast skills touch: g_game.c only rewrites the SARG states. */
-    val fleshWorm get() = creatures.first { it.lumpPrefix == "SARG" }
 
     val player = Creature(
         "Player", "PLAY", speed = 8, health = 100, radius = 16, walkFrames = 4, walkTics = 4,
         attack = Anim(intArrayOf(4, 5, 4), intArrayOf(4, 6, 4)),
         pain = Anim(intArrayOf(6, 6), intArrayOf(4, 4)),
         death = Anim(intArrayOf(7, 8, 9, 10, 11, 12, 13), intArrayOf(10, 10, 10, 10, 10, 10, -1)),
-        painChance = 255, hitscanShots = 1,
+        // hitscan only says he attacks at range at all; the weapon in hand says what it deals,
+        // so [damage] stays 0 here and is never read.
+        painChance = 255, hitscan = true,
     )
-
-    /** Damage of an enemy instant shot: A_PosAttack, `((P_Random()%5)+1)*3`. */
-    fun hitscanDamage(): Int = ((pRandom() % 5) + 1) * 3
-
-    /** p_pspr.c P_GunShot: `5*(P_Random()%3+1)`. One pellet from the marine's gun. */
-    fun gunShotDamage(): Int = 5 * (pRandom() % 3 + 1)
-
-    /**
-     * What a missile actually deals when it lands.
-     *
-     * p_map.c PIT_CheckThing: `damage = ((P_Random()%8)+1) * tmthing->info->damage`. The
-     * figure in mobjinfo is a multiplicand, not the damage - a plasma bolt deals 5 to 40 and
-     * a rocket 20 to 160 on a direct hit.
-     *
-     * That multiplier was missing here, so every missile in the scene dealt its mobjinfo
-     * figure flat: the plasma rifle was worth a quarter of what it should be and the rocket
-     * launcher less than a fifth, which made it the second weakest thing in the arsenal
-     * behind the pistol - and [Weapon.damagePerTic], which is how the marine decides what to
-     * hold, was ranking on those wrong numbers. The monsters' fireballs were understated by
-     * exactly as much.
-     *
-     * Taken at the mean rather than rolled, which is the same simplification the weapon
-     * table now reads at: one to eight averages four and a half.
-     */
-    fun missileDamage(base: Int): Int = base * 9 / 2
-
-    /** p_pspr.c A_FireShotgun: seven pellets per shot. */
-    const val SHOTGUN_PELLETS = 7
 
     /**
      * Palette entries used to recolour the corner readout.
@@ -406,9 +387,9 @@ object GameData {
      * The marine's weapons, in order of power: the arsenal always reaches for the highest
      * one that is loaded, so this list is the ranking.
      *
-     * Hitscan weapons fire [pellets] instant shots of P_GunShot damage each (p_pspr.c).
-     * Projectile weapons fire one missile from [projectile] instead, which is the same
-     * mechanism the monsters' fireballs already use.
+     * A hitscan weapon lands its [damage] at once; a weapon with a [projectile] fires one
+     * missile that carries the same figure, which is the mechanism the monsters' fireballs
+     * use too.
      *
      * Which of them can appear depends on the loaded WAD: the super shotgun is Phase 2 and
      * later, so a Phase 1 IWAD simply never drops one. Nothing here lists which file has
@@ -419,28 +400,16 @@ object GameData {
         val lumpPrefix: String,
         val ammo: Int,              // index into AMMO_*; -1 = consumes nothing
         val attack: Anim,
-        val pellets: Int = 0,       // hitscan: instant shots per trigger pull
-        val projectile: Int = -1,   // otherwise: index into [projectiles]
+        val damage: Int,            // fixed damage per trigger pull; see docs/BALANCE.md
+        val projectile: Int = -1,   // set for a missile weapon: index into [projectiles]
     ) {
         /**
-         * Expected damage per tic, which is what "the most powerful weapon" has to mean.
-         *
-         * Computed rather than assumed from the list order, and that distinction was
-         * measured: the rocket launcher sits last in the original's slot order and deals 20
-         * on a direct hit, against roughly 200 from a super shotgun blast. Picking by
-         * position made the marine reach for the weakest thing he owned, and the odds of
-         * finishing the table fell from 95 to 76 percent the moment the arsenal grew.
-         *
-         * It is per tic rather than per shot because the chaingun's whole advantage is its
-         * rate. P_GunShot averages 10 across its three outcomes; a missile's damage is the
-         * fixed figure from mobjinfo. Splash is not modelled, so a rocket is worth exactly
-         * its direct hit here - which is why it ranks low, correctly.
+         * Damage per second, which is what "the most powerful weapon" has to mean: the arsenal
+         * reaches for the highest one loaded. Per second rather than per shot because the
+         * chaingun's whole advantage is its rate, and a whole number per second rather than a
+         * fraction per tic because nothing here needs the fraction - the ranking is the same.
          */
-        val damagePerTic: Double by lazy {
-            val perShot = pellets * 10.0 +
-                if (projectile >= 0) missileDamage(projectiles[projectile].damage).toDouble() else 0.0
-            perShot / attack.tics.sum().coerceAtLeast(1)
-        }
+        val damagePerSecond: Int by lazy { damage * TICRATE / attack.tics.sum().coerceAtLeast(1) }
     }
 
     const val AMMO_BULLETS = 0
@@ -454,18 +423,15 @@ object GameData {
     /** p_inter.c: clipammo[NUMAMMO] = {10, 4, 20, 1}. A weapon carries two clip loads. */
     val clipAmmo = intArrayOf(10, 4, 20, 1)
 
-    /** p_pspr.c A_FireShotgun2: twenty pellets, each of the same P_GunShot damage. */
-    const val SUPER_SHOTGUN_PELLETS = 20
-
     val weapons = listOf(
         // The pistol consumes no ammo: in a wallpaper, being disarmed forever would be a
         // deadlock, and the marine cannot go looking for ammo the way a player would.
-        Weapon("Pistol", "PIST", -1, Anim(intArrayOf(4, 5, 4), intArrayOf(6, 8, 6)), pellets = 1),
-        Weapon("Shotgun", "SHOT", AMMO_SHELLS, Anim(intArrayOf(4, 5, 4), intArrayOf(6, 10, 8)), pellets = SHOTGUN_PELLETS),
-        Weapon("Chaingun", "MGUN", AMMO_BULLETS, Anim(intArrayOf(4, 5), intArrayOf(3, 3)), pellets = 1),
-        Weapon("SuperShotgun", "SGN2", AMMO_SHELLS, Anim(intArrayOf(4, 5, 4), intArrayOf(6, 12, 10)), pellets = SUPER_SHOTGUN_PELLETS),
-        Weapon("PlasmaRifle", "PLAS", AMMO_CELLS, Anim(intArrayOf(4, 5), intArrayOf(3, 3)), projectile = PROJECTILE_PLASMA),
-        Weapon("RocketLauncher", "LAUN", AMMO_ROCKETS, Anim(intArrayOf(4, 5, 4), intArrayOf(8, 12, 10)), projectile = PROJECTILE_ROCKET),
+        Weapon("Pistol", "PIST", -1, Anim(intArrayOf(4, 5, 4), intArrayOf(6, 8, 6)), damage = 1),
+        Weapon("Shotgun", "SHOT", AMMO_SHELLS, Anim(intArrayOf(4, 5, 4), intArrayOf(6, 10, 8)), damage = 7),
+        Weapon("Chaingun", "MGUN", AMMO_BULLETS, Anim(intArrayOf(4, 5), intArrayOf(3, 3)), damage = 1),
+        Weapon("SuperShotgun", "SGN2", AMMO_SHELLS, Anim(intArrayOf(4, 5, 4), intArrayOf(6, 12, 10)), damage = 20),
+        Weapon("PlasmaRifle", "PLAS", AMMO_CELLS, Anim(intArrayOf(4, 5), intArrayOf(3, 3)), damage = 2, projectile = PROJECTILE_PLASMA),
+        Weapon("RocketLauncher", "LAUN", AMMO_ROCKETS, Anim(intArrayOf(4, 5, 4), intArrayOf(8, 12, 10)), damage = 10, projectile = PROJECTILE_ROCKET),
     )
 
     const val WEAPON_PISTOL = 0
@@ -511,14 +477,14 @@ object GameData {
         Item("MEDI", ITEM_HEALTH, 25, weight = 8),                        // medikit
         Item("ARM1", ITEM_ARMOR, 100, extra = 1, frames = 2, weight = 8),  // green armour
         Item("ARM2", ITEM_ARMOR, 200, extra = 2, frames = 2, weight = 4),  // blue armour
-        // One per weapon past the pistol, each carrying two clip loads. The weights are
+        // One per weapon past the pistol, each carrying five clip loads. The weights are
         // scaled up from the old pair rather than squeezed, so healing still outweighs
         // armour and armour still outweighs the guns with five of them in the table.
-        Item("SHOT", ITEM_WEAPON, 2, extra = 1, weight = 3),               // shotgun
-        Item("MGUN", ITEM_WEAPON, 2, extra = 2, weight = 2),               // chaingun
-        Item("SGN2", ITEM_WEAPON, 2, extra = 3, weight = 2),               // super shotgun
-        Item("PLAS", ITEM_WEAPON, 2, extra = 4, weight = 2),               // plasma rifle
-        Item("LAUN", ITEM_WEAPON, 2, extra = 5, weight = 1),               // rocket launcher
+        Item("SHOT", ITEM_WEAPON, 5, extra = 1, weight = 3),               // shotgun
+        Item("MGUN", ITEM_WEAPON, 5, extra = 2, weight = 2),               // chaingun
+        Item("SGN2", ITEM_WEAPON, 5, extra = 3, weight = 2),               // super shotgun
+        Item("PLAS", ITEM_WEAPON, 5, extra = 4, weight = 2),               // plasma rifle
+        Item("LAUN", ITEM_WEAPON, 5, extra = 5, weight = 1),               // rocket launcher
     )
 
     /**
@@ -537,141 +503,55 @@ object GameData {
     // ------------------------------------------------------------------ skill
 
     /**
-     * A skill level, with the five effects the engine actually attaches to one.
-     *
-     * The wallpaper has no maps, so the one skill effect that cannot be transcribed
-     * literally is the monster count: in the engine it comes from the map itself, where
-     * every thing carries MTF_EASY/NORMAL/HARD flags and P_SpawnMapThing (p_mobj.c:743)
-     * picks the bit for the current skill — 1 for skills 0 and 1, 2 for skill 2, 4 for
-     * skills 3 and 4. Two skill levels therefore always share a monster set, which is why
-     * [countEighths] repeats in pairs below.
-     *
-     * The ratio itself is measured rather than invented: counting the flags across the
-     * THINGS lumps of Freedoom E1M1-E1M3 gives 781 easy, 887 medium and 991 hard, so
-     * roughly seven, eight and nine eighths.
+     * Tics between automatic drops. The wallpaper's own lever, not the engine's: the engine
+     * varies difficulty by what a map contains, and this scene has no map.
      */
-    class Skill(
-        val name: String,
-        /** Arrival-queue length as eighths of the wave's own order. */
-        val countEighths: Int,
-        /**
-         * Tics between automatic drops.
-         *
-         * The wallpaper's own lever, not the engine's: the engine varies difficulty by what
-         * a map contains, and this scene has no map. It turned out to be the lever that
-         * matters most, because over a table lasting minutes the marine's survival is
-         * governed almost entirely by how often he can heal.
-         *
-         * In tics rather than a fraction of a shared constant, which was the earlier form:
-         * that gave five levels only three usable values between "always alive" and "never",
-         * and the ladder could not be spread across them.
-         */
-        val dropInterval: Int,
-        /**
-         * How far into [waves] this skill runs, and therefore what it can ever meet.
-         *
-         * Twenty-six for every skill: every level meets the whole bestiary, Cyberlord
-         * included. That was chosen knowing the cost, which is measured and worth stating -
-         * the easiest skill finishes the table 29% of the time rather than 95%, and every
-         * level above it under 4%. Promotions are therefore rare, and the scene in practice
-         * stays near the bottom of the ladder.
-         *
-         * The field stays rather than being folded back into waves.size: it is the one place
-         * to change if that trade is ever revisited, and it is per-skill because that is the
-         * only lever that moves this without touching the drop rate.
-         */
-        val waveCount: Int,        /**
-         * Odds out of 256 that an arrival is replaced by the next creature up the bestiary.
-         *
-         * The engine's hard skill does not merely add monsters, it admits nastier ones: the
-         * MTF_HARD things in a map include creatures the easy pass never spawns. Twenty-six
-         * authored waves are still not a map, so it is applied per arrival instead. Counting
-         * arrivals alone was measured to make no difference at all in the opening wave — two
-         * zombies at every skill, and a marine who beats them every time.
-         *
-         * It is also the lever that decides "Hurt me plenty": at that level depth barely
-         * moved the odds (20 waves 46%, 22 waves 44%) while toughen moved them straight
-         * through the target, 60 -> 105 taking 46% to 36.7%.
-         */
-        val toughen: Int = 0,
-        /** p_inter.c:799 — the player takes half damage in trainer mode. */
-        val halfDamage: Boolean = false,
-        /** p_inter.c:95 — double ammo on the easiest and the hardest. */
-        val doubleAmmo: Boolean = false,
-        /** g_game.c:1421 — FleshWorm state tics halved, monster missiles at speed 20. */
-        val fast: Boolean = false,
-        /** p_mobj.c:456 — killed monsters come back. */
-        val respawn: Boolean = false,
-    )
-
+    const val DROP_INTERVAL = TICRATE * 30
 
     /**
-     * The ladder: g_game.c skill_t, with a rung of our own between each pair.
+     * The ladder: g_game.c skill_t, with a rung of our own between each pair. The five odd
+     * names are the engine's, the four even ones this wallpaper's.
      *
-     * The five names are the engine's, from the difficulty menu, and they keep their places
-     * and their flags. The four in between are this wallpaper's, and they are named after the
-     * people it was made around rather than after anything in the engine - there is no canonical
-     * text to borrow for a level the original does not have, and inventing something that
-     * sounded canonical would be worse than admitting whose ladder this is.
-     *
-     * Each inserted rung takes the step its neighbours leave: the drop interval and the
-     * toughen odds sit between theirs, and a flag is turned on one level before the canonical
-     * level that owns it, so the change arrives as a warning rather than a wall.
+     * Names, and nothing else. Every rung plays identically - the combat levers that once
+     * separated them are gone and the drop interval is one figure for all - so the Skill class
+     * that used to carry them held a name and a constant. All that is left to pick is which
+     * name and which floor.
      */
     val skills = listOf(
-        Skill("I'm too young to die", 8, 120, waveCount = 26, toughen = 0, halfDamage = true, doubleAmmo = true),
-        // Half damage is gone; the ammunition is not, so this is the first level that hurts.
-        // The drop interval has to fall a long way to pay for that, because half damage is by
-        // far the strongest lever on this ladder: at 126 tics this measured 68.5%, below the
-        // level beneath it, and the gap only closes when the supplies come roughly twice as
-        // often as anywhere else.
-        Skill("Pity me", 8, 55, waveCount = 26, toughen = 0, doubleAmmo = true),
-        Skill("Hey, not too rough", 8, 62, waveCount = 26, toughen = 0),
-        Skill("Rough it", 8, 116, waveCount = 26, toughen = 52),
-        Skill("Hurt me plenty", 8, 140, waveCount = 26, toughen = 105),
-        Skill("Only killing", 8, 225, waveCount = 26, toughen = 112),
-        Skill("Ultra-Violence", 8, 330, waveCount = 26, toughen = 120),
-        // Fast monsters were tried here, one rung early, and it inverted the ladder: this
-        // level measured 0.5% against Nightmare's 1.2%, so the hardest level in the game was
-        // no longer the hardest. Speed is not a step, it is a cliff. The rung is made out of
-        // the two continuous levers instead, and fast stays where the engine puts it.
-        // Loosened again after it measured 1.0% against Nightmare's 1.2%: inside the noise of
-        // a 200-life sample, but on the wrong side of it, and the ladder is asserted to never
-        // rise. The gap has to be real, not merely intended.
-        Skill("Final undoing", 8, 420, waveCount = 26, toughen = 124),
-        // Lower toughen than Ultra-Violence would suggest, and still far harder: this level
-        // alone brings fast FleshWorms and monsters that come back, and a wave that refills
-        // is a wave the marine is very unlikely to finish. The parameter is not the
-        // difficulty; the measured outcome is, and that is what the test asserts.
-        Skill(
-            "Nightmare!", 8, 1600, waveCount = 26, toughen = 130,
-            doubleAmmo = true, fast = true, respawn = true,
-        ),
+        "I'm too young to die",
+        "Pity me",
+        "Hey, not too rough",
+        "Rough it",
+        "Hurt me plenty",
+        "Only killing",
+        "Ultra-Violence",
+        "Final undoing",
+        "Nightmare!",
     )
-
-    /** g_game.c:1425 — every monster missile is forced to this speed when fast. */
-    const val FAST_MISSILE_SPEED = 20
-
-    /** p_mobj.c:461 — a monster comes back 12 seconds after it fell. */
-    const val RESPAWN_DELAY = TICRATE * 12
 
     // ------------------------------------------------------------------ waves
 
     /**
-     * A wave: which creatures, in what order, and how calmly.
+     * A wave: which creatures, in what order, and how long a pause it earns.
      *
-     * [order] is the arrival sequence, [spawnDelay] the tics between one arrival and the
-     * next, [burst] how many show up together on each arrival, [rest] the pause once the
-     * wave has been cleared.
+     * [order] is the arrival sequence, [rest] the pause once the wave has been cleared.
+     * The spacing between arrivals is [SPAWN_DELAY] for every wave in the table.
      */
     class Wave(
         val order: IntArray,
-        val spawnDelay: Int,
-        val burst: Int = 1,
-        val rest: Int = TICRATE * 2,
-    ) {
-        val size get() = order.size
-    }
+        val rest: Int = TICRATE * 5 / 4,
+    )
+
+    /**
+     * One second between arrivals, everywhere.
+     *
+     * It was a per-wave figure walking from two seconds down to three quarters, which is four
+     * numbers on every row to express one idea. `SPAWN_MIN_DISTANCE = 280` is about a second
+     * of walking, so anything shorter puts the next body on the field before the last one has
+     * crossed the ground it arrived on. The pacing lives in the wave's contents now, not in
+     * the gaps between them.
+     */
+    const val SPAWN_DELAY = TICRATE
 
     /**
      * info.c: `reactiontime` is 8 for every creature we use. A monster that has just
@@ -684,23 +564,21 @@ object GameData {
     /**
      * The waves.
      *
-     * The progression follows the order in which the original actually introduces its monsters in
-     * the first episode — zombies, then imps, then demons, then cacodemons, with the
-     * barons as the final encounter (E1M8).
+     * One axis of tension now, not four: the **total health** a wave puts on the field, rising
+     * and never falling across the twenty-six. The delay is one second everywhere and the
+     * pauses are equal, so what escalates is what arrives, which is the only thing anyone
+     * watching can actually see.
      *
-     * Tension grows along four axes: tougher creatures, a delay shrinking from two seconds
-     * to under one, paired arrivals only near the end, and shorter pauses between waves.
+     * The shape alternates: a creature enters **alone**, in a wave of one, so it gets looked
+     * at instead of lost in a crowd, and is escorted in the wave after by something below it.
+     * The escort is chosen for weight rather than for rank — it is whatever keeps that wave's
+     * total from overshooting the next new creature's own health, which is what lets a solo
+     * arrival stay a step up rather than a dip. The Overlord closes the table by itself.
      *
-     * The curve is not a smooth ramp: every new creature enters **alone**, in a wave of one,
-     * so it gets looked at instead of lost in a crowd, and is then escorted in the wave
-     * after. The PainLord closes the table by itself.
-     *
-     * The table is deliberately thin — 30 arrivals across the sixteen waves, where it used
-     * to be 61. That was measured, not felt: at 61 the table needed 123 seconds of pure
-     * waiting before any fighting, against a mean life of 64 seconds, so **no life in 400
-     * runs ever reached the last wave** and the skill ladder could not move at all. A
-     * promotion costs the whole table in one life, so the table has to be something a life
-     * can outlast.
+     * The table is deliberately thin — 38 arrivals across the waves, where an earlier form
+     * had 61. That was measured, not felt: at 61 the table needed 123 seconds of pure waiting
+     * before any fighting, against a mean life of 64 seconds, so no life in 400 runs ever
+     * reached the last wave. The table has to be something a life can outlast.
      */
     val waves = listOf(
         // The table names every creature in the bestiary, in health order, and each one
@@ -711,9 +589,8 @@ object GameData {
         //
         // Twenty-six waves and never more than two arrivals at once, where it used to be
         // sixteen reaching three with a burst of two - six bodies on screen against two.
-        // Crowding was the complaint, so the difficulty moved off "how many at once" and
-        // onto "how far down the list", which is [Skill.waveCount]: each skill runs a
-        // longer prefix of this table, and only Nightmare ever meets the Cyberlord.
+        // Crowding was the complaint, so the count on screen at once was capped at two. Every
+        // skill runs all twenty-six waves and meets the whole bestiary.
         //
         // The escort waves arrive as a pair - burst 2 - and the solo waves do not. That is
         // one change fixing two complaints at once. With burst 1 everywhere, two enemies
@@ -728,37 +605,46 @@ object GameData {
         //
         // Compressing the pacing was tried and measured: shrinking the delays and rests
         // took the mean life from 130 s to 85 s and the easiest skill from 29% to 17%. The
-        // marine needs the gaps. They stayed.
-        //   creatures                delay              burst  rest after
-        Wave(intArrayOf(0), /*             2.00 s */ TICRATE * 2, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(0, 0), /*          1.75 s */ TICRATE * 7 / 4, 2, TICRATE * 5 / 4),
-        Wave(intArrayOf(1), /*             1.75 s */ TICRATE * 7 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(0, 1), /*          1.75 s */ TICRATE * 7 / 4, 2, TICRATE * 5 / 4),
-        Wave(intArrayOf(2), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(1, 2), /*          1.50 s */ TICRATE * 3 / 2, 2, TICRATE * 5 / 4),
-        Wave(intArrayOf(3), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(2, 3), /*          1.50 s */ TICRATE * 3 / 2, 2, TICRATE),
-        Wave(intArrayOf(4), /*             1.50 s */ TICRATE * 3 / 2, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(3, 4), /*          1.25 s */ TICRATE * 5 / 4, 2, TICRATE),
-        Wave(intArrayOf(5), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(4, 5), /*          1.25 s */ TICRATE * 5 / 4, 2, TICRATE),
-        Wave(intArrayOf(6), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(5, 6), /*          1.25 s */ TICRATE * 5 / 4, 2, TICRATE),
-        Wave(intArrayOf(7), /*             1.25 s */ TICRATE * 5 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(6, 7), /*          1.00 s */ TICRATE, 2, TICRATE),
-        Wave(intArrayOf(8), /*             1.00 s */ TICRATE, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(7, 8), /*          1.00 s */ TICRATE, 2, TICRATE),
-        Wave(intArrayOf(9), /*             1.00 s */ TICRATE, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(8, 9), /*          1.00 s */ TICRATE, 2, TICRATE),
-        Wave(intArrayOf(10), /*            1.00 s */ TICRATE, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(9, 10), /*         0.75 s */ TICRATE * 3 / 4, 2, TICRATE),
-        Wave(intArrayOf(11), /*            0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 5 / 4),
-        Wave(intArrayOf(10, 11), /*        0.75 s */ TICRATE * 3 / 4, 2, TICRATE),
-        // The last two arrive alone and stay alone. The Overlord takes 71% of the screen
-        // width - measured, not guessed - so an escort would leave nowhere to look.
-        Wave(intArrayOf(12), /*            0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 2),
-        Wave(intArrayOf(13), /*            0.75 s */ TICRATE * 3 / 4, 1, TICRATE * 3),
-    )    /**
+        // marine needs the gaps. They stayed, as one figure rather than a walk.
+        //
+        // The trailing column is the wave's total health, and it is the point of the table:
+        // it never falls. The old table dipped every time a new creature entered alone -
+        // wave 6 put 5 on the field and wave 7 put 4 - because the escort was always the
+        // creature one rung down, whatever that weighed. Here the escort is picked so the
+        // pair lands on exactly the health of the next creature to arrive alone, and the
+        // solo wave after it steps level rather than backwards.
+        //   creatures            total HP
+        Wave(intArrayOf(0)), //          1
+        Wave(intArrayOf(1)), //          2
+        Wave(intArrayOf(0, 1)), //       3
+        Wave(intArrayOf(2)), //          3
+        Wave(intArrayOf(0, 2)), //       4
+        Wave(intArrayOf(3)), //          4
+        Wave(intArrayOf(0, 3)), //       5
+        Wave(intArrayOf(4)), //          5
+        Wave(intArrayOf(2, 4)), //       8
+        Wave(intArrayOf(5)), //          8
+        Wave(intArrayOf(1, 5)), //      10
+        Wave(intArrayOf(6)), //         10
+        Wave(intArrayOf(4, 6)), //      15
+        Wave(intArrayOf(7)), //         15
+        Wave(intArrayOf(4, 7)), //      20
+        Wave(intArrayOf(8)), //         20
+        Wave(intArrayOf(4, 8)), //      25
+        Wave(intArrayOf(9)), //         25
+        Wave(intArrayOf(4, 9)), //      30
+        Wave(intArrayOf(10)), //        30
+        Wave(intArrayOf(7, 10)), //     45
+        Wave(intArrayOf(11)), //        45
+        Wave(intArrayOf(7, 11)), //     60
+        Wave(intArrayOf(12), rest = TICRATE * 2), //  60
+        Wave(intArrayOf(6, 12)), //     70
+        // The Overlord closes it alone. It takes 71% of the screen width - measured, not
+        // guessed - so an escort would leave nowhere to look.
+        Wave(intArrayOf(13), rest = TICRATE * 3), //  70
+    )
+
+    /**
      * Every sprite prefix in use, in a stable order. Each Creature/Projectile/Item stores
      * its own index here, so the draw loop needs no lookup at all.
      */

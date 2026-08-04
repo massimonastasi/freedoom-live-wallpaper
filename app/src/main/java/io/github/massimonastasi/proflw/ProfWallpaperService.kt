@@ -202,7 +202,7 @@ class ProfWallpaperService : WallpaperService() {
      * circular emblem that tiles into a repeating logo.
      *
      * The five chosen all sit between 28 and 38 luminance, so the ladder climbs by hue while
-     * the contrast behind the icons stays put. See GameData.Skill.flat.
+     * the contrast behind the icons stays put.
      *
      * Each falls back down a shared chain, because a user-supplied WAD need not carry them
      * all — a WAD with only one usable flat simply shows the same ground at every level.
@@ -215,10 +215,10 @@ class ProfWallpaperService : WallpaperService() {
         return Array(GameData.skills.size) { skill ->
             val flat = chosen.getOrNull(skill) ?: chosen.lastOrNull()
             if (flat == null) {
-                Log.i(TAG, "no floor for ${GameData.skills[skill].name}")
+                Log.i(TAG, "no floor for ${GameData.skills[skill]}")
                 return@Array null
             }
-            Log.i(TAG, "floor for ${GameData.skills[skill].name}: ${flat.name} " +
+            Log.i(TAG, "floor for ${GameData.skills[skill]}: ${flat.name} " +
                 "(luminance ${"%.1f".format(flat.luminance)}, chroma ${"%.1f".format(flat.chroma)})")
 
             val f = w.decodeFlat(flat.index)

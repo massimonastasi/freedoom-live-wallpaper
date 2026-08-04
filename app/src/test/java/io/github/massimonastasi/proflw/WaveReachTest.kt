@@ -31,15 +31,12 @@ class WaveReachTest {
 
     @Test
     fun `how far one life gets, and what the table costs`() {
-        val last = GameData.skills[0].waveCount - 1
+        val last = GameData.waves.size - 1
 
-        // What the table costs in time if nothing goes wrong: every arrival waits its
-        // spawnDelay, and every wave is followed by its rest.
+        // What the table costs in time if nothing goes wrong: every arrival after the first
+        // waits a second, and every wave is followed by its rest.
         var tics = 0
-        for (w in GameData.waves) {
-            val arrivals = (w.order.size + w.burst - 1) / w.burst
-            tics += arrivals * w.spawnDelay + w.rest
-        }
+        for (w in GameData.waves) tics += (w.order.size - 1) * GameData.SPAWN_DELAY + w.rest
         println("table floor: ${"%.1f".format(tics.toFloat() / TICRATE)} s of pure waiting, " +
             "${GameData.waves.sumOf { it.order.size }} arrivals over ${GameData.waves.size} waves")
 
