@@ -222,10 +222,10 @@ class ProfWallpaperService : WallpaperService() {
                 "(luminance ${"%.1f".format(flat.luminance)}, chroma ${"%.1f".format(flat.chroma)})")
 
             val f = w.decodeFlat(flat.index)
-            // Kept at full strength. The dimming used to be baked in here, which was cheaper
-            // but made it a property of this one background: the flat colour and the
-            // photograph never received it, and it could not be switched off. It is a layer
-            // of its own now, drawn over whichever background is chosen - see SCRIM_ALPHA.
+            // Kept at full strength. The dimming used to be baked in here, and later drawn as
+            // a layer over the background; both are gone. Android dims the whole wallpaper
+            // surface itself when it wants the icons to win, and doing it twice left this at
+            // 16% of itself.
             Bitmap.createBitmap(f.pixels, f.width, f.height, Bitmap.Config.ARGB_8888)
         }
     }
@@ -258,8 +258,8 @@ class ProfWallpaperService : WallpaperService() {
         private val handler = Handler(Looper.getMainLooper())
 
         /**
-         * No colour filter on either paint: the dimming is baked into the decoded pixels
-         * when a lump is loaded, so these stay on the cheapest draw path there is.
+         * No colour filter on either paint: lumps are drawn exactly as the WAD stores them,
+         * so these stay on the cheapest draw path there is.
          */
         private val paint = Paint().apply { isFilterBitmap = false }
 
@@ -316,7 +316,6 @@ class ProfWallpaperService : WallpaperService() {
         private val prefs = Settings.of(this@ProfWallpaperService)
         private var chosenFps = Settings.DEFAULT_FPS
         private var readoutVisible = true
-        private var overlayVisible = true
 
         /**
          * Held here rather than only on the scene, because the scene is rebuilt on every
@@ -449,7 +448,6 @@ class ProfWallpaperService : WallpaperService() {
         private fun applySettings() {
             chosenFps = Settings.fps(prefs)
             readoutVisible = Settings.readout(prefs)
-            overlayVisible = Settings.overlay(prefs)
             godMode = Settings.godMode(prefs)
 
             // A different WAD means every sprite, colour and floor is different, so the
@@ -625,15 +623,11 @@ class ProfWallpaperService : WallpaperService() {
         private fun drawScene(canvas: Canvas) {
             drawFloor(canvas)
 
-            // The wash goes here: over every background - the floor tiles, the flat colour,
-            // the imported image - and under everything that fights. The sprites are drawn
-            // exactly as the WAD stores them and nothing dims them.
-            if (overlayVisible) {
-                overlay.color = Color.BLACK
-                overlay.alpha = SCRIM_ALPHA
-                canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
-            }
-
+            // ponytail: no wash of our own over the background. Android dims the whole
+            // wallpaper surface itself when it wants the icons to win - dark theme, and
+            // Bedtime mode at 0.6 - and that dim lands on the sprites too, which ours never
+            // did. Two layers doing the same job left the floor at 16% of itself and the
+            // whole picture reading as if it were under a sheet.
             val s = scene
             if (s == null || sprites.isEmpty()) {
                 drawPlaceholder(canvas)
@@ -923,32 +917,6 @@ class ProfWallpaperService : WallpaperService() {
          * The proportions between monsters stay correct relative to each other.
          */
         const val SPRITE_SCALE = 3f
-
-        /**
-         * How much of the background survives the wash, as a percentage.
-         *
-         * The backdrop covers the whole screen and only has to hint that there is ground; it
-         * is the one thing here that has to lose the contest with the launcher icons. The
-         * chosen flats measure 26 to 44 mean luminance, so at forty percent the ground lands
-         * near fourteen - barely there, but with a structure that keeps it from reading as a
-         * black screen.
-         *
-         * It applies to the sprites in no way at all. They are drawn exactly as the WAD
-         * stores them.
-         */
-        const val FLOOR_DIM_PERCENT = 40
-
-        /**
-         * Opacity of the wash over the background, chosen to reproduce exactly what the floor
-         * looked like when the dimming was baked into its tiles.
-         *
-         * Baked in, a pixel came out at [FLOOR_DIM_PERCENT] of its brightness. Black at alpha
-         * a over a pixel leaves it at (255 - a)/255 of itself, so the same result is
-         * 255 * (100 - 40) / 100 = 153. The dungeon floor is therefore unchanged; the flat
-         * colour and the photograph are darker than before, because they are receiving this
-         * for the first time.
-         */
-        const val SCRIM_ALPHA = 255 * (100 - FLOOR_DIM_PERCENT) / 100
 
         /** The IWAD shipped in assets, used until the user supplies one of their own. */
         const val BUNDLED = "freedoom2.wad"

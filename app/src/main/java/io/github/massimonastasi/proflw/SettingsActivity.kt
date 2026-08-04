@@ -156,7 +156,6 @@ class SettingsActivity : AppCompatActivity() {
         showAbout()
 
         shapeGroup(R.id.switch_group)
-        shapeGroup(R.id.overlay_group)
         shapeGroup(R.id.background_group)
         shapeGroup(R.id.about_group)
 
@@ -199,13 +198,6 @@ class SettingsActivity : AppCompatActivity() {
      * there and is the only one who can take away.
      */
     private fun showBackground() {
-        // Its own group of one, above the three: it is not a fourth background, it goes over
-        // whichever of them is chosen, and a radio group is a promise that they are exclusive.
-        switchRow(
-            R.id.row_overlay, R.string.background_overlay, R.string.background_overlay_note,
-            Settings.KEY_OVERLAY, default = true,
-        )
-
         val rows = intArrayOf(R.id.row_floor, R.id.row_colour, R.id.row_photo)
         val values = arrayOf("dynamic", "colour", "photo")
         val photo = PhotoStore.name(this)

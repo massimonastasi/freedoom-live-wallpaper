@@ -42,7 +42,6 @@ object Settings {
     const val KEY_READOUT = "readout"
     const val KEY_BACKGROUND = "background"
     const val KEY_BACKGROUND_COLOUR = "background_colour"
-    const val KEY_OVERLAY = "overlay"
     const val KEY_COMPLETIONS = "completions"
     const val KEY_FIRST_COMPLETION = "first_completion"
     const val KEY_GOD_MODE = "god_mode"
@@ -82,18 +81,6 @@ object Settings {
      */
     fun godMode(p: SharedPreferences): Boolean = p.getBoolean(KEY_GOD_MODE, false)
 
-
-    /**
-     * A dark wash over whatever the background is, drawn under the fight.
-     *
-     * It used to be baked into the dungeon floor tiles at load, which meant the flat colour
-     * and the photograph never got it and it could not be turned off at all. As a layer of
-     * its own it covers all three, and this switch is what covers or uncovers them.
-     *
-     * On by default: a wallpaper sits behind the launcher icons and has to lose that contest,
-     * and that is the state every other measurement in this app was taken in.
-     */
-    fun overlay(p: SharedPreferences): Boolean = p.getBoolean(KEY_OVERLAY, true)
 
     /**
      * How many times the table has been finished at the hardest skill.

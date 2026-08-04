@@ -162,20 +162,6 @@
                 style="@style/SectionHeader"
                 android:text="@string/settings_background" />
 
-            <!--
-                The overlay is its own list of one, above the three backgrounds and not among
-                them. It is not a fourth choice: it sits over whichever of the three is
-                chosen, so putting it in the same group would make the radio buttons look as
-                though they included it.
-            -->
-            <LinearLayout
-                android:id="@+id/overlay_group"
-                style="@style/ListGroup">
-
-                <include android:id="@+id/row_overlay" layout="@layout/list_row" />
-
-            </LinearLayout>
-
             <LinearLayout
                 android:id="@+id/background_group"
                 style="@style/ListGroup">

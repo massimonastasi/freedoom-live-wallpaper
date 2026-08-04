@@ -67,8 +67,6 @@
     <string name="fps_20">20 fps</string>
 
     <string name="wad_stale">Your imported WAD was prepared by an older version and has been removed. Import it again to use it.</string>
-    <string name="background_overlay">Add overlay</string>
-    <string name="background_overlay_note">Keeps whatever is behind the fight from competing with your icons</string>
     <string name="background_floor">Dungeon floor</string>
     <string name="background_floor_note">Changes with the difficulty</string>
     <string name="background_colour">Flat colour</string>
