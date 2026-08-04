@@ -79,8 +79,14 @@ promotion, no `fast`, no `respawn`, no double-ammo. Monster health is fixed per 
 
 Every skill now plays **identically**: same monsters, same health, same damage, and a single
 drop interval of **30 seconds** (`TICRATE * 30`) for all, all running 26 waves. The nine names
-are all that is left to choose between. Open: whether to collapse them into one and drop the
-picker.
+are all that is left.
+
+They were kept, and made reachable instead. The rung is no longer stored and promoted: it is
+read off the wave, `wave * skills.size / waves.size`, so the ladder is climbed once per life and
+a death takes it back to the bottom along with the wave. It used to advance one rung per
+*finished table*, which `WaveReachTest` measures as unreachable — 0% of 400 runs — so eight of
+the nine names, and the floor tile that goes with each, were written in the code and never
+shown on a screen. Lives that end around wave 21 now pass rungs 0 through 7.
 
 ## Wave table — the rising-weight curve
 
@@ -129,4 +135,6 @@ that hit for 3 to 15. Fixing the damage table fixed most of that: 23.5 s → 64.
 to the wave table, the drop interval or the marine.
 
 What is still open is the last third of the table. Nobody reaches wave 26, and the table floor is
-46.5 s of pure waiting, so a life that ends at 64 s is dying with most of the roster unseen.
+46.5 s of pure waiting, so a life that ends at 64 s is dying with most of the roster unseen. The
+names and floors above it are seen now — the rung is derived from the wave — but the creatures
+of waves 24 to 26 still are not.

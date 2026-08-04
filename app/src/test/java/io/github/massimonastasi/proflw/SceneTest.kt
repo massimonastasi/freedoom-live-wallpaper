@@ -94,8 +94,9 @@ class SceneTest {
     }
 
     /**
-     * The difficulty ladder: finishing the wave table promotes the marine one skill level,
-     * it stops at Nightmare, and dying puts him back at the bottom.
+     * The difficulty ladder: the rung is where the current wave sits in the table, so it
+     * rises as the waves are cleared, never leaves the table, and a death - which takes the
+     * wave back to the first - takes it back to the bottom.
      */
     @Test
     fun `the skill climbs with the table and a death resets it`() {
@@ -111,18 +112,16 @@ class SceneTest {
         while (t < TICRATE * 3600) {
             scene.tick(++t)
             assertTrue(scene.skill in GameData.skills.indices, "skill ${scene.skill} off the table")
-            if (scene.skill > reached) {
-                reached = scene.skill
-                assertEquals(0, scene.wave, "the promotion must land on the first wave")
-            }
+            if (scene.skill > reached) reached = scene.skill
         }
         assertTrue(reached > 0, "the skill never rose in an hour of invulnerable play")
 
-        // Now let him be killed: the ladder must collapse back to the bottom.
+        // Now let him be killed: the ladder must collapse back to the bottom. It can only
+        // fall, so waiting for it to drop below where it stands is waiting for the death.
         scene.invulnerable = false
         val hardened = scene.skill
         assertTrue(hardened > 0, "expected to be above the lowest skill before dying")
-        while (t < TICRATE * 5400 && scene.skill == hardened) scene.tick(++t)
+        while (t < TICRATE * 5400 && scene.skill >= hardened) scene.tick(++t)
         assertEquals(0, scene.skill, "death must restart from the lowest skill")
     }
 

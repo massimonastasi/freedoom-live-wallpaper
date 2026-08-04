@@ -54,8 +54,9 @@ Neither project is affiliated with this one, endorses it, or is involved in it.
   `P_NewChaseDir` reproduced from the source: table-based movement, no trigonometry. This is
   why they move like the original creatures rather than like something chasing a point.
 - **Twenty-six waves and nine skill levels** — the five names from `g_game.c` with four of ours
-  between them. The difficulty is the wave table alone: every skill runs the whole of it, and
-  clearing it moves you one rung up the ladder.
+  between them. The difficulty is the wave table alone: the skill is the name for where the
+  current wave sits in it, so the whole ladder is climbed once per life, and a death is what
+  takes you back to the bottom.
 - **Combat**: melee, hitscan, missiles, pain, death, corpses. Health and damage are small whole
   numbers, fixed — no roll, no multiplier. A creature deals its place in the roster, 1 through
   14, and which attack it has says only how that is delivered. The figures, and the `info.c`
@@ -165,7 +166,7 @@ is why it and `keystore.properties` are outside version control.
    *Settings → Wallpaper → Live wallpapers* and pick it.
 
 The emulator works for rendering but is not representative of power consumption. `gradlew test`
-runs 55 JVM tests, including an hour-long simulation that pins the top of the skill ladder;
+runs 54 JVM tests, including an hour-long simulation that pins the top of the skill ladder;
 none of them launches the app.
 
 ## Licences

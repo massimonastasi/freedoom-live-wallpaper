@@ -176,8 +176,6 @@ class Actor(val spriteIndex: Int) {
 class Scene(
     private val worldWidth: Int,
     private val worldHeight: Int,
-    /** Skill to open on. Only the first run uses it: a death always drops back to zero. */
-    startSkill: Int = 0,
     /**
      * Skip the wait before the very first arrival.
      *
@@ -268,15 +266,17 @@ class Scene(
         private set
 
     /**
-     * Current skill level, an index into [GameData.skills]. It climbs by one every time the
-     * wave table is finished, so the marine walks the whole difficulty ladder from
-     * "I'm too young to die" up to "Nightmare!" — and a death drops him back to the bottom.
+     * Current skill level, an index into [GameData.skills]: where the current wave sits in
+     * the table, scaled onto the ladder. A death takes the wave back to the first, so it
+     * takes the rung back to the bottom with it, and nothing has to remember either.
+     *
+     * ponytail: derived rather than stored. It used to climb by one per *finished table*,
+     * which WaveReachTest measures as unreachable — 0% of 400 runs clear all twenty-six
+     * waves in one life — so eight of the nine rungs, and the floor that goes with each,
+     * were named in the code and never seen on a screen. Read off the wave they are all
+     * reached, in the order they are written, within an ordinary life.
      */
-    var skill = startSkill.coerceIn(GameData.skills.indices)
-        private set
-
-    /** Waves cleared since the last death, which is what earns the promotion. */
-    private var cleared = 0
+    val skill: Int get() = wave * GameData.skills.size / GameData.waves.size
 
     /**
      * The tic the marine is due to arrive on, held empty until then.
@@ -433,31 +433,23 @@ class Scene(
         }
         if (tic >= nextWaveAt) {
             nextWaveAt = 0
-            wave = (wave + 1) % GameData.waves.size
-            // At the end of the table the skill index advances by one, up to the last. The
-            // levels are identical for now; the climb is the seam for a reimplemented ladder.
-            cleared++
-            if (cleared >= GameData.waves.size) {
-                cleared = 0
-                if (skill < GameData.skills.size - 1) {
-                    skill++
-                } else {
-                    // The table finished at the top of the ladder, which is the only thing
-                    // here that can be called finishing the game: there is no harder level to
-                    // be promoted to. The scene marks it and restarts from the bottom, the
-                    // same way a death does, so it keeps running afterwards.
-                    if (!cheated) completions++
-                    wonUntil = tic + DEATH_DELAY
-                    restart()
-                    return
-                }
+            wave++
+            if (wave >= GameData.waves.size) {
+                // The whole table cleared in one life, which is the only thing here that can
+                // be called finishing the game: the last wave is the Overlord alone and there
+                // is nothing past it. The scene marks it and restarts from the first wave,
+                // the same way a death does, so it keeps running afterwards.
+                if (!cheated) completions++
+                wonUntil = tic + DEATH_DELAY
+                restart()
+                return
             }
             startWave()
         }
     }
 
     /**
-     * After death everything restarts: first wave, lowest skill, nothing carried over.
+     * After death everything restarts: first wave, and with it the lowest rung.
      *
      * g_game.c G_PlayerReborn memsets the whole player struct and hands back the pistol, so
      * death costs the armour and the arsenal alike. Nothing survives here either, which is
@@ -469,8 +461,6 @@ class Scene(
         deadUntil = 0
         nextWaveAt = 0
         wave = 0
-        skill = 0
-        cleared = 0
         // Not false: god mode is a setting, not an event, so a run that begins with it
         // already on is tainted from its first tic without anything being switched.
         cheated = invulnerable

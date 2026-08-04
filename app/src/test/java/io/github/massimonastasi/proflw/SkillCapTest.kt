@@ -23,27 +23,25 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * What happens at the end of the ladder: the marine clears the whole table on the hardest
- * skill and there is nothing above it.
+ * What happens at the end of the table: the marine clears all twenty-six waves in one life
+ * and there is nothing past the last.
  *
- * There are only two ways off Nightmare and both end the run. Dying drops to the bottom, as
- * it does from anywhere. Finishing the table there is the other, and it is the only thing in
- * this scene that can be called winning: it is counted, it is washed green, and it starts
- * again from the first level. Stalling on Nightmare forever was the earlier answer and it
- * left the ladder with no top - a run that could never end and never be tallied.
+ * That is the only thing in this scene that can be called winning: it is counted, it is
+ * washed green, and it starts again from the first wave. The rung is read off the wave, so
+ * the same run is also the only place the whole ladder can be watched being climbed.
  */
 class SkillCapTest {
 
     @Test
-    fun `finishing the table on the hardest skill is a win, and the run starts over`() {
+    fun `finishing the table is a win, and the run starts over`() {
         GameData.clearRandom()
-        val scene = Scene(720, 1600, startSkill = GameData.skills.size - 1)
-        scene.invulnerable = true                    // so the only way off the top is winning
+        val scene = Scene(720, 1600)
+        scene.invulnerable = true                    // an honest marine never gets to the end
 
         val top = GameData.skills.size - 1
         var wavesSeen = 0
         var previousWave = scene.wave
-        var lowestSkill = top
+        var highestSkill = 0
         // The green wash, which fires on every finish. It is the observable for winning now
         // that the counter is not: god mode is what makes this test able to reach the end at
         // all, and god mode is exactly what stops the end being tallied.
@@ -52,27 +50,18 @@ class SkillCapTest {
         for (t in 1..TICRATE * 3600) {
             scene.tick(t)
             if (scene.winFade > 0f) won = true
-            if (scene.skill < lowestSkill) lowestSkill = scene.skill
-            // Invulnerable, so the skill may only ever be at the top or back at the bottom
-            // having just won; anything in between would be a promotion that cannot happen.
-            assertTrue(
-                scene.skill == top || won,
-                "tic $t: the skill left Nightmare without winning",
-            )
+            if (scene.skill > highestSkill) highestSkill = scene.skill
             if (scene.wave != previousWave) {
                 wavesSeen++
                 previousWave = scene.wave
             }
         }
 
-        println("Nightmare: $wavesSeen wave changes, won=$won, ${scene.completions} completions")
-        assertTrue(wavesSeen > 0, "the waves stopped advancing on the hardest skill")
+        println("$wavesSeen wave changes, won=$won, ${scene.completions} completions")
+        assertTrue(wavesSeen > 0, "the waves stopped advancing")
         assertTrue(won, "an invulnerable marine never finished the table in an hour")
         assertEquals(0, scene.completions, "a win under god mode must not be counted")
-        // Where it *went*, not where it ended: an invulnerable marine climbs the whole ladder
-        // again inside the same hour, so reading the skill at the end measures the second run
-        // rather than the win.
-        assertEquals(0, lowestSkill, "a win restarts the ladder from the first level")
+        assertEquals(top, highestSkill, "the last wave must sit on the last rung")
     }
 
     /**
@@ -101,17 +90,5 @@ class SkillCapTest {
         // The converse - a restart while god mode is still on - is what `cheated = invulnerable`
         // in restart() is for, and the hour-long test above is where it is exercised: that
         // marine wins with it on, restarts, and must still be uncounted afterwards.
-    }
-
-    @Test
-    fun `a death on the hardest skill drops all the way back to the first`() {
-        GameData.clearRandom()
-        val scene = Scene(720, 1600, startSkill = GameData.skills.size - 1)
-
-        var t = 0
-        while (t < TICRATE * 600 && scene.skill == GameData.skills.size - 1) scene.tick(++t)
-
-        assertEquals(0, scene.skill, "a death must take the ladder back to the bottom")
-        assertEquals(0, scene.wave, "and back to the first wave")
     }
 }
