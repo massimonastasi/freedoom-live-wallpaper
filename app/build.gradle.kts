@@ -18,8 +18,16 @@ android {
         // minSdk 31: Material You (onComputeColors -> system theme) arrived with Android 12.
         minSdk = 31
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.8"
+        /*
+         * Semantic versioning from here on: MAJOR.MINOR.PATCH. Only versionName is edited;
+         * versionCode is derived from it, because Play and every installed device order
+         * updates by that integer alone and two numbers kept by hand drift apart. The
+         * arithmetic leaves room for 100 patches and 100 minors per major, and is monotonic
+         * as long as the name only ever goes up.
+         */
+        versionName = "0.9.0"
+        versionCode = versionName!!.split(".").map { it.toInt() }
+            .let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
     }
 
     /**
