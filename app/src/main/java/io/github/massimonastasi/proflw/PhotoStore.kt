@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Prof Live Wallpaper
  * Copyright (C) 2026 Massimo Nastasi
  *
@@ -37,7 +37,7 @@ object PhotoStore {
     private const val KEY_NAME = "photo_name"
 
     private const val NAME = "background.jpg"
-    private const val TAG = "FreedoomLW"
+    private const val TAG = "ProfLW"
 
     fun file(context: Context): File? =
         File(context.filesDir, NAME).takeIf { it.isFile && it.length() > 0 }

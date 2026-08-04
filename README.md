@@ -9,7 +9,7 @@ and neither may anything derived from it. See [NOTICE.md](NOTICE.md).
 
 | The wallpaper | The settings |
 |---|---|
-| <img src="docs/images/scene.png" width="320" alt="A marine fighting among corpses, blood and dropped weapons"> | <img src="docs/images/settings.png" width="320" alt="The settings screen"> |
+| <img src="docs/images/scene.png" width="320" alt="A marine firing a chaingun at a creature, two shots in flight, corpses on the floor"> | <img src="docs/images/settings.png" width="320" alt="The settings screen"> |
 
 ## What it is built from
 

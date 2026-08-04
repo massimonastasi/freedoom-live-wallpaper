@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Prof Live Wallpaper
  * Copyright (C) 2026 Massimo Nastasi
  *
@@ -35,13 +35,13 @@ import java.nio.channels.FileChannel
  * is nothing wrong with reading one the user already owns.
  *
  * Copied rather than read through the content resolver because the loader maps the file and
- * seeks around it constantly — random access through a ContentResolver stream is slow, and a
+ * seeks around it constantly â€” random access through a ContentResolver stream is slow, and a
  * document URI's permission can be revoked between one launch and the next.
  */
 object WadStore {
 
     private const val DIR = "wads"
-    private const val TAG = "FreedoomLW"
+    private const val TAG = "ProfLW"
 
     private const val KEY_NAME = "wad_name"
     private const val KEY_FORMAT = "wad_format"

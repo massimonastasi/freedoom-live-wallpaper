@@ -39,11 +39,18 @@ the original does:
 |---|---|
 | `rndtable[]`, the 256-byte pseudo-random table | `m_random.c` |
 | `xspeed[]` / `yspeed[]` direction tables, `opposite[]` | `p_enemy.c` |
-| Creature speed, health, radius, pain chance, reaction time | `info.c`, `mobjinfo[]` |
+| Creature speed, radius and pain chance | `info.c`, `mobjinfo[]` |
 | Animation frame counts and durations | `info.c`, `states[]` |
-| Missile speeds and damage | `info.c` |
-| Armour absorption, ammunition amounts, skill-level effects | `p_inter.c`, `g_game.c`, `p_mobj.c` |
-| Damage formulas for shots and melee | `p_pspr.c`, `p_enemy.c` |
+| Missile speeds | `info.c` |
+| Armour absorption, ammunition amounts and limits | `p_inter.c` |
+| The skill names, and `G_PlayerReborn` handing back the pistol | `g_game.c` |
+| Fixed-point movement, friction and stop speed | `p_mobj.c` |
+
+**What is not taken.** Health and damage are **ours**, not that source's: the figures in
+[docs/BALANCE.md](docs/BALANCE.md) were chosen for a wallpaper and replace `mobjinfo`'s health,
+the missile damage, and the random damage formulas of `p_pspr.c` and `p_enemy.c`, which are no
+longer reproduced in any form. The skill levels are names only; none of the difficulty scaling
+`g_game.c` applies is here.
 
 **Every one of these carries a comment naming the file and symbol it came from.** Those
 comments are not decoration: they are the attribution this licence requires and the
@@ -93,9 +100,11 @@ Freedoom's own `FREEDOOM` identifying lump, so what ships stays recognisable as 
 > LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 > OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-The third condition covers **endorsement and promotion**, not attribution. Crediting
-Freedoom is required; naming the published application after it requires written
-permission, which is a publication-time decision and does not affect this repository.
+The third condition covers **endorsement and promotion**, not attribution. Crediting Freedoom
+is required, and is done throughout; naming a derived product after it is what the condition
+forbids without written permission. This application is called **Prof Live Wallpaper** and its
+repository `prof-live-wallpaper`: the Freedoom name appears here only to say whose artwork this
+is, which is attribution and is required, never in the product's own name.
 
 ---
 

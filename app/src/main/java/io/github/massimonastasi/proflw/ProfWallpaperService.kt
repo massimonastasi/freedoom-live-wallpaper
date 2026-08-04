@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Prof Live Wallpaper
  * Copyright (C) 2026 Massimo Nastasi
  *
@@ -43,7 +43,7 @@ import kotlin.math.abs
 const val TICRATE = 35
 
 
-private const val TAG = "FreedoomLW"
+private const val TAG = "ProfLW"
 
 class ProfWallpaperService : WallpaperService() {
 
@@ -66,7 +66,7 @@ class ProfWallpaperService : WallpaperService() {
      *
      * Health is the blue and armour the green, matching PALETTE_HEALTH and PALETTE_ARMOR.
      * These two defaults used to hold the opposite pair, which no drawn frame could reveal
-     * because the readout is skipped entirely when the numerals fail to load — wrong in a
+     * because the readout is skipped entirely when the numerals fail to load â€” wrong in a
      * place that never shows is still wrong, and it would have surfaced the moment anything
      * else started using them.
      */
@@ -107,7 +107,7 @@ class ProfWallpaperService : WallpaperService() {
      * Loads the user's IWAD when there is one, and the bundled assets otherwise.
      *
      * Everything the scene draws comes from the same file, so swapping it swaps the whole
-     * look at once — sprites, palette, floors and the readout numerals. That is why nothing
+     * look at once â€” sprites, palette, floors and the readout numerals. That is why nothing
      * here has a per-IWAD compatibility table: the file declares what it contains and the
      * loader takes what it finds.
      */
@@ -205,7 +205,7 @@ class ProfWallpaperService : WallpaperService() {
      * the contrast behind the icons stays put.
      *
      * Each falls back down a shared chain, because a user-supplied WAD need not carry them
-     * all — a WAD with only one usable flat simply shows the same ground at every level.
+     * all â€” a WAD with only one usable flat simply shows the same ground at every level.
      */
     private fun loadFloors(w: WadFile): Array<Bitmap?> {
         // Chosen by measuring this WAD's own flats rather than by asking for names it may
@@ -248,9 +248,9 @@ class ProfWallpaperService : WallpaperService() {
         armorColor = w.paletteColor(GameData.PALETTE_ARMOR)
     }
 
-    override fun onCreateEngine(): Engine = FreedoomEngine()
+    override fun onCreateEngine(): Engine = ProfEngine()
 
-    private inner class FreedoomEngine : WallpaperService.Engine() {
+    private inner class ProfEngine : WallpaperService.Engine() {
 
         // ponytail: a Handler on the wallpaper process main looper, not a dedicated
         // thread. The process is ours alone, so no synchronisation with surfaceDestroyed
@@ -284,7 +284,7 @@ class ProfWallpaperService : WallpaperService() {
          * Without this the constants are raw pixels: on a 560 dpi phone the marine would be
          * two thirds the size he is here, and on a 240 dpi tablet half again as large. The
          * world, measured in map units, is then free to vary with the physical size of the
-         * screen, which is what should happen — a bigger display shows more of the scene
+         * screen, which is what should happen â€” a bigger display shows more of the scene
          * rather than the same scene magnified.
          *
          * The reference is the density these values were tuned on.
@@ -496,7 +496,7 @@ class ProfWallpaperService : WallpaperService() {
 
             // Do not reach for setFixedSize here. Drawing onto a half-resolution surface and
             // letting the compositor scale it up saved two thirds of the graphics memory,
-            // and it worked perfectly in the picker preview — but a real wallpaper engine
+            // and it worked perfectly in the picker preview â€” but a real wallpaper engine
             // throws UnsupportedOperationException, "Wallpapers currently only support
             // sizing from layout". The preview and the live engine are different surface
             // paths, and only the live one enforces this.
@@ -653,7 +653,7 @@ class ProfWallpaperService : WallpaperService() {
             drawReadout(canvas, s)
 
             // Marine death: the screen washes red. The colour is not invented, it is
-            // PLAYPAL palette 8, the original game's damage flash — but at full strength it
+            // PLAYPAL palette 8, the original game's damage flash â€” but at full strength it
             // was an unreadable red wall every time he died, so it only ever reaches
             // DEATH_MAX_ALPHA. A wallpaper has to stay usable even at its most dramatic.
             val fade = s.deathFade
@@ -911,7 +911,7 @@ class ProfWallpaperService : WallpaperService() {
         /**
          * Scene zoom: how many pixels one map unit is worth.
          *
-         * Speeds stay the original ones *in map units* — this value only decides how fast
+         * Speeds stay the original ones *in map units* â€” this value only decides how fast
          * they appear, i.e. how wide a slice of the world is framed.
          */
 
@@ -958,7 +958,7 @@ class ProfWallpaperService : WallpaperService() {
          *
          * Fully opaque: the ramp now ends on a solid screen rather than a translucent one.
          * That is only bearable because the colour underneath is a dark 115,0,0 from the low
-         * half of the palette's red ramp — at the glaring 255,25,25 this started from, a
+         * half of the palette's red ramp â€” at the glaring 255,25,25 this started from, a
          * full-opacity wash would have been a wall.
          *
          * It is momentary. The peak lands on the last frame of the fade, and the scene
