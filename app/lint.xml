@@ -42,7 +42,7 @@
         would render an empty grid, which is a worse answer than no preview.
     -->
     <issue id="ViewConstructor">
-        <ignore path="src/main/java/io/github/massimonastasi/freedoomlw/SwatchGrid.kt" />
+        <ignore path="src/main/java/io/github/massimonastasi/proflw/SwatchGrid.kt" />
     </issue>
 
 </lint>

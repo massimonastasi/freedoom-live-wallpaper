@@ -1,5 +1,5 @@
 /*
- * Freedoom Live Wallpaper
+ * Prof Live Wallpaper
  * Copyright (C) 2026 Massimo Nastasi
  *
  * This program is free software; you can redistribute it and/or modify it under the terms
@@ -16,7 +16,7 @@
  * comment naming the file and symbol it came from; those comments are the attribution the
  * licence requires and must not be removed.
  */
-package io.github.massimonastasi.freedoomlw
+package io.github.massimonastasi.proflw
 
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
@@ -45,7 +45,7 @@ const val TICRATE = 35
 
 private const val TAG = "FreedoomLW"
 
-class FreedoomWallpaperService : WallpaperService() {
+class ProfWallpaperService : WallpaperService() {
 
     /** One SpriteSet per prefix, indexed like GameData.spritePrefixes. */
     private var sprites: List<SpriteSet> = emptyList()
@@ -313,7 +313,7 @@ class FreedoomWallpaperService : WallpaperService() {
          * point where the engine is waking up anyway. A change made while the wallpaper is
          * hidden lands the instant it is seen, which is the only time it could matter.
          */
-        private val prefs = Settings.of(this@FreedoomWallpaperService)
+        private val prefs = Settings.of(this@ProfWallpaperService)
         private var chosenFps = Settings.DEFAULT_FPS
         private var readoutVisible = true
         private var overlayVisible = true
@@ -469,14 +469,14 @@ class FreedoomWallpaperService : WallpaperService() {
             // bitmap this process ever owns, and keeping it after the setting changed would
             // be several megabytes retained for something nobody is looking at. Keyed on the
             // file's timestamp so choosing a different photo actually replaces it.
-            val stamp = PhotoStore.file(this@FreedoomWallpaperService)?.lastModified() ?: 0L
+            val stamp = PhotoStore.file(this@ProfWallpaperService)?.lastModified() ?: 0L
             if (background != Settings.Background.PHOTO) {
                 photo = null
                 photoStamp = 0L
             } else if (photo == null || stamp != photoStamp) {
                 photoStamp = stamp
                 photo = PhotoStore.load(
-                    this@FreedoomWallpaperService,
+                    this@ProfWallpaperService,
                     frame.width().coerceAtLeast(1),
                     frame.height().coerceAtLeast(1),
                 )

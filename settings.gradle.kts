@@ -12,5 +12,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FreedoomLiveWallpaper"
+rootProject.name = "ProfLiveWallpaper"
 include(":app")

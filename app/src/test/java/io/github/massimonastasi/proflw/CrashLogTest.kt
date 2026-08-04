@@ -1,5 +1,5 @@
 /*
- * Freedoom Live Wallpaper
+ * Prof Live Wallpaper
  * Copyright (C) 2026 Massimo Nastasi
  *
  * This program is free software; you can redistribute it and/or modify it under the terms
@@ -16,7 +16,7 @@
  * comment naming the file and symbol it came from; those comments are the attribution the
  * licence requires and must not be removed.
  */
-package io.github.massimonastasi.freedoomlw
+package io.github.massimonastasi.proflw
 
 import org.junit.Test
 import kotlin.test.assertFalse
@@ -72,7 +72,7 @@ class CrashLogTest {
      */
     @Test
     fun `a runaway trace is cut, and the rest of the report survives it`() {
-        val huge = "\tat io.github.massimonastasi.freedoomlw.Scene.tick(Scene.kt:1)\n".repeat(5000)
+        val huge = "\tat io.github.massimonastasi.proflw.Scene.tick(Scene.kt:1)\n".repeat(5000)
         val text = body(huge)
 
         assertTrue(huge.length > CrashLog.TRACE_LIMIT, "the test's trace is not big enough to cut")

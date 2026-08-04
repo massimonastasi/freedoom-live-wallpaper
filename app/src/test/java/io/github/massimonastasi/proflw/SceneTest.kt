@@ -1,5 +1,5 @@
 /*
- * Freedoom Live Wallpaper
+ * Prof Live Wallpaper
  * Copyright (C) 2026 Massimo Nastasi
  *
  * This program is free software; you can redistribute it and/or modify it under the terms
@@ -16,7 +16,7 @@
  * comment naming the file and symbol it came from; those comments are the attribution the
  * licence requires and must not be removed.
  */
-package io.github.massimonastasi.freedoomlw
+package io.github.massimonastasi.proflw
 
 import org.junit.Test
 import kotlin.test.assertEquals

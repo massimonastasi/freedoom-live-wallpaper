@@ -19,17 +19,9 @@
             nothing else to show; now that there is, an icon that only ever hands you off is
             a dead end once the wallpaper is already set.
         -->
-        <!--
-            FLW is the label of this activity alone, and that is the whole of it: a launcher
-            shows the activity's label when it has one and falls back to the application's
-            otherwise. Everything else keeps the full name - the wallpaper picker reads the
-            service's label, the settings header reads app_name from the layout, and the
-            licences screen its own. Nothing else on the phone changes.
-        -->
         <activity
             android:name=".SettingsActivity"
-            android:exported="true"
-            android:label="@string/launcher_label">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -52,7 +44,7 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <service
-            android:name=".FreedoomWallpaperService"
+            android:name=".ProfWallpaperService"
             android:exported="true"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_WALLPAPER">

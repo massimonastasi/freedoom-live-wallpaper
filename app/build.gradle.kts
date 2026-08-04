@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "io.github.massimonastasi.freedoomlw"
+    namespace = "io.github.massimonastasi.proflw"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "io.github.massimonastasi.freedoomlw"
+        applicationId = "io.github.massimonastasi.proflw"
         // minSdk 31: Material You (onComputeColors -> system theme) arrived with Android 12.
         minSdk = 31
         targetSdk = 36

@@ -1,4 +1,4 @@
-# Freedoom Live Wallpaper
+# Prof Live Wallpaper
 
 An Android live wallpaper: an endless battle on your home screen. Free, no ads, no
 permissions, no network access, nothing collected.
@@ -119,7 +119,7 @@ SHA-256  bb44dbc7c7af228c396ce7446b474ee85c4dbc56ca0aa823b39aa4ebf775477e
 To check an APK against it:
 
 ```
-apksigner verify --print-certs freedoom-live-wallpaper.apk
+apksigner verify --print-certs prof-live-wallpaper.apk
 ```
 
 The value lives here rather than in the release notes on purpose. A fingerprint printed

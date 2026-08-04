@@ -1,5 +1,5 @@
 /*
- * Freedoom Live Wallpaper
+ * Prof Live Wallpaper
  * Copyright (C) 2026 Massimo Nastasi
  *
  * This program is free software; you can redistribute it and/or modify it under the terms
@@ -16,15 +16,15 @@
  * comment naming the file and symbol it came from; those comments are the attribution the
  * licence requires and must not be removed.
  */
-package io.github.massimonastasi.freedoomlw
+package io.github.massimonastasi.proflw
 
-import io.github.massimonastasi.freedoomlw.GameData.DI_NODIR
-import io.github.massimonastasi.freedoomlw.GameData.FRACUNIT
-import io.github.massimonastasi.freedoomlw.GameData.MELEERANGE
-import io.github.massimonastasi.freedoomlw.GameData.opposite
-import io.github.massimonastasi.freedoomlw.GameData.pRandom
-import io.github.massimonastasi.freedoomlw.GameData.xspeed
-import io.github.massimonastasi.freedoomlw.GameData.yspeed
+import io.github.massimonastasi.proflw.GameData.DI_NODIR
+import io.github.massimonastasi.proflw.GameData.FRACUNIT
+import io.github.massimonastasi.proflw.GameData.MELEERANGE
+import io.github.massimonastasi.proflw.GameData.opposite
+import io.github.massimonastasi.proflw.GameData.pRandom
+import io.github.massimonastasi.proflw.GameData.xspeed
+import io.github.massimonastasi.proflw.GameData.yspeed
 import kotlin.math.abs
 
 /** What an actor is doing. Mirrors the states[] groups of the engine. */

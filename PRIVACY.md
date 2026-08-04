@@ -1,6 +1,6 @@
 # Privacy policy
 
-**Freedoom Live Wallpaper collects nothing.**
+**Prof Live Wallpaper collects nothing.**
 
 That is the whole policy, and it is a property of the build rather than a promise. What
 follows is how you can check it.
