@@ -517,14 +517,14 @@ object GameData {
     // The engine varies difficulty by what a map contains, and this scene has no map.
 
     /** Seconds between drops on the lowest rung, and on the highest. */
-    private const val DROP_EASIEST = 20
-    private const val DROP_HARDEST = 45
+    private const val DROP_EASIEST = 10
+    private const val DROP_HARDEST = 30
 
     /**
      * Tics between drops at [skill], which is the whole of what the ladder now changes.
      *
-     * One lever rather than a table of them: supplies arrive every twenty seconds at the
-     * bottom and every forty-five at the top, so the same fight starves the higher up it is
+     * One lever rather than a table of them: supplies arrive every ten seconds at the
+     * bottom and every thirty at the top, so the same fight starves the higher up it is
      * played. The creatures, their damage and the wave table are identical on every rung -
      * they are the fight, and rewriting them per rung was nine games to balance instead of
      * one. Linear across the nine, so no rung is a cliff.

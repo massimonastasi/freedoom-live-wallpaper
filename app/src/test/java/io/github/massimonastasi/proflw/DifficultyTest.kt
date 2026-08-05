@@ -59,19 +59,27 @@ class DifficultyTest {
         // something to survive with before he is given something to shoot with.
         val seen = HashSet<Actor>()
         var previous: Boolean? = null
+        var previousTic = 0
         var pairs = 0
         for (t in 1..TICRATE * 600) {
             scene.tick(t)
-            if (scene.dying) previous = null
             for (a in scene.actors) {
                 if (a.mode != Mode.ITEM || !seen.add(a)) continue
                 val gun = a.item?.kind == GameData.ITEM_WEAPON
+                // A drop that lands under the marine's feet is picked up on the tic it
+                // arrives and is never seen here. The gap says so - more than one interval
+                // since the last sighting means one went missing, and the pair is not a pair.
+                if (t - previousTic > GameData.dropInterval(scene.skill) + 1) previous = null
+                previousTic = t
                 if (previous != null) {
                     assertTrue(gun != previous, "tic $t: this drop repeats the category before it")
                     pairs++
                 }
                 previous = gun
             }
+            // After the drops of this tic, not before: the timer still fires on the tic he
+            // falls, and that last drop belongs to the run that just ended.
+            if (scene.dying) previous = null
         }
 
         assertTrue(pairs >= 6, "only $pairs consecutive drops in ten minutes: too little to check")
