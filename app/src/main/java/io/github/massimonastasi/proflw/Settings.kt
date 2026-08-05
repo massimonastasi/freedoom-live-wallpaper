@@ -45,6 +45,8 @@ object Settings {
     const val KEY_COMPLETIONS = "completions"
     const val KEY_FIRST_COMPLETION = "first_completion"
     const val KEY_GOD_MODE = "god_mode"
+    const val KEY_OVERLAY = "overlay"
+    const val KEY_DEBUG = "debug"
     const val KEY_SPRITES = "sprites"
 
     const val SPRITES_BUNDLED = "bundled"
@@ -80,6 +82,20 @@ object Settings {
      * not an oversight.
      */
     fun godMode(p: SharedPreferences): Boolean = p.getBoolean(KEY_GOD_MODE, false)
+
+    /**
+     * A dark layer between the ground and the fight, for home screens whose icon labels are
+     * losing against a bright flat.
+     *
+     * Off by default, and that is the whole of why it came back rather than being restored as
+     * it was: Android already dims the wallpaper behind the launcher, so on it is two dark
+     * layers, which is the reason it was removed. It is a choice for the few screens that
+     * need it, not the default for everyone.
+     */
+    fun overlay(p: SharedPreferences): Boolean = p.getBoolean(KEY_OVERLAY, false)
+
+    /** Which rung, which wave, and how long until the next drop, drawn over the fight. */
+    fun debug(p: SharedPreferences): Boolean = p.getBoolean(KEY_DEBUG, false)
 
 
     /**

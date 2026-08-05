@@ -25,7 +25,9 @@ import io.github.massimonastasi.proflw.GameData.opposite
 import io.github.massimonastasi.proflw.GameData.pRandom
 import io.github.massimonastasi.proflw.GameData.xspeed
 import io.github.massimonastasi.proflw.GameData.yspeed
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 
 /** What an actor is doing. Mirrors the states[] groups of the engine. */
 enum class Mode { WALK, ATTACK, PAIN, DEATH, PROJECTILE, EFFECT, ITEM }
@@ -266,17 +268,14 @@ class Scene(
         private set
 
     /**
-     * Current skill level, an index into [GameData.skills]: where the current wave sits in
-     * the table, scaled onto the ladder. A death takes the wave back to the first, so it
-     * takes the rung back to the bottom with it, and nothing has to remember either.
+     * Current skill level, an index into [GameData.skills]. One rung per finished table.
      *
-     * ponytail: derived rather than stored. It used to climb by one per *finished table*,
-     * which WaveReachTest measures as unreachable — 0% of 400 runs clear all twenty-six
-     * waves in one life — so eight of the nine rungs, and the floor that goes with each,
-     * were named in the code and never seen on a screen. Read off the wave they are all
-     * reached, in the order they are written, within an ordinary life.
+     * It moves on the kill that empties the last wave, and at no other moment - not per wave,
+     * not on a death. The floor is drawn from it, so this is also the rule for the background:
+     * it turns over when the ladder does, and stays put for everything else.
      */
-    val skill: Int get() = wave * GameData.skills.size / GameData.waves.size
+    var skill = 0
+        private set
 
     /**
      * The tic the marine is due to arrive on, held empty until then.
@@ -301,40 +300,54 @@ class Scene(
     private var nextSpawnAt = 0
 
     /**
-     * 0 while the marine is alive, rising to 1 as the screen sinks into red after his
-     * death. The colour itself is chosen by the renderer, read from PLAYPAL.
+     * The black curtain: 0 with the scene fully visible, 1 with it fully hidden.
+     *
+     * Four seconds closing over a death or a finished table, two opening again on the fresh
+     * ground. Uneven on purpose: the closing is the ending being watched, the opening is only
+     * the way back to the fight. It is black rather than coloured because the colour is now
+     * carried by the glow at the border and saying it twice made both weaker.
      */
-    val deathFade: Float
+    val coverFade: Float
         get() {
-            if (deadUntil == 0) return 0f
-            val left = deadUntil - tic
-            if (left <= 0) return 1f
-            return 1f - left.toFloat() / DEATH_DELAY
+            if (uncoverAt > 0) {
+                val done = tic - uncoverAt
+                return if (done >= COVER_OUT_TICS) 0f else 1f - done.toFloat() / COVER_OUT_TICS
+            }
+            if (coverAt == 0) return 0f
+            return ((tic - coverAt).toFloat() / COVER_IN_TICS).coerceIn(0f, 1f)
         }
 
+    /** True while the red border glow belongs on screen: from the death to the restart. */
+    val dying: Boolean get() = deadUntil > 0
+
+    /** The same, for the green one: from the finished table until its window runs out. */
+    val winning: Boolean get() = wonUntil > 0 && tic < wonUntil
+
     /**
-     * The same wash, for the opposite outcome: the table finished at the hardest skill.
+     * The glow's own breathing, 0 to 1 and back once every [PULSE_TICS].
      *
-     * Deliberately the same shape and the same length as the death fade, because it is the
-     * same punctuation mark - the run has ended and another is starting. Only the colour
-     * differs, and the renderer picks that from the palette.
+     * Counted from the tic the curtain started closing, not from the scene's own tic, so the
+     * ending always opens on a dark border and the three breaths of [DEATH_DELAY] are three
+     * whole ones rather than whatever the clock happened to be in the middle of.
      */
-    val winFade: Float
-        get() {
-            if (wonUntil == 0) return 0f
-            val left = wonUntil - tic
-            if (left <= 0) return 0f
-            // Full at the moment it is won and fading out, the reverse of the death wash,
-            // which sinks in. A death interrupts the scene and a win crowns it, and the
-            // fight underneath is already starting again.
-            return left.toFloat() / DEATH_DELAY
-        }
+    val glowPulse: Float
+        get() = (1f - cos(2.0 * PI * ((tic - coverAt) % PULSE_TICS) / PULSE_TICS)).toFloat() / 2f
 
     /** Tables finished at the hardest skill since this scene was built. */
     var completions = 0
         private set
 
     private var wonUntil = 0
+    private var coverAt = 0
+    private var uncoverAt = 0
+    private var restartAt = 0
+
+    /** Drops made this run, which is what decides whether the next one is a supply or a gun. */
+    private var dropsMade = 0
+    private var nextDropAt = 0
+
+    /** Tics until the ground gives him something. For the debug readout. */
+    val ticsToDrop: Int get() = (nextDropAt - tic).coerceAtLeast(0)
 
     /** The last creature queued, so the next wave knows what it must not repeat. */
     private var lastQueued = -1
@@ -350,7 +363,14 @@ class Scene(
         //
         // Only once he is on the field, so supplies do not materialise onto empty ground with
         // nobody there to want them.
-        if (player != null && deadUntil == 0 && tic % GameData.DROP_INTERVAL == 0) spawnItem()
+        if (player != null && deadUntil == 0 && tic >= nextDropAt) {
+            nextDropAt = tic + GameData.dropInterval(skill)
+            // Strictly alternating, starting on a supply: the two halves of the table take
+            // turns rather than being drawn from at random, so no run can hand him four guns
+            // while his health falls, and none can bury the shotgun under stimpacks.
+            val supply = dropsMade++ % 2 == 0
+            spawnItem(table = if (supply) GameData.supplyTable else GameData.weaponTable)
+        }
 
         var i = 0
         while (i < actors.size) {
@@ -387,6 +407,14 @@ class Scene(
             restart()
             return
         }
+        // The finished table gets the same held moment the death does, rather than restarting
+        // on the tic it was won: the curtain needs somewhere to close before it opens again.
+        if (restartAt > 0) {
+            if (tic < restartAt) return
+            restartAt = 0
+            restart()
+            return
+        }
 
         val p = player
         if (p == null) {
@@ -397,10 +425,15 @@ class Scene(
             if (tic < playerDueAt) return
             spawnPlayer()
             startWave()
+            // The first drop is a whole interval away, so the fight opens on what he arrived
+            // with rather than on a gift lying at his feet.
+            nextDropAt = tic + GameData.dropInterval(skill)
             return
         }
         if (p.dead) {
             deadUntil = tic + DEATH_DELAY
+            coverAt = tic
+            uncoverAt = 0
             return
         }
 
@@ -429,6 +462,11 @@ class Scene(
         // room between waves matters, otherwise the rhythm turns into continuous noise.
         if (nextWaveAt == 0) {
             nextWaveAt = tic + GameData.waves[wave].rest
+            // The rung, if this was the last wave: earned by the kill that emptied the ground,
+            // so it is taken here rather than a few seconds later with the restart.
+            if (wave == GameData.waves.lastIndex) {
+                skill = (skill + 1).coerceAtMost(GameData.skills.lastIndex)
+            }
             return
         }
         if (tic >= nextWaveAt) {
@@ -441,7 +479,9 @@ class Scene(
                 // the same way a death does, so it keeps running afterwards.
                 if (!cheated) completions++
                 wonUntil = tic + DEATH_DELAY
-                restart()
+                restartAt = tic + DEATH_DELAY
+                coverAt = tic
+                uncoverAt = 0
                 return
             }
             startWave()
@@ -461,6 +501,16 @@ class Scene(
         deadUntil = 0
         nextWaveAt = 0
         wave = 0
+        // Not skill: it is climbed by finishing the table and nothing takes it back, so the
+        // background survives the death that sends the waves back to the first.
+        // The black cover is at its darkest by now - a death or a finished table put it
+        // there - and this is the moment it starts lifting again, on the empty ground the
+        // marine is about to walk onto.
+        uncoverAt = tic
+        coverAt = 0
+        // The drop cycle restarts on a supply, so a fresh run always opens with something
+        // that keeps him alive rather than a weapon he cannot use yet.
+        dropsMade = 0
         // Not false: god mode is a setting, not an event, so a run that begins with it
         // already on is tainted from its first tic without anything being switched.
         cheated = invulnerable
@@ -683,17 +733,20 @@ class Scene(
     private fun spawnItem(
         x: Int = randomIn(marginX, worldWidth - marginX) * FRACUNIT,
         y: Int = randomIn(marginTop, worldHeight - spawnMarginBottom) * FRACUNIT,
+        /** Which half of the pickups to draw from. The whole table for a hand-placed drop. */
+        table: IntArray = GameData.dropTable,
     ) {
+        if (table.isEmpty()) return
         // Redrawn until the weighted pick lands on something this WAD can show. Bounded by
         // the table's own size rather than looping forever: with every weapon missing, the
         // health and armour entries still make up most of the table, so a handful of tries
         // always finds one.
-        var choice = GameData.dropTable[pRandom() % GameData.dropTable.size]
+        var choice = table[pRandom() % table.size]
         val ok = drawableItems
         if (ok != null) {
             var tries = 0
-            while (!ok.getOrElse(choice) { true } && tries < GameData.dropTable.size) {
-                choice = GameData.dropTable[pRandom() % GameData.dropTable.size]
+            while (!ok.getOrElse(choice) { true } && tries < table.size) {
+                choice = table[pRandom() % table.size]
                 tries++
             }
             if (!ok.getOrElse(choice) { true }) return
@@ -717,7 +770,7 @@ class Scene(
     /**
      * The user tapped the home screen: drop a pickup where they touched.
      *
-     * Ignored while the marine is dead, so the red wash stays a pause rather than something
+     * Ignored while the marine is dead, so the death stays a pause rather than something
      * the user can litter with items nobody will collect.
      */
     fun tapAt(x: Int, y: Int) {
@@ -1135,9 +1188,14 @@ class Scene(
     private fun move(a: Actor): Boolean {
         val d = a.moveDir
         if (d >= 8) return false
-        val speed = a.creature?.speed ?: return false
-        val tryX = a.x + speed * xspeed[d]
-        val tryY = a.y + speed * yspeed[d]
+        if (a.creature == null) return false
+        // One speed for everyone, rather than Creature.speed. The bestiary is ordered by
+        // health and info.c's speeds rise alongside it - 8 for the Zombie, 16 for the
+        // Cyberlord - so reading the field made the fight get quicker the further it went,
+        // which is what was reported. The field stays: it is the engine's number and carries
+        // the attribution, it is simply no longer what moves anything.
+        val tryX = a.x + MOVE_SPEED * xspeed[d]
+        val tryY = a.y + MOVE_SPEED * yspeed[d]
         if (tryX < minX || tryX > maxX) return false
         if (tryY < minY || tryY > maxY) return false
         a.x = tryX
@@ -1257,6 +1315,28 @@ class Scene(
         const val CORPSE_LIFETIME = TICRATE * 30
 
         /**
+         * Map units per tic, for everything that walks.
+         *
+         * info.c MT_TROOP: the Zombie's own speed, and the one the earliest waves always
+         * moved at. Every creature now moves at it, so the fight does not accelerate as the
+         * table goes on.
+         */
+        const val MOVE_SPEED = 8
+
+        /**
+         * How long the black curtain takes to close over the ending. Four seconds.
+         *
+         * It has to stay inside [DEATH_DELAY], which is the pause it punctuates.
+         */
+        const val COVER_IN_TICS = TICRATE * 4
+
+        /** And to open again on the fresh ground: two seconds, half the closing. */
+        const val COVER_OUT_TICS = TICRATE * 2
+
+        /** One breath of the border glow: three of them fill a [DEATH_DELAY]. */
+        const val PULSE_TICS = TICRATE * 3
+
+        /**
          * How tall a resting body has to be, against the standing marine of the same WAD, to
          * be drawn beneath the fight instead of in it.
          *
@@ -1274,17 +1354,13 @@ class Scene(
         const val TALL_CORPSE = 1.0
 
         /**
-         * How long the red screen lasts before restarting from the first wave.
+         * How long the death - or the finished table - holds the screen before the restart.
          *
-         * This is also the length of the fade, which now runs all the way to opaque, so it
-         * is the whole of the descent rather than a pause with a tint over it.
-         *
-         * Four and a half seconds. Ten was tried early on and was unwatchable, but that was
-         * a bright red at constant strength; a slow ramp into a dark one is a different
-         * thing to sit through. With ARRIVAL_DELAY after it, six and a half seconds pass
-         * between the marine falling and the next one landing.
+         * Nine seconds: three breaths of the border glow at [PULSE_TICS] each, with the four
+         * second black fade closing inside them. Four and a half was half of that and read as
+         * a stumble rather than as an ending.
          */
-        const val DEATH_DELAY = TICRATE * 9 / 2
+        const val DEATH_DELAY = TICRATE * 9
 
         /** Below this distance the marine backs off instead of closing in. */
         const val KEEP_AWAY = 220 * FRACUNIT

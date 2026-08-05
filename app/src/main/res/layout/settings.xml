@@ -154,6 +154,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/list_row_gap" />
 
+                <include
+                    android:id="@+id/row_debug"
+                    layout="@layout/list_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/list_row_gap" />
+
             </LinearLayout>
 
             <!-- ================================================== Background -->
@@ -181,6 +188,19 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/list_row_gap" />
+
+            </LinearLayout>
+
+            <!--
+                A list of its own, not a fourth row above: the three rows are one choice
+                between three backgrounds, and this is a switch that applies to whichever of
+                them won. Same section, separate list.
+            -->
+            <LinearLayout
+                android:id="@+id/overlay_group"
+                style="@style/ListGroup">
+
+                <include android:id="@+id/row_overlay" layout="@layout/list_row" />
 
             </LinearLayout>
 

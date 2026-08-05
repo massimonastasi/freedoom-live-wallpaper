@@ -51,6 +51,10 @@
     <string name="settings_visual">Visual settings</string>
     <string name="settings_visual_note">The scene always thinks at the original 35 steps a second. The frame rate is only how often it is drawn, and it is the one setting here that changes battery use.</string>
     <string name="settings_readout_note">Bottom of the screen</string>
+    <string name="settings_overlay">Darken the background</string>
+    <string name="settings_overlay_note">A second veil over it, for the icon labels</string>
+    <string name="settings_debug">Show the difficulty</string>
+    <string name="settings_debug_note">Wave, skill level and the time to the next pickup, over the top left.</string>
     <string name="settings_god_mode">God mode</string>
     <string name="settings_god_mode_note">No damage. The marine never dies, so the difficulty only ever climbs.</string>
     <string name="settings_version">Version %s</string>

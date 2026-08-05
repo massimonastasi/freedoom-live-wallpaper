@@ -27,8 +27,8 @@ import kotlin.test.assertTrue
  * and there is nothing past the last.
  *
  * That is the only thing in this scene that can be called winning: it is counted, it is
- * washed green, and it starts again from the first wave. The rung is read off the wave, so
- * the same run is also the only place the whole ladder can be watched being climbed.
+ * washed green, and it starts again from the first wave one rung higher. A finished table is
+ * the only thing that moves the rung, so this is also the only place the ladder is climbed.
  */
 class SkillCapTest {
 
@@ -49,7 +49,7 @@ class SkillCapTest {
 
         for (t in 1..TICRATE * 3600) {
             scene.tick(t)
-            if (scene.winFade > 0f) won = true
+            if (scene.winning) won = true
             if (scene.skill > highestSkill) highestSkill = scene.skill
             if (scene.wave != previousWave) {
                 wavesSeen++
@@ -61,7 +61,7 @@ class SkillCapTest {
         assertTrue(wavesSeen > 0, "the waves stopped advancing")
         assertTrue(won, "an invulnerable marine never finished the table in an hour")
         assertEquals(0, scene.completions, "a win under god mode must not be counted")
-        assertEquals(top, highestSkill, "the last wave must sit on the last rung")
+        assertEquals(top, highestSkill, "an hour of finished tables must reach the last rung")
     }
 
     /**

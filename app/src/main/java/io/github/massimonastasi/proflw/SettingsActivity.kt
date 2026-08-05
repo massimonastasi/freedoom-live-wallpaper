@@ -157,6 +157,7 @@ class SettingsActivity : AppCompatActivity() {
 
         shapeGroup(R.id.switch_group)
         shapeGroup(R.id.background_group)
+        shapeGroup(R.id.overlay_group)
         shapeGroup(R.id.about_group)
 
         // After showSprites, which is the call that notices: the file is discarded the first
@@ -187,6 +188,10 @@ class SettingsActivity : AppCompatActivity() {
             R.id.row_god, R.string.settings_god_mode, R.string.settings_god_mode_note,
             Settings.KEY_GOD_MODE, default = false,
         )
+        switchRow(
+            R.id.row_debug, R.string.settings_debug, R.string.settings_debug_note,
+            Settings.KEY_DEBUG, default = false,
+        )
     }
 
     /**
@@ -198,6 +203,13 @@ class SettingsActivity : AppCompatActivity() {
      * there and is the only one who can take away.
      */
     private fun showBackground() {
+        // The veil belongs to this section rather than to the visual switches: it is about the
+        // background, whichever of the three the rows above chose.
+        switchRow(
+            R.id.row_overlay, R.string.settings_overlay, R.string.settings_overlay_note,
+            Settings.KEY_OVERLAY, default = false,
+        )
+
         val rows = intArrayOf(R.id.row_floor, R.id.row_colour, R.id.row_photo)
         val values = arrayOf("dynamic", "colour", "photo")
         val photo = PhotoStore.name(this)

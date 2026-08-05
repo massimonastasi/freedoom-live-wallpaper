@@ -20,6 +20,7 @@ package io.github.massimonastasi.proflw
 
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorMatrix
@@ -316,6 +317,8 @@ class ProfWallpaperService : WallpaperService() {
         private val prefs = Settings.of(this@ProfWallpaperService)
         private var chosenFps = Settings.DEFAULT_FPS
         private var readoutVisible = true
+        private var overlayVisible = false
+        private var debugVisible = false
 
         /**
          * Held here rather than only on the scene, because the scene is rebuilt on every
@@ -448,6 +451,8 @@ class ProfWallpaperService : WallpaperService() {
         private fun applySettings() {
             chosenFps = Settings.fps(prefs)
             readoutVisible = Settings.readout(prefs)
+            overlayVisible = Settings.overlay(prefs)
+            debugVisible = Settings.debug(prefs)
             godMode = Settings.godMode(prefs)
 
             // A different WAD means every sprite, colour and floor is different, so the
@@ -501,6 +506,10 @@ class ProfWallpaperService : WallpaperService() {
             Log.i(TAG, "drawing surface: ${width}x$height")
             frame.set(0, 0, width, height)
             shaderSkill = -1                       // force the floor shader to be rebuilt
+            // The new scene starts at zero completions, so the tally of what has already been
+            // written has to start there too. Left behind, the two disagreed from the first
+            // tic and every rotation re-armed a completion that had not happened.
+            seenCompletions = 0
             scene = Scene(
                 worldWidth = (width / pxPerUnit).toInt(),
                 worldHeight = (height / pxPerUnit).toInt(),
@@ -623,11 +632,18 @@ class ProfWallpaperService : WallpaperService() {
         private fun drawScene(canvas: Canvas) {
             drawFloor(canvas)
 
-            // ponytail: no wash of our own over the background. Android dims the whole
+            // A wash over the background, off unless asked for. Android dims the whole
             // wallpaper surface itself when it wants the icons to win - dark theme, and
-            // Bedtime mode at 0.6 - and that dim lands on the sprites too, which ours never
-            // did. Two layers doing the same job left the floor at 16% of itself and the
-            // whole picture reading as if it were under a sheet.
+            // Bedtime mode at 0.6 - so on, this is the second dark layer and the floor is
+            // left at a fraction of itself. That is why it defaults off; it is here for the
+            // screens where the launcher's own dim is not enough.
+            if (overlayVisible) {
+                overlay.shader = null
+                overlay.color = Color.BLACK
+                overlay.alpha = SCRIM_ALPHA
+                canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
+            }
+
             val s = scene
             if (s == null || sprites.isEmpty()) {
                 drawPlaceholder(canvas)
@@ -646,30 +662,28 @@ class ProfWallpaperService : WallpaperService() {
 
             drawReadout(canvas, s)
 
-            // Marine death: the screen washes red. The colour is not invented, it is
-            // PLAYPAL palette 8, the original game's damage flash â€” but at full strength it
-            // was an unreadable red wall every time he died, so it only ever reaches
-            // DEATH_MAX_ALPHA. A wallpaper has to stay usable even at its most dramatic.
-            val fade = s.deathFade
-            if (fade > 0f) {
-                overlay.color = deathTint
-                overlay.alpha = (fade * DEATH_MAX_ALPHA).toInt().coerceIn(0, 255)
+            // Marine death, and the opposite outcome: a glow that breathes along the edge of
+            // the device rather than a wash over the whole screen. The colours are not
+            // invented - PLAYPAL 8, the original damage flash, and the green the armour
+            // readout uses - but a full-screen sheet of either was a wall you could not read
+            // the scene through, and a wallpaper has to stay usable at its most dramatic.
+            if (s.dying) drawBorderGlow(canvas, deathTint, s.glowPulse)
+            else if (s.winning) drawBorderGlow(canvas, winTint, s.glowPulse)
+
+            // Then the curtain, over the glow and over everything: one second to black on a
+            // death or a finished table, one second back on the ground that follows.
+            val cover = s.coverFade
+            if (cover > 0f) {
+                overlay.shader = null
+                overlay.color = Color.BLACK
+                overlay.alpha = (cover * 255f).toInt().coerceIn(0, 255)
                 canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
             }
 
-            // The same wash for the opposite outcome, in the palette's green rather than its
-            // damage red: the table finished at the hardest skill, which is the only thing
-            // here that can be called winning. It fades out rather than in, because the fight
-            // underneath has already started again.
-            val won = s.winFade
-            if (won > 0f) {
-                overlay.color = winTint
-                overlay.alpha = (won * DEATH_MAX_ALPHA).toInt().coerceIn(0, 255)
-                canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), overlay)
-            }
+            if (debugVisible) drawDebug(canvas, s)
             // Counted here rather than in the scene: the scene is rebuilt on every surface
             // change and would forget, and this is the side that owns the preferences.
-            if (s.completions != seenCompletions) {
+            if (s.completions > seenCompletions) {
                 seenCompletions = s.completions
                 Settings.addCompletion(prefs)
             }
@@ -854,8 +868,62 @@ class ProfWallpaperService : WallpaperService() {
             canvas.drawRect(0f, 0f, frame.width().toFloat(), frame.height().toFloat(), floorPaint)
         }
 
-        /** Solid colour overlays: the death wash and the no-WAD placeholder. */
+        /** Solid colour overlays: the black curtain and the no-WAD placeholder. */
         private val overlay = Paint()
+
+        /**
+         * The border glow: an inner glow, not a vignette.
+         *
+         * A blurred stroke laid on the frame's own edge, twice as thick as it needs to be so
+         * its outer half falls off the screen and only the inward feather is seen. A radial
+         * gradient was tried first and washed the middle of the screen as well; this one stays
+         * where a glow belongs, against the border.
+         */
+        private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+        private var glowDepth = 0f
+
+        private fun drawBorderGlow(canvas: Canvas, color: Int, pulse: Float) {
+            val w = frame.width().toFloat()
+            val h = frame.height().toFloat()
+            if (w <= 0f || h <= 0f) return
+            val depth = minOf(w, h) * GLOW_DEPTH
+            if (depth != glowDepth) {
+                glowDepth = depth
+                glowPaint.strokeWidth = depth * 2f
+                glowPaint.maskFilter = BlurMaskFilter(depth / 2f, BlurMaskFilter.Blur.NORMAL)
+            }
+            glowPaint.color = color
+            // Never all the way off: the glow breathes between these two, so the border keeps
+            // saying what happened for the whole time the curtain takes to close.
+            glowPaint.alpha =
+                (GLOW_MIN_ALPHA + (GLOW_MAX_ALPHA - GLOW_MIN_ALPHA) * pulse).toInt().coerceIn(0, 255)
+            canvas.drawRect(0f, 0f, w, h, glowPaint)
+        }
+
+        /**
+         * What the fight will not say by itself: which rung it is on, which wave, and how
+         * long until the next drop. Off by default and plain system text - the WAD's numerals
+         * are the ten digits and nothing else, so they cannot spell any of this.
+         */
+        private val debugPaint = Paint().apply {
+            color = Color.WHITE
+            isAntiAlias = true
+            textSize = 28f * densityScale
+            setShadowLayer(4f, 0f, 0f, Color.BLACK)
+        }
+
+        private fun drawDebug(canvas: Canvas, s: Scene) {
+            val lines = listOf(
+                "wave ${s.wave + 1}/${GameData.waves.size}",
+                "skill ${s.skill + 1} ${GameData.skills[s.skill]}",
+                "drop in ${s.ticsToDrop / TICRATE}s",
+            )
+            var y = debugPaint.textSize * 2f
+            for (line in lines) {
+                canvas.drawText(line, debugPaint.textSize / 2f, y, debugPaint)
+                y += debugPaint.textSize * 1.2f
+            }
+        }
 
         /**
          * The readout is drawn without the scene dimming. That filter exists so the
@@ -921,18 +989,21 @@ class ProfWallpaperService : WallpaperService() {
         /** The IWAD shipped in assets, used until the user supplies one of their own. */
         const val BUNDLED = "freedoom2.wad"
 
+        /** The optional wash over the background: 60% black, the figure it had before. */
+        const val SCRIM_ALPHA = 153
+
         /**
-         * Peak opacity of the death wash, reached at the very end of the fade.
+         * The inner glow: how far in from the edge it reaches, and the two opacities it
+         * breathes between.
          *
-         * Fully opaque: the ramp now ends on a solid screen rather than a translucent one.
-         * That is only bearable because the colour underneath is a dark 115,0,0 from the low
-         * half of the palette's red ramp â€” at the glaring 255,25,25 this started from, a
-         * full-opacity wash would have been a wall.
-         *
-         * It is momentary. The peak lands on the last frame of the fade, and the scene
-         * restarts immediately after, so nothing sits at full red.
+         * It replaced a wash over the whole screen. A wash says the same thing by hiding the
+         * fight; a glow says it around the edge, and the fight stays visible until the black
+         * curtain takes it. The depth is a fraction of the shorter side, so it is the same
+         * band of screen on any device.
          */
-        const val DEATH_MAX_ALPHA = 255f
+        const val GLOW_DEPTH = 0.05f
+        const val GLOW_MIN_ALPHA = 60f
+        const val GLOW_MAX_ALPHA = 190f
 
         /** Magnification of the 64x64 floor tile. */
         const val FLOOR_SCALE = 1.5f

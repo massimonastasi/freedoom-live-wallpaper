@@ -94,12 +94,11 @@ class SceneTest {
     }
 
     /**
-     * The difficulty ladder: the rung is where the current wave sits in the table, so it
-     * rises as the waves are cleared, never leaves the table, and a death - which takes the
-     * wave back to the first - takes it back to the bottom.
+     * The difficulty ladder: one rung per finished table, never off the table, and a death
+     * does not take it back - the background it drives stays where the play put it.
      */
     @Test
-    fun `the skill climbs with the table and a death resets it`() {
+    fun `the skill climbs one rung per finished table and a death keeps it`() {
         GameData.clearRandom()
         val scene = Scene(worldWidth, worldHeight)
         scene.invulnerable = true
@@ -116,13 +115,12 @@ class SceneTest {
         }
         assertTrue(reached > 0, "the skill never rose in an hour of invulnerable play")
 
-        // Now let him be killed: the ladder must collapse back to the bottom. It can only
-        // fall, so waiting for it to drop below where it stands is waiting for the death.
+        // Now let him be killed: the waves go back to the first, the rung does not.
         scene.invulnerable = false
         val hardened = scene.skill
-        assertTrue(hardened > 0, "expected to be above the lowest skill before dying")
-        while (t < TICRATE * 5400 && scene.skill >= hardened) scene.tick(++t)
-        assertEquals(0, scene.skill, "death must restart from the lowest skill")
+        while (t < TICRATE * 5400 && scene.wave > 0) scene.tick(++t)
+        assertEquals(0, scene.wave, "he was never killed: this half of the test checked nothing")
+        assertEquals(hardened, scene.skill, "death took the rung, and the background, back down")
     }
 
     /**
@@ -400,11 +398,11 @@ class SceneTest {
         for (t in 1..TICRATE * 600) {
             scene.tick(t)
             val now = demons()
-            if (scene.deathFade > 0f) {
+            if (scene.dying) {
                 deathTics++
                 assertTrue(
                     now <= previous,
-                    "tic $t: ${now - previous} enemies arrived while the screen is red",
+                    "tic $t: ${now - previous} enemies arrived while the marine is down",
                 )
             }
             previous = now
@@ -534,8 +532,8 @@ class SceneTest {
         var checked = false
         for (t in 1..TICRATE * 600) {
             scene.tick(t)
-            if (scene.deathFade <= 0f) continue
-            // The red wash is a pause: it must not be possible to litter it with pickups
+            if (!scene.dying) continue
+            // The death is a pause: it must not be possible to litter it with pickups
             // nobody can collect, or with demons attacking a corpse.
             val items = scene.actors.count { it.mode == Mode.ITEM }
             val demons = scene.actors.count { it.creature != null && !it.isPlayer }

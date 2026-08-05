@@ -496,26 +496,52 @@ object GameData {
         .flatMap { i -> List(items[i].weight) { i } }
         .toIntArray()
 
+    /**
+     * The same draw, split in two: what keeps him alive, and what he kills with.
+     *
+     * The scene alternates between them, so a run cannot deal him four guns in a row while
+     * his health falls, and cannot bury a weapon under stimpacks either. Derived from the
+     * one table above rather than written out again - the weights inside each half are still
+     * the ones declared on the items.
+     */
+    val supplyTable: IntArray = dropTable.filter { items[it].kind != ITEM_WEAPON }.toIntArray()
+    val weaponTable: IntArray = dropTable.filter { items[it].kind == ITEM_WEAPON }.toIntArray()
+
     /** p_inter.c: armour absorbs a third of the damage when green, half when blue. */
     fun armorSaved(damage: Int, armorType: Int): Int =
         if (armorType == 1) damage / 3 else damage / 2
 
     // ------------------------------------------------------------------ skill
 
+    // Tics between automatic drops: the wallpaper's own difficulty lever, not the engine's.
+    // The engine varies difficulty by what a map contains, and this scene has no map.
+
+    /** Seconds between drops on the lowest rung, and on the highest. */
+    private const val DROP_EASIEST = 20
+    private const val DROP_HARDEST = 45
+
     /**
-     * Tics between automatic drops. The wallpaper's own lever, not the engine's: the engine
-     * varies difficulty by what a map contains, and this scene has no map.
+     * Tics between drops at [skill], which is the whole of what the ladder now changes.
+     *
+     * One lever rather than a table of them: supplies arrive every twenty seconds at the
+     * bottom and every forty-five at the top, so the same fight starves the higher up it is
+     * played. The creatures, their damage and the wave table are identical on every rung -
+     * they are the fight, and rewriting them per rung was nine games to balance instead of
+     * one. Linear across the nine, so no rung is a cliff.
      */
-    const val DROP_INTERVAL = TICRATE * 30
+    fun dropInterval(skill: Int): Int {
+        val top = skills.size - 1
+        val s = skill.coerceIn(0, top)
+        return TICRATE * (DROP_EASIEST + (DROP_HARDEST - DROP_EASIEST) * s / top)
+    }
 
     /**
      * The ladder: g_game.c skill_t, with a rung of our own between each pair. The five odd
      * names are the engine's, the four even ones this wallpaper's.
      *
-     * Names, and nothing else. Every rung plays identically - the combat levers that once
-     * separated them are gone and the drop interval is one figure for all - so the Skill class
-     * that used to carry them held a name and a constant. All that is left to pick is which
-     * name and which floor.
+     * Names, and the drop interval that goes with the position - see [dropInterval]. The
+     * combat levers that once separated the rungs are gone; what is left is how often the
+     * ground gives him something, and which floor he is standing on.
      */
     val skills = listOf(
         "I'm too young to die",
