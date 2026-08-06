@@ -302,8 +302,11 @@ class Scene(
     /**
      * The black curtain: 0 with the scene fully visible, 1 with it fully hidden.
      *
-     * Four seconds closing over a death or a finished table, two opening again on the fresh
-     * ground. Uneven on purpose: the closing is the ending being watched, the opening is only
+     * Four seconds closing over a death or the finished hardest table, two opening again on
+     * the fresh ground. The two endings are the only things that draw it: a table finished on
+     * any lower rung laps straight into the next one, with no curtain and nothing to lift.
+     *
+     * Uneven on purpose: the closing is the ending being watched, the opening is only
      * the way back to the fight. It is black rather than coloured because the colour is now
      * carried by the glow at the border and saying it twice made both weaker.
      */
@@ -320,7 +323,7 @@ class Scene(
     /** True while the red border glow belongs on screen: from the death to the restart. */
     val dying: Boolean get() = deadUntil > 0
 
-    /** The same, for the green one: from the finished table until its window runs out. */
+    /** The same, for the green one: from the kill that ends the hardest table until its window runs out. */
     val winning: Boolean get() = wonUntil > 0 && tic < wonUntil
 
     /**
@@ -336,6 +339,9 @@ class Scene(
     /** Tables finished at the hardest skill since this scene was built. */
     var completions = 0
         private set
+
+    /** Whether the table now being finished was the one on the hardest rung. */
+    private var clearedHardest = false
 
     private var wonUntil = 0
     private var coverAt = 0
@@ -465,6 +471,10 @@ class Scene(
             // The rung, if this was the last wave: earned by the kill that emptied the ground,
             // so it is taken here rather than a few seconds later with the restart.
             if (wave == GameData.waves.lastIndex) {
+                // Whether that kill was the last one there is: the table finished on the
+                // hardest rung, with nothing above it to climb to. Noted before the rung
+                // moves, because moving it would make every table look like that one.
+                clearedHardest = skill == GameData.skills.lastIndex
                 skill = (skill + 1).coerceAtMost(GameData.skills.lastIndex)
             }
             return
@@ -473,10 +483,16 @@ class Scene(
             nextWaveAt = 0
             wave++
             if (wave >= GameData.waves.size) {
-                // The whole table cleared in one life, which is the only thing here that can
-                // be called finishing the game: the last wave is the Overlord alone and there
-                // is nothing past it. The scene marks it and restarts from the first wave,
-                // the same way a death does, so it keeps running afterwards.
+                // The whole table cleared in one life. On any rung but the last that is a
+                // lap: the waves start over one level harder and nothing is announced, the
+                // way it already works when a wave ends. Only on the hardest rung is there
+                // nothing left to climb to, and only then does the scene call it winning -
+                // the green glow, the black curtain and the count are all that one moment.
+                if (!clearedHardest) {
+                    wave = 0
+                    startWave()
+                    return
+                }
                 if (!cheated) completions++
                 wonUntil = tic + DEATH_DELAY
                 restartAt = tic + DEATH_DELAY
@@ -737,20 +753,18 @@ class Scene(
         table: IntArray = GameData.dropTable,
     ) {
         if (table.isEmpty()) return
-        // Redrawn until the weighted pick lands on something this WAD can show. Bounded by
-        // the table's own size rather than looping forever: with every weapon missing, the
+        // Redrawn until the weighted pick lands on something droppable. Bounded by the
+        // table's own size rather than looping forever: with every weapon missing, the
         // health and armour entries still make up most of the table, so a handful of tries
-        // always finds one.
+        // always finds one. Redrawn from the same table, so a rerolled supply stays a
+        // supply and the alternation the caller set up survives.
         var choice = table[pRandom() % table.size]
-        val ok = drawableItems
-        if (ok != null) {
-            var tries = 0
-            while (!ok.getOrElse(choice) { true } && tries < table.size) {
-                choice = table[pRandom() % table.size]
-                tries++
-            }
-            if (!ok.getOrElse(choice) { true }) return
+        var tries = 0
+        while (!droppable(choice) && tries < table.size) {
+            choice = table[pRandom() % table.size]
+            tries++
         }
+        if (!droppable(choice)) return
         val it = GameData.items[choice]
         val a = Actor(it.spriteIndex)
         a.mode = Mode.ITEM
@@ -759,6 +773,22 @@ class Scene(
         a.y = clampY(y)
         a.spawnTic = tic
         actors.add(a)
+    }
+
+    /**
+     * Whether a pickup may drop: the WAD can draw it, and the floor is not already carrying
+     * [MAX_SAME_ON_FLOOR] of it.
+     *
+     * The cap is on what is lying there at this moment, not on what the run has produced. As
+     * soon as one is collected or times out the type is free again, so this thins out the
+     * clutter of five identical armours without ever making a type unreachable.
+     */
+    private fun droppable(choice: Int): Boolean {
+        if (drawableItems?.getOrElse(choice) { true } == false) return false
+        val item = GameData.items[choice]
+        var n = 0
+        for (a in actors) if (a.mode == Mode.ITEM && a.item === item) n++
+        return n < MAX_SAME_ON_FLOOR
     }
 
     private fun clampX(x: Int) = x.coerceIn(minX, maxX)
@@ -1461,5 +1491,8 @@ class Scene(
 
         /** How long an item stays if nobody picks it up. How often one drops is per skill. */
         const val ITEM_LIFETIME = TICRATE * 40
+
+        /** How many of one pickup may lie on the floor at once before drops of it are rerolled. */
+        const val MAX_SAME_ON_FLOOR = 2
     }
 }

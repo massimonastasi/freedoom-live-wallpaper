@@ -37,6 +37,8 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.Surface
 import android.view.SurfaceHolder
+import android.view.WindowInsets
+import android.view.WindowManager
 import java.nio.channels.FileChannel
 import kotlin.math.abs
 
@@ -506,6 +508,11 @@ class ProfWallpaperService : WallpaperService() {
             Log.i(TAG, "drawing surface: ${width}x$height")
             frame.set(0, 0, width, height)
             shaderSkill = -1                       // force the floor shader to be rebuilt
+            debugTop = (getSystemService(WindowManager::class.java)
+                ?.currentWindowMetrics
+                ?.windowInsets
+                ?.getInsets(WindowInsets.Type.statusBars())
+                ?.top ?: 0) + DEBUG_CLOCK_DROP * densityScale
             // The new scene starts at zero completions, so the tally of what has already been
             // written has to start there too. Left behind, the two disagreed from the first
             // tic and every rotation re-armed a completion that had not happened.
@@ -912,17 +919,27 @@ class ProfWallpaperService : WallpaperService() {
             setShadowLayer(4f, 0f, 0f, Color.BLACK)
         }
 
+        /**
+         * How far down the debug block starts: clear of the status bar, and clear of the
+         * clock the launcher puts under it.
+         *
+         * The inset is a measurement and is asked for rather than guessed - once per surface,
+         * in onSurfaceChanged, because it only changes when the surface does and reading it
+         * per frame meant a system service lookup and an Insets object on every draw. What
+         * sits below it is not measurable: the at-a-glance clock is the launcher's, has no
+         * inset of its own and is not visible from here, so [DEBUG_CLOCK_DROP] is a tuned
+         * number and the knob to turn if some launcher puts its clock lower still.
+         */
+        private var debugTop = DEBUG_CLOCK_DROP * densityScale
+
         private fun drawDebug(canvas: Canvas, s: Scene) {
-            val lines = listOf(
-                "wave ${s.wave + 1}/${GameData.waves.size}",
-                "skill ${s.skill + 1} ${GameData.skills[s.skill]}",
-                "drop in ${s.ticsToDrop / TICRATE}s",
-            )
-            var y = debugPaint.textSize * 2f
-            for (line in lines) {
-                canvas.drawText(line, debugPaint.textSize / 2f, y, debugPaint)
-                y += debugPaint.textSize * 1.2f
-            }
+            val x = debugPaint.textSize / 2f
+            val step = debugPaint.textSize * 1.2f
+            var y = debugTop + debugPaint.textSize
+            canvas.drawText("wave ${s.wave + 1}/${GameData.waves.size}", x, y, debugPaint)
+            y += step
+            canvas.drawText("skill ${s.skill + 1} ${GameData.skills[s.skill]}", x, y, debugPaint)
+            canvas.drawText("drop in ${s.ticsToDrop / TICRATE}s", x, y + step, debugPaint)
         }
 
         /**
@@ -1016,6 +1033,14 @@ class ProfWallpaperService : WallpaperService() {
 
         /** Used when the WAD has no usable flat. */
         const val BACKDROP = 0xFF201814.toInt()
+
+        /**
+         * How far below the status bar the debug block starts, in dp at the reference density.
+         *
+         * The clock a launcher draws under the status bar was covering it. This clears a
+         * typical at-a-glance widget; raise it if one sits lower.
+         */
+        const val DEBUG_CLOCK_DROP = 96f
 
         /** Size of the corner readout, relative to the sprite scale. */
         const val READOUT_SCALE = 0.7f
