@@ -65,14 +65,20 @@ class ClutterAndLapTest {
         scene.invulnerable = true
 
         var lapped = false
+        var won = false
         var wave = scene.wave
-        for (t in 1..TICRATE * 3600) {
+        for (t in 1..TICRATE * 7200) {
             scene.tick(t)
             if (scene.winning) {
                 assertTrue(
                     scene.skill == GameData.skills.lastIndex,
                     "tic $t: won on rung ${scene.skill}, which is not the last one",
                 )
+                // Past the curtain: the win is the end of the run, and what comes out from
+                // under it is a first run again - bottom rung, and so the opening drop rate.
+                for (u in t + 1..t + Scene.DEATH_DELAY + TICRATE * 10) scene.tick(u)
+                assertTrue(scene.skill == 0, "after the win the ladder sat on rung ${scene.skill}")
+                won = true
                 break
             }
             if (scene.wave < wave) {
@@ -81,6 +87,7 @@ class ClutterAndLapTest {
             }
             wave = scene.wave
         }
-        assertTrue(lapped, "no table was finished in an hour: this test verified nothing")
+        assertTrue(lapped, "no table was finished: this test verified nothing")
+        assertTrue(won, "the ladder never reached the top, so the reset was never seen")
     }
 }

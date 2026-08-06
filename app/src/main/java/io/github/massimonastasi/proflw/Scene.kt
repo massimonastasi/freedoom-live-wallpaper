@@ -273,6 +273,10 @@ class Scene(
      * It moves on the kill that empties the last wave, and at no other moment - not per wave,
      * not on a death. The floor is drawn from it, so this is also the rule for the background:
      * it turns over when the ladder does, and stays put for everything else.
+     *
+     * One way down, and it is the top: finishing the table on the last rung ends the run, and
+     * the fight that follows the curtain starts from the first again. The drop interval is
+     * read from this, so it comes back with it.
      */
     var skill = 0
         private set
@@ -518,7 +522,17 @@ class Scene(
         nextWaveAt = 0
         wave = 0
         // Not skill: it is climbed by finishing the table and nothing takes it back, so the
-        // background survives the death that sends the waves back to the first.
+        // background survives the death that sends the waves back to the first. The one
+        // exception is the top of the ladder, which has nowhere left to climb: finishing
+        // the table there is the end of the run, and what follows is a new one from the
+        // first rung - same floor, same drop rate, same everything the very first tic had.
+        // Read from the win rather than from clearedHardest: that flag is still set through
+        // the pause after the final wave, and a stray projectile landing in it is a death,
+        // not a victory. Only the branch that lit the glow resets the ladder.
+        if (wonUntil != 0) {
+            skill = 0
+            wonUntil = 0
+        }
         // The black cover is at its darkest by now - a death or a finished table put it
         // there - and this is the moment it starts lifting again, on the empty ground the
         // marine is about to walk onto.
